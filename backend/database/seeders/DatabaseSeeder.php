@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             DepartmentSeeder::class,
             RecordCategorySeeder::class,
             AdminUserSeeder::class,
+            SystemSettingSeeder::class,
         ]);
     }
 }

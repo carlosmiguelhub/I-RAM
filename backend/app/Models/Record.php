@@ -27,6 +27,7 @@ class Record extends Model
         'resubmitted_at',
         'archived_by',
         'archived_at',
+        'archive_folder_id',
     ];
 
     protected $casts = [
@@ -65,6 +66,11 @@ class Record extends Model
     public function archiver()
     {
         return $this->belongsTo(User::class, 'archived_by');
+    }
+
+    public function archiveFolder()
+    {
+        return $this->belongsTo(ArchiveFolder::class, 'archive_folder_id');
     }
 
     public function files()

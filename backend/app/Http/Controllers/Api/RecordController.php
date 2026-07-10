@@ -57,6 +57,7 @@ class RecordController extends Controller
             'reviewer',
             'returner',
             'archiver',
+            'archiveFolder',
             'files',
         ];
     }
@@ -150,6 +151,10 @@ class RecordController extends Controller
                     );
                 }
             });
+        } elseif (!$request->filled('status')) {
+            // Keep the active Records page focused on submissions and review work.
+            // Archived records are managed from the dedicated Archive repository.
+            $query->where('status', '!=', 'archived');
         }
 
         if ($request->filled('search')) {
