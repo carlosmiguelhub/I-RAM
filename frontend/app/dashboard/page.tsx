@@ -1,215 +1,459 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { apiRequest } from "@/lib/api";
 
+type RecordItem = {
+  id: number;
+  record_code: string;
+  title: string;
+  status: string;
+  date_received?: string | null;
+  category?: {
+    name?: string | null;
+  } | null;
+  department?: {
+    name?: string | null;
+  } | null;
+};
+
+type DashboardCounts = {
+  total: number;
+  received: number;
+  underReview: number;
+  archived: number;
+};
+
+const initialCounts: DashboardCounts = {
+  total: 0,
+  received: 0,
+  underReview: 0,
+  archived: 0,
+};
+
 export default function DashboardPage() {
+  const router = useRouter();
+
   const [user, setUser] = useState<any>(null);
-  const [records, setRecords] = useState<any[]>([]);
+  const [recentRecords, setRecentRecords] = useState<RecordItem[]>([]);
+  const [counts, setCounts] =
+    useState<DashboardCounts>(initialCounts);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  const roleName = user?.role?.name || "";
+  const isStaff = roleName === "Staff";
+  const canManageRecords =
+    roleName === "Admin" || roleName === "Records Officer";
+
+  const primaryAction = isStaff
+    ? {
+        label: "+ New Submission",
+        href: "/records/create",
+      }
+    : {
+        label: "+ Add Record",
+        href: "/records/create",
+      };
+
+  const recentTitle = isStaff
+    ? "Recent Submissions"
+    : "Recent Record Activity";
+
+  const recentDescription = isStaff
+    ? "Your five most recent record submissions."
+    : "The five most recently added records in the system.";
+
+  const workflowMessage = useMemo(() => {
+    if (isStaff) {
+      if (counts.received > 0) {
+        return `${counts.received} submission${
+          counts.received === 1 ? "" : "s"
+        } waiting for Records Office review.`;
+      }
+
+      return "You have no submissions waiting for review.";
+    }
+
+    if (counts.received > 0) {
+      return `${counts.received} record${
+        counts.received === 1 ? "" : "s"
+      } waiting to begin review.`;
+    }
+
+    if (counts.underReview > 0) {
+      return `${counts.underReview} record${
+        counts.underReview === 1 ? "" : "s"
+      } currently under review.`;
+    }
+
+    return "There are no pending review actions.";
+  }, [counts.received, counts.underReview, isStaff]);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const me = await apiRequest("/me");
-        const recordData = await apiRequest("/records");
+    async function loadDashboard() {
+      setLoading(true);
+      setLoadError("");
 
-        setUser(me.user);
-        setRecords(recordData.data || []);
-      } catch (error) {
-        localStorage.removeItem("iram_token");
-        localStorage.removeItem("iram_user");
-        window.location.href = "/login";
+      try {
+        const [
+          meData,
+          recentData,
+          receivedData,
+          underReviewData,
+          archivedData,
+        ] = await Promise.all([
+          apiRequest("/me"),
+          apiRequest("/records"),
+          apiRequest("/records?status=received"),
+          apiRequest("/records?status=under_review"),
+          apiRequest("/records?status=archived"),
+        ]);
+
+        setUser(meData.user);
+
+        localStorage.setItem(
+          "iram_user",
+          JSON.stringify(meData.user)
+        );
+
+        setRecentRecords(
+          (recentData.data || []).slice(0, 5)
+        );
+
+        setCounts({
+          total:
+            typeof recentData.total === "number"
+              ? recentData.total
+              : recentData.data?.length || 0,
+          received:
+            typeof receivedData.total === "number"
+              ? receivedData.total
+              : receivedData.data?.length || 0,
+          underReview:
+            typeof underReviewData.total === "number"
+              ? underReviewData.total
+              : underReviewData.data?.length || 0,
+          archived:
+            typeof archivedData.total === "number"
+              ? archivedData.total
+              : archivedData.data?.length || 0,
+        });
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "";
+
+        if (message === "Unauthenticated.") {
+          localStorage.removeItem("iram_token");
+          localStorage.removeItem("iram_user");
+          router.replace("/login");
+          return;
+        }
+
+        setLoadError(
+          message || "Failed to load dashboard information."
+        );
       } finally {
         setLoading(false);
       }
     }
 
-    loadData();
-  }, []);
-
-  const received = records.filter((r) => r.status === "received").length;
-  const underReview = records.filter((r) => r.status === "under_review").length;
-  const archived = records.filter((r) => r.status === "archived").length;
+    loadDashboard();
+  }, [router]);
 
   return (
     <AppShell>
-      <div className="w-full max-w-full">
+      <div className="w-full">
         <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-blue-600">Welcome back</p>
+            <p className="text-sm font-semibold text-blue-600">
+              {isStaff
+                ? "Submission Overview"
+                : "Records Management Overview"}
+            </p>
 
             <h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-              Hello, {user?.name || "IRAM Admin"}
+              Welcome, {user?.name || "IRAM User"}
             </h1>
 
-            <p className="mt-1 max-w-xl text-sm leading-6 text-slate-500">
-              Monitor acquired records, archive status, and document activity.
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+              {isStaff
+                ? "Track your submitted records and their progress through the review and archiving process."
+                : "Monitor incoming submissions, active reviews, and archived records from one place."}
             </p>
           </div>
 
           <Link
-            href="/records/create"
+            href={primaryAction.href}
             className="flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
           >
-            + Upload / Add Record
+            {primaryAction.label}
           </Link>
         </section>
 
+        {loadError && (
+          <div
+            role="alert"
+            className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700"
+          >
+            {loadError}
+          </div>
+        )}
+
         <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="Total Records" value={records.length} note="+12% this month" />
-          <StatCard title="Received" value={received} note="New acquisitions" />
-          <StatCard title="Under Review" value={underReview} note="Needs validation" />
-          <StatCard title="Archived" value={archived} note="Stored records" />
+          <StatCard
+            title={isStaff ? "My Records" : "Total Records"}
+            value={counts.total}
+            description={
+              isStaff
+                ? "Records visible to your account"
+                : "All records in the archive"
+            }
+            loading={loading}
+          />
+
+          <StatCard
+            title={isStaff ? "Submitted" : "Received"}
+            value={counts.received}
+            description={
+              isStaff
+                ? "Waiting for initial review"
+                : "Waiting for review"
+            }
+            loading={loading}
+            href="/records?status=received"
+          />
+
+          <StatCard
+            title="Under Review"
+            value={counts.underReview}
+            description="Currently being evaluated"
+            loading={loading}
+            href="/records?status=under_review"
+          />
+
+          <StatCard
+            title="Archived"
+            value={counts.archived}
+            description="Officially archived records"
+            loading={loading}
+            href="/records?status=archived"
+          />
         </section>
 
         <section className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-3">
-          <div className="min-w-0 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6 xl:col-span-2">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 xl:col-span-2">
+            <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  Recent Archive Activity
+                  {recentTitle}
                 </h2>
-                <p className="text-sm text-slate-500">
-                  Latest records encoded in the system.
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {recentDescription}
                 </p>
               </div>
 
-              <Link href="/records" className="text-sm font-semibold text-blue-600">
-                View all →
+              <Link
+                href="/records"
+                className="text-sm font-semibold text-blue-600 transition hover:text-blue-700"
+              >
+                View all records →
               </Link>
             </div>
 
-            {/* Mobile card list */}
-            <div className="mt-5 space-y-3 md:hidden">
-              {loading && (
-                <p className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500">
-                  Loading records...
-                </p>
-              )}
-
-              {!loading && records.length === 0 && (
-                <p className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500">
-                  No records yet.
-                </p>
-              )}
-
-              {records.slice(0, 5).map((record) => (
-                <Link
-                  key={record.id}
-                  href={`/records/${record.id}`}
-                  className="block rounded-xl border border-slate-200 bg-white p-4 active:bg-slate-50"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-900">
-                        {record.title}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {record.record_code}
-                      </p>
-                    </div>
-
-                    <StatusBadge status={record.status} />
+            <div className="p-4 sm:p-5">
+              {loading ? (
+                <RecentRecordsSkeleton />
+              ) : recentRecords.length === 0 ? (
+                <EmptyRecentRecords isStaff={isStaff} />
+              ) : (
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {recentRecords.map((record) => (
+                      <RecentRecordCard
+                        key={record.id}
+                        record={record}
+                        isStaff={isStaff}
+                      />
+                    ))}
                   </div>
 
-                  <div className="mt-3 grid grid-cols-1 gap-1 text-xs text-slate-500">
-                    <p>Category: {record.category?.name || "N/A"}</p>
-                    <p>Department: {record.department?.name || "N/A"}</p>
+                  <div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
+                    <table className="w-full min-w-[720px] text-left text-sm">
+                      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                        <tr>
+                          <th className="px-4 py-3">Record</th>
+                          <th className="px-4 py-3">Category</th>
+                          <th className="px-4 py-3">
+                            Department
+                          </th>
+                          <th className="px-4 py-3">
+                            {isStaff
+                              ? "Submitted"
+                              : "Received"}
+                          </th>
+                          <th className="px-4 py-3">Status</th>
+                        </tr>
+                      </thead>
+
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {recentRecords.map((record) => (
+                          <tr
+                            key={record.id}
+                            className="transition hover:bg-slate-50"
+                          >
+                            <td className="px-4 py-4">
+                              <Link
+                                href={`/records/${record.id}`}
+                                className="font-semibold text-slate-900 transition hover:text-blue-600"
+                              >
+                                {record.title}
+                              </Link>
+
+                              <p className="mt-1 text-xs text-slate-500">
+                                {record.record_code}
+                              </p>
+                            </td>
+
+                            <td className="px-4 py-4 text-slate-600">
+                              {record.category?.name || "N/A"}
+                            </td>
+
+                            <td className="px-4 py-4 text-slate-600">
+                              {record.department?.name || "N/A"}
+                            </td>
+
+                            <td className="px-4 py-4 text-slate-600">
+                              {formatDate(record.date_received)}
+                            </td>
+
+                            <td className="px-4 py-4">
+                              <StatusBadge
+                                status={record.status}
+                                isStaff={isStaff}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* Desktop/tablet table */}
-            <div className="mt-5 hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
-              <table className="w-full min-w-[720px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3">Record</th>
-                    <th className="px-4 py-3">Category</th>
-                    <th className="px-4 py-3">Department</th>
-                    <th className="px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {records.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                        No records yet.
-                      </td>
-                    </tr>
-                  )}
-
-                  {records.slice(0, 5).map((record) => (
-                    <tr key={record.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-4">
-                        <Link
-                          href={`/records/${record.id}`}
-                          className="font-semibold text-slate-900 hover:text-blue-600"
-                        >
-                          {record.title}
-                        </Link>
-                        <p className="text-xs text-slate-500">{record.record_code}</p>
-                      </td>
-
-                      <td className="px-4 py-4 text-slate-600">
-                        {record.category?.name || "N/A"}
-                      </td>
-
-                      <td className="px-4 py-4 text-slate-600">
-                        {record.department?.name || "N/A"}
-                      </td>
-
-                      <td className="px-4 py-4">
-                        <StatusBadge status={record.status} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="rounded-2xl bg-slate-950 p-5 text-white shadow-sm sm:p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10">
-              🛡️
-            </div>
+          <aside className="space-y-5">
+            <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-sm sm:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">
+                    Current workflow
+                  </p>
 
-            <h2 className="mt-5 text-lg font-bold">Audit Status</h2>
+                  <h2 className="mt-2 text-xl font-bold">
+                    {isStaff
+                      ? "Submission Progress"
+                      : "Review Queue"}
+                  </h2>
+                </div>
 
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              Record activity is being tracked through audit logs.
-            </p>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-lg">
+                  {isStaff ? "↗" : "✓"}
+                </div>
+              </div>
 
-            <div className="mt-8">
-              <p className="text-sm text-slate-400">Next scheduled review</p>
-              <p className="mt-1 text-3xl font-bold">14 Days</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-bold text-slate-900">
-                Need to archive historical records?
-              </h2>
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                Use the Add Record module to encode physical or digital archive documents.
+              <p className="mt-4 text-sm leading-6 text-slate-300">
+                {workflowMessage}
               </p>
-            </div>
 
-            <Link
-              href="/records/create"
-              className="flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 sm:w-auto"
-            >
-              Open Record Encoder
-            </Link>
-          </div>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <MiniStat
+                  label={isStaff ? "Submitted" : "Received"}
+                  value={counts.received}
+                />
+                <MiniStat
+                  label="Under Review"
+                  value={counts.underReview}
+                />
+              </div>
+
+              <Link
+                href={
+                  counts.received > 0
+                    ? "/records?status=received"
+                    : "/records"
+                }
+                className="mt-6 flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+              >
+                {isStaff
+                  ? "View My Submissions"
+                  : counts.received > 0
+                  ? "Open Review Queue"
+                  : "View All Records"}
+              </Link>
+            </section>
+
+            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+              <h2 className="text-lg font-bold text-slate-900">
+                Quick Actions
+              </h2>
+
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Common tasks based on your account role.
+              </p>
+
+              <div className="mt-4 grid gap-3">
+                <QuickAction
+                  href="/records"
+                  title={
+                    isStaff
+                      ? "Track submissions"
+                      : "Browse all records"
+                  }
+                  description={
+                    isStaff
+                      ? "Review the status of records you submitted."
+                      : "Search, filter, and review archive records."
+                  }
+                />
+
+                <QuickAction
+                  href="/records/create"
+                  title={
+                    isStaff
+                      ? "Submit a record"
+                      : "Add a record"
+                  }
+                  description={
+                    isStaff
+                      ? "Send a new document to the Records Office."
+                      : "Create a new archive record."
+                  }
+                />
+
+                {roleName === "Admin" && (
+                  <QuickAction
+                    href="/admin/users"
+                    title="Manage users"
+                    description="Assign roles, departments, and account access."
+                  />
+                )}
+
+                {canManageRecords && (
+                  <QuickAction
+                    href="/records?status=under_review"
+                    title="Continue reviews"
+                    description="Open records currently under evaluation."
+                  />
+                )}
+              </div>
+            </section>
+          </aside>
         </section>
       </div>
     </AppShell>
@@ -219,27 +463,269 @@ export default function DashboardPage() {
 function StatCard({
   title,
   value,
-  note,
+  description,
+  loading,
+  href,
 }: {
   title: string;
   value: number;
-  note: string;
+  description: string;
+  loading: boolean;
+  href?: string;
+}) {
+  const content = (
+    <div className="h-full rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md sm:p-6">
+      <p className="text-sm font-medium text-slate-500">
+        {title}
+      </p>
+
+      {loading ? (
+        <div className="mt-4 h-9 w-20 animate-pulse rounded-lg bg-slate-200" />
+      ) : (
+        <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
+          {value}
+        </h2>
+      )}
+
+      <p className="mt-2 text-xs font-medium text-slate-500">
+        {description}
+      </p>
+    </div>
+  );
+
+  if (!href) {
+    return content;
+  }
+
+  return (
+    <Link href={href} className="block">
+      {content}
+    </Link>
+  );
+}
+
+function RecentRecordCard({
+  record,
+  isStaff,
+}: {
+  record: RecordItem;
+  isStaff: boolean;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-      <p className="text-sm font-medium text-slate-500">{title}</p>
-      <h2 className="mt-3 text-3xl font-bold text-slate-950">{value}</h2>
-      <p className="mt-2 text-xs font-semibold text-emerald-600">{note}</p>
+    <Link
+      href={`/records/${record.id}`}
+      className="block rounded-xl border border-slate-200 bg-white p-4 transition active:bg-slate-50"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-slate-900">
+            {record.title}
+          </p>
+
+          <p className="mt-1 text-xs text-slate-500">
+            {record.record_code}
+          </p>
+        </div>
+
+        <StatusBadge
+          status={record.status}
+          isStaff={isStaff}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-2 text-xs text-slate-500">
+        <InfoLine
+          label="Category"
+          value={record.category?.name || "N/A"}
+        />
+
+        <InfoLine
+          label="Department"
+          value={record.department?.name || "N/A"}
+        />
+
+        <InfoLine
+          label={isStaff ? "Submitted" : "Received"}
+          value={formatDate(record.date_received)}
+        />
+      </div>
+    </Link>
+  );
+}
+
+function RecentRecordsSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div
+          key={index}
+          className="animate-pulse rounded-xl border border-slate-200 p-4"
+        >
+          <div className="h-4 w-2/5 rounded bg-slate-200" />
+          <div className="mt-3 h-3 w-1/4 rounded bg-slate-100" />
+        </div>
+      ))}
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const label = status?.replace("_", " ") || "unknown";
+function EmptyRecentRecords({
+  isStaff,
+}: {
+  isStaff: boolean;
+}) {
+  return (
+    <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-sm ring-1 ring-slate-200">
+        □
+      </div>
+
+      <h3 className="mt-4 font-bold text-slate-900">
+        No records yet
+      </h3>
+
+      <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+        {isStaff
+          ? "Your submitted records will appear here."
+          : "Newly added records will appear here."}
+      </p>
+
+      <Link
+        href="/records/create"
+        className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700"
+      >
+        {isStaff
+          ? "Create your first submission"
+          : "Add the first record"}{" "}
+        →
+      </Link>
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-xl bg-white/10 p-4 ring-1 ring-white/10">
+      <p className="text-xs font-medium text-slate-300">
+        {label}
+      </p>
+
+      <p className="mt-2 text-2xl font-bold text-white">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function QuickAction({
+  href,
+  title,
+  description,
+}: {
+  href: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-xl border border-slate-200 p-4 transition hover:border-blue-200 hover:bg-blue-50/50"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900 transition group-hover:text-blue-700">
+            {title}
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            {description}
+          </p>
+        </div>
+
+        <span className="text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-600">
+          →
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function InfoLine({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-slate-400">{label}</span>
+      <span className="truncate font-medium text-slate-700">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function StatusBadge({
+  status,
+  isStaff = false,
+}: {
+  status: string;
+  isStaff?: boolean;
+}) {
+  const label =
+    status === "received" && isStaff
+      ? "Submitted"
+      : status?.replaceAll("_", " ") || "Unknown";
+
+  let classes = "bg-slate-100 text-slate-700";
+
+  if (status === "received") {
+    classes = "bg-blue-50 text-blue-700";
+  } else if (status === "under_review") {
+    classes = "bg-amber-50 text-amber-700";
+  } else if (status === "archived") {
+    classes = "bg-emerald-50 text-emerald-700";
+  } else if (status === "for_disposal") {
+    classes = "bg-red-50 text-red-700";
+  } else if (status === "disposed") {
+    classes = "bg-slate-200 text-slate-700";
+  }
 
   return (
-    <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold capitalize text-blue-700">
+    <span
+      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize ${classes}`}
+    >
       {label}
     </span>
   );
+}
+
+function formatDate(date?: string | null) {
+  if (!date) {
+    return "N/A";
+  }
+
+  const rawDate = date.includes("T")
+    ? date
+    : `${date}T00:00:00`;
+
+  const parsedDate = new Date(rawDate);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return date;
+  }
+
+  return parsedDate.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }

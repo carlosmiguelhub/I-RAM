@@ -24,24 +24,24 @@ const menuItems: SidebarItem[] = [
     icon: "□",
     roles: ["Admin", "Records Officer"],
   },
-{
-  name: "My Records",
-  href: "/records",
-  icon: "□",
-  roles: ["Staff"],
-},
+  {
+    name: "My Records",
+    href: "/records",
+    icon: "□",
+    roles: ["Staff"],
+  },
   {
     name: "Add Record",
     href: "/records/create",
     icon: "+",
     roles: ["Admin", "Records Officer"],
   },
-{
-  name: "New Submission",
-  href: "/records/create",
-  icon: "+",
-  roles: ["Staff"],
-},
+  {
+    name: "New Submission",
+    href: "/records/create",
+    icon: "+",
+    roles: ["Staff"],
+  },
   {
     name: "Under Review",
     href: "/records?status=under_review",
@@ -67,8 +67,8 @@ const menuItems: SidebarItem[] = [
     roles: ["Admin", "Records Officer"],
   },
   {
-    name: "Users",
-    href: "#",
+    name: "User Management",
+    href: "/admin/users",
     icon: "♙",
     roles: ["Admin"],
   },
@@ -85,11 +85,11 @@ const menuItems: SidebarItem[] = [
     roles: ["Admin"],
   },
   {
-  name: "Profile",
-  href: "/profile",
-  icon: "◉",
-  roles: ["Admin", "Records Officer", "Staff"],
-},
+    name: "Profile",
+    href: "/profile",
+    icon: "◉",
+    roles: ["Admin", "Records Officer", "Staff"],
+  },
   {
     name: "Settings",
     href: "#",
@@ -106,8 +106,7 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
-
-  const [roleName, setRoleName] = useState<string>("");
+  const [roleName, setRoleName] = useState("");
 
   useEffect(() => {
     const storedUser = localStorage.getItem("iram_user");
@@ -125,10 +124,16 @@ export default function Sidebar({
   const visibleMenuItems = useMemo(() => {
     if (!roleName) return [];
 
-    return menuItems.filter((item) => item.roles.includes(roleName));
+    return menuItems.filter((item) =>
+      item.roles.includes(roleName)
+    );
   }, [roleName]);
 
-const primaryAction = roleName === "Staff" ? "New Submission" : "Add New Record";
+  const primaryAction =
+    roleName === "Staff"
+      ? "New Submission"
+      : "Add New Record";
+
   return (
     <>
       {open && (
@@ -151,7 +156,9 @@ const primaryAction = roleName === "Staff" ? "New Submission" : "Add New Record"
             </div>
 
             <div>
-              <h1 className="text-sm font-bold text-slate-900">IRAM Archive</h1>
+              <h1 className="text-sm font-bold text-slate-900">
+                IRAM Archive
+              </h1>
               <p className="text-xs text-slate-500">
                 {roleName || "Records Management"}
               </p>
@@ -166,9 +173,10 @@ const primaryAction = roleName === "Staff" ? "New Submission" : "Add New Record"
           </button>
         </div>
 
-        <nav className="mt-8 space-y-1">
+        <nav className="mt-8 max-h-[calc(100vh-190px)] space-y-1 overflow-y-auto pb-4">
           {visibleMenuItems.map((item) => {
-            const active = pathname === item.href.split("?")[0];
+            const active =
+              pathname === item.href.split("?")[0];
 
             return (
               <Link

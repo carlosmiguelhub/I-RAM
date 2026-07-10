@@ -18,6 +18,17 @@ class Record extends Model
         'status',
         'storage_location',
         'remarks',
+        'review_remarks',
+        'reviewed_by',
+        'reviewed_at',
+        'archived_by',
+        'archived_at',
+    ];
+
+    protected $casts = [
+        'date_received' => 'date',
+        'reviewed_at' => 'datetime',
+        'archived_at' => 'datetime',
     ];
 
     public function category()
@@ -33,6 +44,16 @@ class Record extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function archiver()
+    {
+        return $this->belongsTo(User::class, 'archived_by');
     }
 
     public function files()

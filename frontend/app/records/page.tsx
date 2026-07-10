@@ -25,6 +25,10 @@ const staffTabs = [
   { label: "Archived", value: "archived" },
 ];
 
+type UserSummary = {
+  name?: string | null;
+};
+
 type RecordFile = {
   id: number;
   file_name: string;
@@ -38,19 +42,18 @@ type RecordItem = {
   title: string;
   description?: string | null;
   remarks?: string | null;
+  review_remarks?: string | null;
   source?: string | null;
   date_received?: string | null;
   storage_location?: string | null;
+  reviewed_at?: string | null;
+  archived_at?: string | null;
   status: string;
-  category?: {
-    name?: string | null;
-  } | null;
-  department?: {
-    name?: string | null;
-  } | null;
-  creator?: {
-    name?: string | null;
-  } | null;
+  category?: { name?: string | null } | null;
+  department?: { name?: string | null } | null;
+  creator?: UserSummary | null;
+  reviewer?: UserSummary | null;
+  archiver?: UserSummary | null;
   files?: RecordFile[];
 };
 
@@ -65,16 +68,26 @@ export default function RecordsPage() {
 
   const [selectedRecord, setSelectedRecord] =
     useState<RecordItem | null>(null);
+  const [openingRecordId, setOpeningRecordId] = useState<number | null>(
+    null
+  );
 
-  const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
   const [downloadError, setDownloadError] = useState("");
   const [downloadingFileId, setDownloadingFileId] = useState<
     number | null
   >(null);
 
+  const [workflowLoading, setWorkflowLoading] = useState(false);
+  const [workflowError, setWorkflowError] = useState("");
+  const [workflowSuccess, setWorkflowSuccess] = useState("");
+  const [reviewRemarks, setReviewRemarks] = useState("");
+  const [storageLocation, setStorageLocation] = useState("");
+
   const roleName = user?.role?.name || "";
   const isStaff = roleName === "Staff";
+  const canManageWorkflow =
+    roleName === "Admin" || roleName === "Records Officer";
 
   const tabs = useMemo(
     () => (isStaff ? staffTabs : allTabs),
@@ -99,16 +112,12 @@ export default function RecordsPage() {
       }
 
       const query = params.toString();
-      const endpoint = query
-        ? `/records?${query}`
-        : "/records";
-
-      const data = await apiRequest(endpoint);
+      const data = await apiRequest(
+        query ? `/records?${query}` : "/records"
+      );
 
       setRecords(data.data || []);
     } catch (error: unknown) {
-      console.error(error);
-
       const message =
         error instanceof Error ? error.message : "";
 
@@ -131,19 +140,15 @@ export default function RecordsPage() {
         const meData = await apiRequest("/me");
 
         setUser(meData.user);
-
         localStorage.setItem(
           "iram_user",
           JSON.stringify(meData.user)
         );
 
         await loadRecords("", "");
-      } catch (error) {
-        console.error(error);
-
+      } catch {
         localStorage.removeItem("iram_token");
         localStorage.removeItem("iram_user");
-
         router.replace("/login");
       }
     }
@@ -153,12 +158,12 @@ export default function RecordsPage() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !workflowLoading) {
         closePreview();
       }
     }
 
-    if (selectedRecord) {
+    if (selectedRecord || openingRecordId !== null) {
       document.body.style.overflow = "hidden";
       window.addEventListener("keydown", handleKeyDown);
     }
@@ -167,7 +172,7 @@ export default function RecordsPage() {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [selectedRecord]);
+  }, [selectedRecord, openingRecordId, workflowLoading]);
 
   function handleSearch(event: React.FormEvent) {
     event.preventDefault();
@@ -179,22 +184,29 @@ export default function RecordsPage() {
     loadRecords(search, status);
   }
 
+  function syncWorkflowFields(record: RecordItem) {
+    setReviewRemarks(record.review_remarks || "");
+    setStorageLocation(record.storage_location || "");
+  }
+
   async function openPreview(recordId: number) {
-    setPreviewLoading(true);
+    setOpeningRecordId(recordId);
     setPreviewError("");
     setDownloadError("");
+    setWorkflowError("");
+    setWorkflowSuccess("");
 
     try {
       const data = await apiRequest(`/records/${recordId}`);
       setSelectedRecord(data.record);
+      syncWorkflowFields(data.record);
     } catch (error: unknown) {
-      console.error(error);
-
-      setPreviewError(
+      const message =
         error instanceof Error
           ? error.message
-          : "Failed to load record details."
-      );
+          : "Failed to load record details.";
+
+      setPreviewError(message);
 
       const recordFromList = records.find(
         (record) => record.id === recordId
@@ -202,17 +214,123 @@ export default function RecordsPage() {
 
       if (recordFromList) {
         setSelectedRecord(recordFromList);
+        syncWorkflowFields(recordFromList);
       }
     } finally {
-      setPreviewLoading(false);
+      setOpeningRecordId(null);
     }
   }
 
   function closePreview() {
+    if (workflowLoading) return;
+
     setSelectedRecord(null);
     setPreviewError("");
     setDownloadError("");
+    setWorkflowError("");
+    setWorkflowSuccess("");
     setDownloadingFileId(null);
+    setReviewRemarks("");
+    setStorageLocation("");
+  }
+
+  function replaceRecord(updatedRecord: RecordItem) {
+    setSelectedRecord(updatedRecord);
+    syncWorkflowFields(updatedRecord);
+
+    setRecords((current) =>
+      current.map((item) =>
+        item.id === updatedRecord.id ? updatedRecord : item
+      )
+    );
+  }
+
+  async function runWorkflowAction(
+    endpoint: string,
+    options: RequestInit,
+    successFallback: string
+  ) {
+    if (!selectedRecord) return;
+
+    setWorkflowLoading(true);
+    setWorkflowError("");
+    setWorkflowSuccess("");
+
+    try {
+      const data = await apiRequest(endpoint, options);
+      replaceRecord(data.record);
+      setWorkflowSuccess(data.message || successFallback);
+      await loadRecords(search, activeStatus);
+    } catch (error: unknown) {
+      setWorkflowError(
+        error instanceof Error
+          ? error.message
+          : "The workflow action could not be completed."
+      );
+    } finally {
+      setWorkflowLoading(false);
+    }
+  }
+
+  async function handleStartReview() {
+    if (!selectedRecord) return;
+
+    await runWorkflowAction(
+      `/records/${selectedRecord.id}/start-review`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          review_remarks: reviewRemarks.trim() || null,
+        }),
+      },
+      "Record review started."
+    );
+  }
+
+  async function handleSaveReview() {
+    if (!selectedRecord) return;
+
+    await runWorkflowAction(
+      `/records/${selectedRecord.id}/review`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          review_remarks: reviewRemarks.trim() || null,
+          storage_location: storageLocation.trim() || null,
+        }),
+      },
+      "Review details saved."
+    );
+  }
+
+  async function handleArchive() {
+    if (!selectedRecord) return;
+
+    if (!reviewRemarks.trim()) {
+      setWorkflowError(
+        "Review remarks are required before archiving."
+      );
+      return;
+    }
+
+    if (!storageLocation.trim()) {
+      setWorkflowError(
+        "A storage location is required before archiving."
+      );
+      return;
+    }
+
+    await runWorkflowAction(
+      `/records/${selectedRecord.id}/archive`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          review_remarks: reviewRemarks.trim(),
+          storage_location: storageLocation.trim(),
+        }),
+      },
+      "Record archived successfully."
+    );
   }
 
   async function handleDownload(file: RecordFile) {
@@ -245,10 +363,8 @@ export default function RecordsPage() {
 
         if (contentType?.includes("application/json")) {
           const data = await response.json();
-
           throw new Error(
-            data?.message ||
-              "Failed to download the file."
+            data?.message || "Failed to download the file."
           );
         }
 
@@ -268,11 +384,8 @@ export default function RecordsPage() {
       document.body.appendChild(downloadLink);
       downloadLink.click();
       downloadLink.remove();
-
       window.URL.revokeObjectURL(objectUrl);
     } catch (error: unknown) {
-      console.error(error);
-
       setDownloadError(
         error instanceof Error
           ? error.message
@@ -291,6 +404,8 @@ export default function RecordsPage() {
             <p className="text-sm font-semibold text-blue-600">
               {isStaff
                 ? "Submission Tracking"
+                : canManageWorkflow
+                ? "Records Office Workflow"
                 : "Document Archive"}
             </p>
 
@@ -298,10 +413,12 @@ export default function RecordsPage() {
               {isStaff ? "My Submissions" : "All Records"}
             </h1>
 
-            <p className="mt-1 max-w-xl text-sm leading-6 text-slate-500">
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
               {isStaff
                 ? "Track your submitted records from initial receipt through archive approval."
-                : "Search, filter, and manage acquired records in the IRAM system."}
+                : canManageWorkflow
+                ? "Review incoming submissions, assign storage locations, and archive approved records."
+                : "Search and view acquired records in the IRAM system."}
             </p>
           </div>
 
@@ -322,9 +439,7 @@ export default function RecordsPage() {
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
               placeholder="Search by code, title, description, or source..."
               value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
+              onChange={(event) => setSearch(event.target.value)}
             />
 
             <button
@@ -344,9 +459,7 @@ export default function RecordsPage() {
                   <button
                     key={tab.label}
                     type="button"
-                    onClick={() =>
-                      handleTabChange(tab.value)
-                    }
+                    onClick={() => handleTabChange(tab.value)}
                     className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                       active
                         ? "bg-blue-600 text-white"
@@ -379,7 +492,6 @@ export default function RecordsPage() {
                     <p className="truncate text-base font-bold text-slate-900">
                       {record.title}
                     </p>
-
                     <p className="mt-1 text-xs font-medium text-slate-500">
                       {record.record_code}
                     </p>
@@ -394,54 +506,45 @@ export default function RecordsPage() {
                 <div className="mt-4 grid gap-2 text-sm text-slate-600">
                   <InfoRow
                     label="Category"
-                    value={
-                      record.category?.name || "N/A"
-                    }
+                    value={record.category?.name || "N/A"}
                   />
-
                   <InfoRow
                     label="Department"
-                    value={
-                      record.department?.name || "N/A"
-                    }
+                    value={record.department?.name || "N/A"}
                   />
-
                   <InfoRow
-                    label={
-                      isStaff
-                        ? "Submitted"
-                        : "Received"
-                    }
-                    value={formatDate(
-                      record.date_received
-                    )}
+                    label={isStaff ? "Submitted" : "Received"}
+                    value={formatDate(record.date_received)}
                   />
-
                   <InfoRow
                     label="Files"
-                    value={String(
-                      record.files?.length || 0
-                    )}
+                    value={String(record.files?.length || 0)}
                   />
                 </div>
 
-                {record.status === "archived" && isStaff && (
-                  <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                    <p className="text-xs font-semibold text-emerald-800">
-                      This submission has been officially archived and
-                      is now read-only.
-                    </p>
-                  </div>
-                )}
+                {canManageWorkflow &&
+                  record.status === "received" && (
+                    <WorkflowHint text="Waiting for review to begin." />
+                  )}
+
+                {canManageWorkflow &&
+                  record.status === "under_review" && (
+                    <WorkflowHint text="Review in progress. Add remarks and storage location before archiving." />
+                  )}
 
                 <button
                   type="button"
                   onClick={() => openPreview(record.id)}
-                  disabled={previewLoading}
+                  disabled={openingRecordId !== null}
                   className="mt-4 flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {previewLoading
+                  {openingRecordId === record.id
                     ? "Loading..."
+                    : canManageWorkflow &&
+                      ["received", "under_review"].includes(
+                        record.status
+                      )
+                    ? "Review Record"
                     : "View Record"}
                 </button>
               </article>
@@ -457,9 +560,7 @@ export default function RecordsPage() {
                   <th className="px-5 py-4">Category</th>
                   <th className="px-5 py-4">Department</th>
                   <th className="px-5 py-4">
-                    {isStaff
-                      ? "Date Submitted"
-                      : "Date Received"}
+                    {isStaff ? "Date Submitted" : "Date Received"}
                   </th>
                   <th className="px-5 py-4">Files</th>
                   <th className="px-5 py-4">Status</th>
@@ -500,17 +601,9 @@ export default function RecordsPage() {
                         <p className="font-bold text-slate-900">
                           {record.title}
                         </p>
-
                         <p className="mt-1 text-xs text-slate-500">
                           {record.record_code}
                         </p>
-
-                        {record.status === "archived" &&
-                          isStaff && (
-                            <p className="mt-1 text-xs font-medium text-emerald-600">
-                              Archived · Read-only
-                            </p>
-                          )}
                       </td>
 
                       <td className="px-5 py-4 text-slate-600">
@@ -522,9 +615,7 @@ export default function RecordsPage() {
                       </td>
 
                       <td className="px-5 py-4 text-slate-600">
-                        {formatDate(
-                          record.date_received
-                        )}
+                        {formatDate(record.date_received)}
                       </td>
 
                       <td className="px-5 py-4 text-slate-600">
@@ -541,13 +632,19 @@ export default function RecordsPage() {
                       <td className="px-5 py-4">
                         <button
                           type="button"
-                          onClick={() =>
-                            openPreview(record.id)
-                          }
-                          disabled={previewLoading}
+                          onClick={() => openPreview(record.id)}
+                          disabled={openingRecordId !== null}
                           className="font-semibold text-blue-600 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          View
+                          {openingRecordId === record.id
+                            ? "Loading..."
+                            : canManageWorkflow &&
+                              [
+                                "received",
+                                "under_review",
+                              ].includes(record.status)
+                            ? "Review"
+                            : "View"}
                         </button>
                       </td>
                     </tr>
@@ -556,26 +653,27 @@ export default function RecordsPage() {
             </table>
           </div>
         </section>
-
-        <Link
-          href="/records/create"
-          className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white shadow-lg shadow-blue-600/30 transition active:scale-95 md:hidden"
-          aria-label={
-            isStaff ? "New submission" : "Add record"
-          }
-        >
-          +
-        </Link>
       </div>
 
-      {(selectedRecord || previewLoading) && (
+      {(selectedRecord || openingRecordId !== null) && (
         <RecordPreviewModal
           record={selectedRecord}
-          loading={previewLoading}
+          loading={openingRecordId !== null}
           error={previewError}
           downloadError={downloadError}
           downloadingFileId={downloadingFileId}
           isStaff={isStaff}
+          canManageWorkflow={canManageWorkflow}
+          reviewRemarks={reviewRemarks}
+          storageLocation={storageLocation}
+          workflowLoading={workflowLoading}
+          workflowError={workflowError}
+          workflowSuccess={workflowSuccess}
+          onReviewRemarksChange={setReviewRemarks}
+          onStorageLocationChange={setStorageLocation}
+          onStartReview={handleStartReview}
+          onSaveReview={handleSaveReview}
+          onArchive={handleArchive}
           onClose={closePreview}
           onDownload={handleDownload}
         />
@@ -591,6 +689,17 @@ function RecordPreviewModal({
   downloadError,
   downloadingFileId,
   isStaff,
+  canManageWorkflow,
+  reviewRemarks,
+  storageLocation,
+  workflowLoading,
+  workflowError,
+  workflowSuccess,
+  onReviewRemarksChange,
+  onStorageLocationChange,
+  onStartReview,
+  onSaveReview,
+  onArchive,
   onClose,
   onDownload,
 }: {
@@ -600,18 +709,34 @@ function RecordPreviewModal({
   downloadError: string;
   downloadingFileId: number | null;
   isStaff: boolean;
+  canManageWorkflow: boolean;
+  reviewRemarks: string;
+  storageLocation: string;
+  workflowLoading: boolean;
+  workflowError: string;
+  workflowSuccess: string;
+  onReviewRemarksChange: (value: string) => void;
+  onStorageLocationChange: (value: string) => void;
+  onStartReview: () => void;
+  onSaveReview: () => void;
+  onArchive: () => void;
   onClose: () => void;
   onDownload: (file: RecordFile) => void;
 }) {
   const files = record?.files || [];
-  const isArchivedForStaff =
-    isStaff && record?.status === "archived";
+  const isUnderReview = record?.status === "under_review";
+  const isReceived = record?.status === "received";
+  const showWorkflow =
+    canManageWorkflow && (isReceived || isUnderReview);
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:p-5"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-0 backdrop-blur-sm sm:p-5"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
+        if (
+          event.target === event.currentTarget &&
+          !workflowLoading
+        ) {
           onClose();
         }
       }}
@@ -620,38 +745,43 @@ function RecordPreviewModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="record-preview-title"
-        className="flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-5xl sm:rounded-3xl"
+        className="flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:max-h-[94vh] sm:max-w-6xl sm:rounded-3xl"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-7 sm:py-5">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-blue-600">
-              {isStaff
-                ? "Submission Preview"
-                : "Record Preview"}
-            </p>
-
-            <h2
-              id="record-preview-title"
-              className="mt-1 truncate text-xl font-bold text-slate-950 sm:text-2xl"
-            >
-              {record?.title || "Loading record..."}
-            </h2>
-
-            {record?.record_code && (
-              <p className="mt-1 text-sm font-medium text-slate-500">
-                {record.record_code}
+        <header className="bg-gradient-to-r from-slate-950 to-slate-800 px-5 py-5 text-white sm:px-7">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-blue-300">
+                {showWorkflow
+                  ? "Records Officer Review"
+                  : isStaff
+                  ? "Submission Preview"
+                  : "Record Preview"}
               </p>
-            )}
-          </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close record preview"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xl font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-950"
-          >
-            ×
-          </button>
+              <h2
+                id="record-preview-title"
+                className="mt-1 truncate text-xl font-bold sm:text-2xl"
+              >
+                {record?.title || "Loading record..."}
+              </h2>
+
+              {record?.record_code && (
+                <p className="mt-1 text-sm text-slate-300">
+                  {record.record_code}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={workflowLoading}
+              aria-label="Close record preview"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl font-semibold text-white transition hover:bg-white/20 disabled:opacity-50"
+            >
+              ×
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
@@ -663,24 +793,129 @@ function RecordPreviewModal({
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
               <div className="space-y-5 lg:col-span-2">
                 {error && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                  <Alert tone="warning">
                     Some details could not be loaded: {error}
-                  </div>
+                  </Alert>
                 )}
 
-                {isArchivedForStaff && (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                    <p className="text-sm font-semibold text-emerald-900">
-                      Officially archived
-                    </p>
+                {workflowError && (
+                  <Alert tone="error">{workflowError}</Alert>
+                )}
 
-                    <p className="mt-1 text-xs leading-5 text-emerald-700">
-                      This submission has completed review and is now
-                      part of the official archive. It is available for
-                      viewing and downloading but can no longer be
-                      edited by Staff.
-                    </p>
-                  </div>
+                {workflowSuccess && (
+                  <Alert tone="success">{workflowSuccess}</Alert>
+                )}
+
+                {showWorkflow && (
+                  <section className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-950">
+                          Review Workflow
+                        </h3>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">
+                          {isReceived
+                            ? "Start the formal review after checking the submitted metadata and attachments."
+                            : "Document the review result, assign the physical or digital storage location, then archive the record."}
+                        </p>
+                      </div>
+                      <StatusBadge status={record.status} />
+                    </div>
+
+                    {isReceived && (
+                      <div className="mt-5">
+                        <label className="text-sm font-semibold text-slate-800">
+                          Initial review note
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={reviewRemarks}
+                          onChange={(event) =>
+                            onReviewRemarksChange(
+                              event.target.value
+                            )
+                          }
+                          disabled={workflowLoading}
+                          placeholder="Optional note before starting review..."
+                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={onStartReview}
+                          disabled={workflowLoading}
+                          className="mt-4 flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                        >
+                          {workflowLoading
+                            ? "Starting Review..."
+                            : "Start Review"}
+                        </button>
+                      </div>
+                    )}
+
+                    {isUnderReview && (
+                      <div className="mt-5 space-y-4">
+                        <div>
+                          <label className="text-sm font-semibold text-slate-800">
+                            Review remarks
+                          </label>
+                          <textarea
+                            rows={5}
+                            value={reviewRemarks}
+                            onChange={(event) =>
+                              onReviewRemarksChange(
+                                event.target.value
+                              )
+                            }
+                            disabled={workflowLoading}
+                            placeholder="Describe the verification performed and the review result..."
+                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-semibold text-slate-800">
+                            Storage location
+                          </label>
+                          <input
+                            value={storageLocation}
+                            onChange={(event) =>
+                              onStorageLocationChange(
+                                event.target.value
+                              )
+                            }
+                            disabled={workflowLoading}
+                            placeholder="Example: Archive Room A / Shelf 2 / Box 14"
+                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <button
+                            type="button"
+                            onClick={onSaveReview}
+                            disabled={workflowLoading}
+                            className="flex items-center justify-center rounded-xl border border-blue-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {workflowLoading
+                              ? "Saving..."
+                              : "Save Review"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={onArchive}
+                            disabled={workflowLoading}
+                            className="flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {workflowLoading
+                              ? "Processing..."
+                              : "Archive Record"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </section>
                 )}
 
                 <section className="rounded-2xl border border-slate-200 p-5">
@@ -691,7 +926,6 @@ function RecordPreviewModal({
                           ? "Submission Information"
                           : "Record Information"}
                       </h3>
-
                       <p className="mt-1 text-sm text-slate-500">
                         Submission and classification details.
                       </p>
@@ -710,67 +944,59 @@ function RecordPreviewModal({
                           ? "Date Submitted"
                           : "Date Received"
                       }
-                      value={formatDate(
-                        record.date_received
-                      )}
+                      value={formatDate(record.date_received)}
                     />
-
                     <PreviewInfo
                       label="Category"
-                      value={
-                        record.category?.name || "N/A"
-                      }
+                      value={record.category?.name || "N/A"}
                     />
-
                     <PreviewInfo
                       label="Department"
-                      value={
-                        record.department?.name || "N/A"
-                      }
+                      value={record.department?.name || "N/A"}
                     />
-
                     <PreviewInfo
                       label="Source / Sender"
                       value={record.source || "N/A"}
                     />
-
                     <PreviewInfo
                       label="Created By"
-                      value={
-                        record.creator?.name || "N/A"
-                      }
+                      value={record.creator?.name || "N/A"}
                     />
-
                     <PreviewInfo
                       label="Storage Location"
-                      value={
-                        record.storage_location || "N/A"
-                      }
+                      value={record.storage_location || "N/A"}
+                    />
+                    <PreviewInfo
+                      label="Reviewed By"
+                      value={record.reviewer?.name || "N/A"}
+                    />
+                    <PreviewInfo
+                      label="Archived By"
+                      value={record.archiver?.name || "N/A"}
                     />
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-slate-200 p-5">
-                  <h3 className="font-bold text-slate-900">
-                    Description
-                  </h3>
+                <TextSection
+                  title="Description"
+                  value={record.description}
+                  emptyText="No description provided."
+                />
 
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                    {record.description ||
-                      "No description provided."}
-                  </p>
-                </section>
+                <TextSection
+                  title="Submission Remarks"
+                  value={record.remarks}
+                  emptyText="No submission remarks provided."
+                />
 
-                <section className="rounded-2xl border border-slate-200 p-5">
-                  <h3 className="font-bold text-slate-900">
-                    Remarks
-                  </h3>
-
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                    {record.remarks ||
-                      "No remarks provided."}
-                  </p>
-                </section>
+                {(record.review_remarks ||
+                  record.status === "archived") && (
+                  <TextSection
+                    title="Review Remarks"
+                    value={record.review_remarks}
+                    emptyText="No review remarks recorded."
+                  />
+                )}
               </div>
 
               <aside className="space-y-5">
@@ -804,9 +1030,8 @@ function RecordPreviewModal({
                       <h3 className="text-lg font-bold text-slate-900">
                         Files
                       </h3>
-
                       <p className="mt-1 text-sm text-slate-500">
-                        Uploaded record attachments.
+                        Inspect each attachment before completing review.
                       </p>
                     </div>
 
@@ -816,9 +1041,7 @@ function RecordPreviewModal({
                   </div>
 
                   {downloadError && (
-                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-                      {downloadError}
-                    </div>
+                    <Alert tone="error">{downloadError}</Alert>
                   )}
 
                   {files.length === 0 ? (
@@ -850,12 +1073,10 @@ function RecordPreviewModal({
                                 >
                                   {file.file_name}
                                 </p>
-
                                 <p className="mt-1 truncate text-xs text-slate-500">
                                   {file.file_type ||
                                     "Unknown file type"}
                                 </p>
-
                                 <p className="mt-1 text-xs text-slate-400">
                                   {formatFileSize(
                                     file.file_size
@@ -866,9 +1087,7 @@ function RecordPreviewModal({
 
                             <button
                               type="button"
-                              onClick={() =>
-                                onDownload(file)
-                              }
+                              onClick={() => onDownload(file)}
                               disabled={
                                 downloadingFileId !== null
                               }
@@ -887,9 +1106,9 @@ function RecordPreviewModal({
               </aside>
             </div>
           ) : (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+            <Alert tone="error">
               {error || "Record could not be loaded."}
-            </div>
+            </Alert>
           )}
         </div>
 
@@ -898,7 +1117,8 @@ function RecordPreviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              disabled={workflowLoading}
+              className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
             >
               Close
             </button>
@@ -916,6 +1136,49 @@ function RecordPreviewModal({
   );
 }
 
+function Alert({
+  children,
+  tone,
+}: {
+  children: React.ReactNode;
+  tone: "error" | "success" | "warning";
+}) {
+  const classes = {
+    error: "border-red-200 bg-red-50 text-red-700",
+    success:
+      "border-emerald-200 bg-emerald-50 text-emerald-700",
+    warning:
+      "border-amber-200 bg-amber-50 text-amber-800",
+  };
+
+  return (
+    <div
+      className={`mt-4 rounded-xl border px-4 py-3 text-sm font-medium ${classes[tone]}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function TextSection({
+  title,
+  value,
+  emptyText,
+}: {
+  title: string;
+  value?: string | null;
+  emptyText: string;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 p-5">
+      <h3 className="font-bold text-slate-900">{title}</h3>
+      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+        {value || emptyText}
+      </p>
+    </section>
+  );
+}
+
 function PreviewInfo({
   label,
   value,
@@ -928,10 +1191,17 @@ function PreviewInfo({
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
         {label}
       </p>
-
       <p className="mt-1 break-words text-sm font-semibold text-slate-900">
         {value}
       </p>
+    </div>
+  );
+}
+
+function WorkflowHint({ text }: { text: string }) {
+  return (
+    <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-semibold leading-5 text-blue-800">
+      {text}
     </div>
   );
 }
@@ -957,21 +1227,13 @@ function StatusBadge({
 
   if (status === "received") {
     classes = "bg-blue-50 text-blue-700";
-  }
-
-  if (status === "under_review") {
+  } else if (status === "under_review") {
     classes = "bg-amber-50 text-amber-700";
-  }
-
-  if (status === "archived") {
+  } else if (status === "archived") {
     classes = "bg-emerald-50 text-emerald-700";
-  }
-
-  if (status === "for_disposal") {
+  } else if (status === "for_disposal") {
     classes = "bg-red-50 text-red-700";
-  }
-
-  if (status === "disposed") {
+  } else if (status === "disposed") {
     classes = "bg-slate-200 text-slate-700";
   }
 
@@ -994,7 +1256,6 @@ function InfoRow({
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-slate-400">{label}</span>
-
       <span className="truncate font-medium text-slate-700">
         {value}
       </span>
@@ -1002,10 +1263,7 @@ function InfoRow({
   );
 }
 
-function getStatusLabel(
-  status: string,
-  isStaff: boolean
-) {
+function getStatusLabel(status: string, isStaff: boolean) {
   if (status === "received" && isStaff) {
     return "Submitted";
   }
@@ -1046,10 +1304,7 @@ function getFileExtension(fileName: string) {
   const extension =
     fileName.split(".").pop()?.toUpperCase();
 
-  if (
-    !extension ||
-    extension === fileName.toUpperCase()
-  ) {
+  if (!extension || extension === fileName.toUpperCase()) {
     return "FILE";
   }
 
@@ -1062,12 +1317,10 @@ function formatFileSize(bytes?: number | null) {
   }
 
   const units = ["Bytes", "KB", "MB", "GB"];
-
   const unitIndex = Math.min(
     Math.floor(Math.log(bytes) / Math.log(1024)),
     units.length - 1
   );
-
   const size = bytes / Math.pow(1024, unitIndex);
 
   return `${size.toFixed(unitIndex === 0 ? 0 : 2)} ${
@@ -1076,11 +1329,10 @@ function formatFileSize(bytes?: number | null) {
 }
 
 function formatDate(date?: string | null) {
-  if (!date) {
-    return "N/A";
-  }
+  if (!date) return "N/A";
 
-  const parsedDate = new Date(`${date}T00:00:00`);
+  const raw = date.includes("T") ? date : `${date}T00:00:00`;
+  const parsedDate = new Date(raw);
 
   if (Number.isNaN(parsedDate.getTime())) {
     return date;

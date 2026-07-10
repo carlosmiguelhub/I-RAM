@@ -8,6 +8,7 @@ class AuditLog extends Model
 {
     protected $fillable = [
         'user_id',
+        'target_user_id',
         'record_id',
         'action',
         'description',
@@ -17,6 +18,14 @@ class AuditLog extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function targetUser()
+    {
+        return $this->belongsTo(
+            User::class,
+            'target_user_id'
+        );
     }
 
     public function record()

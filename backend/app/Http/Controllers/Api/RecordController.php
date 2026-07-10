@@ -41,16 +41,34 @@ class RecordController extends Controller
             );
     }
 
+    private function recordRelations(): array
+    {
+        return [
+            'category',
+            'department',
+            'creator',
+            'reviewer',
+            'archiver',
+            'files',
+        ];
+    }
+
+    private function denyRecordManagement(Request $request)
+    {
+        if (!$this->canManageRecords($request)) {
+            return response()->json([
+                'message' => 'Only an Administrator or Records Officer may perform this action.',
+            ], 403);
+        }
+
+        return null;
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
 
-        $query = Record::with([
-            'category',
-            'department',
-            'creator',
-            'files',
-        ]);
+        $query = Record::with($this->recordRelations());
 
         if ($this->roleName($request) === 'Staff') {
             $query->where(function ($query) use ($user) {
@@ -121,11 +139,9 @@ class RecordController extends Controller
             );
         }
 
-        $records = $query
-            ->latest()
-            ->paginate(10);
-
-        return response()->json($records);
+        return response()->json(
+            $query->latest()->paginate(10)
+        );
     }
 
     public function store(Request $request)
@@ -140,15 +156,8 @@ class RecordController extends Controller
                 'max:255',
                 'unique:records,record_code',
             ],
-            'title' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-            'description' => [
-                'nullable',
-                'string',
-            ],
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
             'category_id' => [
                 'required',
                 'exists:record_categories,id',
@@ -157,33 +166,15 @@ class RecordController extends Controller
                 'required',
                 'exists:departments,id',
             ],
-            'date_received' => [
-                'required',
-                'date',
-            ],
-            'source' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-            'status' => [
-                'nullable',
-                'in:received,under_review,archived,for_disposal,disposed',
-            ],
+            'date_received' => ['required', 'date'],
+            'source' => ['nullable', 'string', 'max:255'],
             'storage_location' => [
                 'nullable',
                 'string',
                 'max:255',
             ],
-            'remarks' => [
-                'nullable',
-                'string',
-            ],
-            'files' => [
-                'nullable',
-                'array',
-                'max:5',
-            ],
+            'remarks' => ['nullable', 'string'],
+            'files' => ['nullable', 'array', 'max:5'],
             'files.*' => [
                 'file',
                 'max:10240',
@@ -205,13 +196,10 @@ class RecordController extends Controller
             }
 
             $validated['department_id'] = $user->department_id;
-            $validated['status'] = 'received';
             $validated['storage_location'] = null;
-        } else {
-            $validated['status'] =
-                $validated['status'] ?? 'received';
         }
 
+        $validated['status'] = 'received';
         $validated['created_by'] = $user->id;
 
         unset($validated['files']);
@@ -227,10 +215,7 @@ class RecordController extends Controller
             ) {
                 $record = Record::create($validated);
 
-                foreach (
-                    $request->file('files', [])
-                    as $uploadedFile
-                ) {
+                foreach ($request->file('files', []) as $uploadedFile) {
                     $extension = strtolower(
                         $uploadedFile->getClientOriginalExtension()
                     );
@@ -260,10 +245,8 @@ class RecordController extends Controller
                         'file_name' => $uploadedFile
                             ->getClientOriginalName(),
                         'file_path' => $filePath,
-                        'file_type' => $uploadedFile
-                            ->getMimeType(),
-                        'file_size' => $uploadedFile
-                            ->getSize(),
+                        'file_type' => $uploadedFile->getMimeType(),
+                        'file_size' => $uploadedFile->getSize(),
                         'uploaded_by' => $user->id,
                     ]);
                 }
@@ -299,12 +282,9 @@ class RecordController extends Controller
 
             return response()->json([
                 'message' => 'Record submitted successfully.',
-                'record' => $record->load([
-                    'category',
-                    'department',
-                    'creator',
-                    'files',
-                ]),
+                'record' => $record->load(
+                    $this->recordRelations()
+                ),
             ], 201);
         } catch (Throwable $exception) {
             foreach ($storedFilePaths as $filePath) {
@@ -319,10 +299,8 @@ class RecordController extends Controller
         }
     }
 
-    public function show(
-        Request $request,
-        Record $record
-    ) {
+    public function show(Request $request, Record $record)
+    {
         if (
             $this->roleName($request) === 'Staff'
             && !$this->staffCanAccessRecord($request, $record)
@@ -334,10 +312,7 @@ class RecordController extends Controller
 
         return response()->json([
             'record' => $record->load([
-                'category',
-                'department',
-                'creator',
-                'files',
+                ...$this->recordRelations(),
                 'auditLogs.user',
             ]),
         ]);
@@ -395,10 +370,190 @@ class RecordController extends Controller
         );
     }
 
-    public function update(
+    public function startReview(
         Request $request,
         Record $record
     ) {
+        if ($response = $this->denyRecordManagement($request)) {
+            return $response;
+        }
+
+        if ($record->status !== 'received') {
+            return response()->json([
+                'message' => 'Only received records can be moved to under review.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'review_remarks' => ['nullable', 'string'],
+        ]);
+
+        DB::transaction(function () use (
+            $request,
+            $record,
+            $validated
+        ) {
+            $record->update([
+                'status' => 'under_review',
+                'review_remarks' =>
+                    $validated['review_remarks'] ?? null,
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(),
+            ]);
+
+            AuditLog::create([
+                'user_id' => $request->user()->id,
+                'record_id' => $record->id,
+                'action' => 'started_record_review',
+                'description' => 'Started review for record: '
+                    . $record->record_code
+                    . ' (received to under_review)',
+                'ip_address' => $request->ip(),
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Record review started successfully.',
+            'record' => $record->fresh()->load(
+                $this->recordRelations()
+            ),
+        ]);
+    }
+
+    public function updateReview(
+        Request $request,
+        Record $record
+    ) {
+        if ($response = $this->denyRecordManagement($request)) {
+            return $response;
+        }
+
+        if ($record->status !== 'under_review') {
+            return response()->json([
+                'message' => 'Review details can only be updated while the record is under review.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'review_remarks' => [
+                'nullable',
+                'string',
+                'max:5000',
+            ],
+            'storage_location' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+        ]);
+
+        DB::transaction(function () use (
+            $request,
+            $record,
+            $validated
+        ) {
+            $record->update([
+                'review_remarks' =>
+                    $validated['review_remarks']
+                    ?? $record->review_remarks,
+                'storage_location' =>
+                    $validated['storage_location']
+                    ?? $record->storage_location,
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(),
+            ]);
+
+            AuditLog::create([
+                'user_id' => $request->user()->id,
+                'record_id' => $record->id,
+                'action' => 'updated_record_review',
+                'description' => 'Updated review details for record: '
+                    . $record->record_code,
+                'ip_address' => $request->ip(),
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Review details saved successfully.',
+            'record' => $record->fresh()->load(
+                $this->recordRelations()
+            ),
+        ]);
+    }
+
+    public function archive(
+        Request $request,
+        Record $record
+    ) {
+        if ($response = $this->denyRecordManagement($request)) {
+            return $response;
+        }
+
+        if ($record->status !== 'under_review') {
+            return response()->json([
+                'message' => 'Only records under review can be archived.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'review_remarks' => [
+                'required',
+                'string',
+                'max:5000',
+            ],
+            'storage_location' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+        ], [
+            'review_remarks.required' =>
+                'Review remarks are required before archiving.',
+            'storage_location.required' =>
+                'A storage location is required before archiving.',
+        ]);
+
+        DB::transaction(function () use (
+            $request,
+            $record,
+            $validated
+        ) {
+            $record->update([
+                'status' => 'archived',
+                'review_remarks' =>
+                    $validated['review_remarks'],
+                'storage_location' =>
+                    $validated['storage_location'],
+                'reviewed_by' =>
+                    $record->reviewed_by
+                    ?: $request->user()->id,
+                'reviewed_at' =>
+                    $record->reviewed_at ?: now(),
+                'archived_by' => $request->user()->id,
+                'archived_at' => now(),
+            ]);
+
+            AuditLog::create([
+                'user_id' => $request->user()->id,
+                'record_id' => $record->id,
+                'action' => 'archived_record',
+                'description' => 'Archived record: '
+                    . $record->record_code
+                    . ' (under_review to archived)',
+                'ip_address' => $request->ip(),
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Record archived successfully.',
+            'record' => $record->fresh()->load(
+                $this->recordRelations()
+            ),
+        ]);
+    }
+
+    public function update(Request $request, Record $record)
+    {
         if ($this->roleName($request) === 'Staff') {
             if (
                 !$this->staffCanAccessRecord(
@@ -411,10 +566,6 @@ class RecordController extends Controller
                 ], 403);
             }
 
-            /*
-             * Staff can edit only while the submission is still being
-             * processed. Archived records remain view/download-only.
-             */
             if (
                 !in_array(
                     $record->status,
@@ -428,22 +579,15 @@ class RecordController extends Controller
             }
         }
 
-        $rules = [
+        $validated = $request->validate([
             'record_code' => [
                 'required',
                 'string',
                 'max:255',
                 'unique:records,record_code,' . $record->id,
             ],
-            'title' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-            'description' => [
-                'nullable',
-                'string',
-            ],
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
             'category_id' => [
                 'required',
                 'exists:record_categories,id',
@@ -452,34 +596,10 @@ class RecordController extends Controller
                 'required',
                 'exists:departments,id',
             ],
-            'date_received' => [
-                'required',
-                'date',
-            ],
-            'source' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-            'storage_location' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-            'remarks' => [
-                'nullable',
-                'string',
-            ],
-        ];
-
-        if ($this->canManageRecords($request)) {
-            $rules['status'] = [
-                'required',
-                'in:received,under_review,archived,for_disposal,disposed',
-            ];
-        }
-
-        $validated = $request->validate($rules);
+            'date_received' => ['required', 'date'],
+            'source' => ['nullable', 'string', 'max:255'],
+            'remarks' => ['nullable', 'string'],
+        ]);
 
         if ($this->roleName($request) === 'Staff') {
             if ($request->user()->department_id === null) {
@@ -490,14 +610,7 @@ class RecordController extends Controller
 
             $validated['department_id'] =
                 $request->user()->department_id;
-
-            $validated['status'] = $record->status;
-
-            $validated['storage_location'] =
-                $record->storage_location;
         }
-
-        $oldStatus = $record->status;
 
         $record->update($validated);
 
@@ -505,31 +618,21 @@ class RecordController extends Controller
             'user_id' => $request->user()->id,
             'record_id' => $record->id,
             'action' => 'updated_record',
-            'description' => $oldStatus !== $record->status
-                ? 'Updated record and changed status from '
-                    . $oldStatus
-                    . ' to '
-                    . $record->status
-                : 'Updated record: '
-                    . $record->record_code,
+            'description' => 'Updated record metadata: '
+                . $record->record_code,
             'ip_address' => $request->ip(),
         ]);
 
         return response()->json([
             'message' => 'Record updated successfully.',
-            'record' => $record->load([
-                'category',
-                'department',
-                'creator',
-                'files',
-            ]),
+            'record' => $record->load(
+                $this->recordRelations()
+            ),
         ]);
     }
 
-    public function destroy(
-        Request $request,
-        Record $record
-    ) {
+    public function destroy(Request $request, Record $record)
+    {
         if (!$this->canManageRecords($request)) {
             return response()->json([
                 'message' => 'You are not allowed to delete records.',
