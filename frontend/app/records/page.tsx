@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { apiRequest } from "@/lib/api";
 
-const tabs = [
+const allTabs = [
   { label: "All", value: "" },
   { label: "Received", value: "received" },
   { label: "Under Review", value: "under_review" },
@@ -13,11 +14,24 @@ const tabs = [
   { label: "For Disposal", value: "for_disposal" },
 ];
 
+const staffTabs = [
+  { label: "All", value: "" },
+  { label: "Received", value: "received" },
+  { label: "Under Review", value: "under_review" },
+];
+
 export default function RecordsPage() {
+  const router = useRouter();
+
   const [records, setRecords] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [activeStatus, setActiveStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+
+  const roleName = user?.role?.name || "";
+  const isStaff = roleName === "Staff";
+  const tabs = useMemo(() => (isStaff ? staffTabs : allTabs), [isStaff]);
 
   async function loadRecords(searchValue = search, statusValue = activeStatus) {
     setLoading(true);
@@ -33,8 +47,16 @@ export default function RecordsPage() {
 
       const data = await apiRequest(endpoint);
       setRecords(data.data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+
+      if (error.message === "Unauthenticated.") {
+        localStorage.removeItem("iram_token");
+        localStorage.removeItem("iram_user");
+        router.replace("/login");
+        return;
+      }
+
       alert("Failed to load records.");
     } finally {
       setLoading(false);
@@ -42,8 +64,23 @@ export default function RecordsPage() {
   }
 
   useEffect(() => {
-    loadRecords("", "");
-  }, []);
+    async function initPage() {
+      try {
+        const meData = await apiRequest("/me");
+        setUser(meData.user);
+        localStorage.setItem("iram_user", JSON.stringify(meData.user));
+
+        await loadRecords("", "");
+      } catch (error) {
+        console.error(error);
+        localStorage.removeItem("iram_token");
+        localStorage.removeItem("iram_user");
+        router.replace("/login");
+      }
+    }
+
+    initPage();
+  }, [router]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -60,12 +97,18 @@ export default function RecordsPage() {
       <div className="w-full max-w-full">
         <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-blue-600">Document Archive</p>
+            <p className="text-sm font-semibold text-blue-600">
+              {isStaff ? "Submission Tracking" : "Document Archive"}
+            </p>
+
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-              All Records
+              {isStaff ? "My Submissions" : "All Records"}
             </h1>
+
             <p className="mt-1 max-w-xl text-sm leading-6 text-slate-500">
-              Search, filter, and manage acquired records in the IRAM system.
+              {isStaff
+                ? "Track the records you submitted for archive review."
+                : "Search, filter, and manage acquired records in the IRAM system."}
             </p>
           </div>
 
@@ -73,20 +116,18 @@ export default function RecordsPage() {
             href="/records/create"
             className="flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
           >
-            + Add Record
+            {isStaff ? "+ New Submission" : "+ Add Record"}
           </Link>
         </section>
 
         <section className="mt-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
           <form onSubmit={handleSearch} className="flex flex-col gap-3 md:flex-row">
-            <div className="relative flex-1">
-              <input
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
-                placeholder="Search by code, title, description, or source..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+            <input
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
+              placeholder="Search by code, title, description, or source..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
 
             <button className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
               Search
@@ -116,18 +157,13 @@ export default function RecordsPage() {
           </div>
         </section>
 
-        {/* Mobile card list */}
         <section className="mt-5 space-y-3 md:hidden">
           {loading && (
-            <div className="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
-              Loading records...
-            </div>
+            <EmptyCard text="Loading records..." />
           )}
 
           {!loading && records.length === 0 && (
-            <div className="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
-              No records found.
-            </div>
+            <EmptyCard text="No records found." />
           )}
 
           {!loading &&
@@ -159,7 +195,6 @@ export default function RecordsPage() {
             ))}
         </section>
 
-        {/* Desktop/tablet table */}
         <section className="mt-5 hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 md:block">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[850px] text-left text-sm">
@@ -232,15 +267,23 @@ export default function RecordsPage() {
           </div>
         </section>
 
-        {/* Mobile floating button */}
         <Link
           href="/records/create"
           className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white shadow-lg shadow-blue-600/30 transition active:scale-95 md:hidden"
+          aria-label={isStaff ? "New submission" : "Add record"}
         >
           +
         </Link>
       </div>
     </AppShell>
+  );
+}
+
+function EmptyCard({ text }: { text: string }) {
+  return (
+    <div className="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
+      {text}
+    </div>
   );
 }
 

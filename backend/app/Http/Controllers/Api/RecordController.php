@@ -9,9 +9,36 @@ use Illuminate\Http\Request;
 
 class RecordController extends Controller
 {
+    private function roleName(Request $request): string
+    {
+        return $request->user()->role?->name ?? '';
+    }
+
+    private function canManageRecords(Request $request): bool
+    {
+        return in_array($this->roleName($request), ['Admin', 'Records Officer']);
+    }
+
+    private function staffCanAccessRecord(Request $request, Record $record): bool
+    {
+        $user = $request->user();
+
+        return $record->created_by === $user->id ||
+            $record->department_id === $user->department_id;
+    }
+
     public function index(Request $request)
     {
+        $user = $request->user();
+
         $query = Record::with(['category', 'department', 'creator']);
+
+        if ($this->roleName($request) === 'Staff') {
+            $query->where(function ($q) use ($user) {
+                $q->where('created_by', $user->id)
+                    ->orWhere('department_id', $user->department_id);
+            });
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -25,10 +52,26 @@ class RecordController extends Controller
         }
 
         if ($request->filled('status')) {
+            if ($this->roleName($request) === 'Staff') {
+                $allowedStaffStatuses = ['received', 'under_review'];
+
+                if (!in_array($request->status, $allowedStaffStatuses)) {
+                    return response()->json([
+                        'message' => 'You are not allowed to view records with this status.',
+                    ], 403);
+                }
+            }
+
             $query->where('status', $request->status);
         }
 
         if ($request->filled('department_id')) {
+            if ($this->roleName($request) === 'Staff') {
+                return response()->json([
+                    'message' => 'You are not allowed to filter records by department.',
+                ], 403);
+            }
+
             $query->where('department_id', $request->department_id);
         }
 
@@ -43,6 +86,8 @@ class RecordController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+
         $validated = $request->validate([
             'record_code' => ['required', 'string', 'max:255', 'unique:records,record_code'],
             'title' => ['required', 'string', 'max:255'],
@@ -56,13 +101,19 @@ class RecordController extends Controller
             'remarks' => ['nullable', 'string'],
         ]);
 
-        $validated['created_by'] = $request->user()->id;
-        $validated['status'] = $validated['status'] ?? 'received';
+        if ($this->roleName($request) === 'Staff') {
+            $validated['department_id'] = $user->department_id;
+            $validated['status'] = 'received';
+        } else {
+            $validated['status'] = $validated['status'] ?? 'received';
+        }
+
+        $validated['created_by'] = $user->id;
 
         $record = Record::create($validated);
 
         AuditLog::create([
-            'user_id' => $request->user()->id,
+            'user_id' => $user->id,
             'record_id' => $record->id,
             'action' => 'created_record',
             'description' => 'Created record: ' . $record->record_code,
@@ -75,8 +126,14 @@ class RecordController extends Controller
         ], 201);
     }
 
-    public function show(Record $record)
+    public function show(Request $request, Record $record)
     {
+        if ($this->roleName($request) === 'Staff' && !$this->staffCanAccessRecord($request, $record)) {
+            return response()->json([
+                'message' => 'You are not allowed to view this record.',
+            ], 403);
+        }
+
         return response()->json([
             'record' => $record->load(['category', 'department', 'creator', 'files', 'auditLogs.user']),
         ]);
@@ -84,7 +141,21 @@ class RecordController extends Controller
 
     public function update(Request $request, Record $record)
     {
-        $validated = $request->validate([
+        if ($this->roleName($request) === 'Staff') {
+            if (!$this->staffCanAccessRecord($request, $record)) {
+                return response()->json([
+                    'message' => 'You are not allowed to update this record.',
+                ], 403);
+            }
+
+            if (!in_array($record->status, ['received', 'under_review'])) {
+                return response()->json([
+                    'message' => 'You can no longer edit this record because it has already moved forward in the archive process.',
+                ], 403);
+            }
+        }
+
+        $rules = [
             'record_code' => ['required', 'string', 'max:255', 'unique:records,record_code,' . $record->id],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -92,10 +163,20 @@ class RecordController extends Controller
             'department_id' => ['required', 'exists:departments,id'],
             'date_received' => ['required', 'date'],
             'source' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', 'in:received,under_review,archived,for_disposal,disposed'],
             'storage_location' => ['nullable', 'string', 'max:255'],
             'remarks' => ['nullable', 'string'],
-        ]);
+        ];
+
+        if ($this->canManageRecords($request)) {
+            $rules['status'] = ['required', 'in:received,under_review,archived,for_disposal,disposed'];
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($this->roleName($request) === 'Staff') {
+            $validated['department_id'] = $request->user()->department_id;
+            $validated['status'] = $record->status;
+        }
 
         $oldStatus = $record->status;
 
@@ -119,6 +200,12 @@ class RecordController extends Controller
 
     public function destroy(Request $request, Record $record)
     {
+        if (!$this->canManageRecords($request)) {
+            return response()->json([
+                'message' => 'You are not allowed to delete records.',
+            ], 403);
+        }
+
         $recordCode = $record->record_code;
 
         AuditLog::create([

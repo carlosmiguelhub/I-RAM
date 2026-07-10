@@ -1,16 +1,101 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const menuItems = [
-  { name: "Dashboard", href: "/dashboard", icon: "▦" },
-  { name: "All Records", href: "/records", icon: "□" },
-  { name: "Add Record", href: "/records/create", icon: "+" },
-  { name: "Under Review", href: "/records?status=under_review", icon: "◷" },
-  { name: "Archived", href: "/records?status=archived", icon: "▣" },
-  { name: "For Disposal", href: "/records?status=for_disposal", icon: "!" },
-  { name: "Audit Trail", href: "#", icon: "◎" },
+type SidebarItem = {
+  name: string;
+  href: string;
+  icon: string;
+  roles: string[];
+};
+
+const menuItems: SidebarItem[] = [
+  {
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: "▦",
+    roles: ["Admin", "Records Officer", "Staff"],
+  },
+  {
+    name: "All Records",
+    href: "/records",
+    icon: "□",
+    roles: ["Admin", "Records Officer"],
+  },
+{
+  name: "My Records",
+  href: "/records",
+  icon: "□",
+  roles: ["Staff"],
+},
+  {
+    name: "Add Record",
+    href: "/records/create",
+    icon: "+",
+    roles: ["Admin", "Records Officer"],
+  },
+{
+  name: "New Submission",
+  href: "/records/create",
+  icon: "+",
+  roles: ["Staff"],
+},
+  {
+    name: "Under Review",
+    href: "/records?status=under_review",
+    icon: "◷",
+    roles: ["Admin", "Records Officer"],
+  },
+  {
+    name: "Archived",
+    href: "/records?status=archived",
+    icon: "▣",
+    roles: ["Admin", "Records Officer"],
+  },
+  {
+    name: "For Disposal",
+    href: "/records?status=for_disposal",
+    icon: "!",
+    roles: ["Admin", "Records Officer"],
+  },
+  {
+    name: "Audit Trail",
+    href: "#",
+    icon: "◎",
+    roles: ["Admin", "Records Officer"],
+  },
+  {
+    name: "Users",
+    href: "#",
+    icon: "♙",
+    roles: ["Admin"],
+  },
+  {
+    name: "Departments",
+    href: "#",
+    icon: "⌂",
+    roles: ["Admin"],
+  },
+  {
+    name: "Categories",
+    href: "#",
+    icon: "◇",
+    roles: ["Admin"],
+  },
+  {
+  name: "Profile",
+  href: "/profile",
+  icon: "◉",
+  roles: ["Admin", "Records Officer", "Staff"],
+},
+  {
+    name: "Settings",
+    href: "#",
+    icon: "⚙",
+    roles: ["Admin"],
+  },
 ];
 
 export default function Sidebar({
@@ -22,6 +107,28 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
 
+  const [roleName, setRoleName] = useState<string>("");
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("iram_user");
+
+    if (!storedUser) return;
+
+    try {
+      const user = JSON.parse(storedUser);
+      setRoleName(user?.role?.name || "");
+    } catch {
+      setRoleName("");
+    }
+  }, []);
+
+  const visibleMenuItems = useMemo(() => {
+    if (!roleName) return [];
+
+    return menuItems.filter((item) => item.roles.includes(roleName));
+  }, [roleName]);
+
+const primaryAction = roleName === "Staff" ? "New Submission" : "Add New Record";
   return (
     <>
       {open && (
@@ -45,7 +152,9 @@ export default function Sidebar({
 
             <div>
               <h1 className="text-sm font-bold text-slate-900">IRAM Archive</h1>
-              <p className="text-xs text-slate-500">Records Management</p>
+              <p className="text-xs text-slate-500">
+                {roleName || "Records Management"}
+              </p>
             </div>
           </div>
 
@@ -58,7 +167,7 @@ export default function Sidebar({
         </div>
 
         <nav className="mt-8 space-y-1">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const active = pathname === item.href.split("?")[0];
 
             return (
@@ -87,7 +196,7 @@ export default function Sidebar({
             onClick={onClose}
             className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
           >
-            + Add New Record
+            + {primaryAction}
           </Link>
         </div>
       </aside>
