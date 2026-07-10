@@ -5,9 +5,14 @@ type ApiOptions = RequestInit & {
   token?: string | null;
 };
 
-export async function apiRequest(endpoint: string, options: ApiOptions = {}) {
+export async function apiRequest(
+  endpoint: string,
+  options: ApiOptions = {}
+) {
   const savedToken =
-    typeof window !== "undefined" ? localStorage.getItem("iram_token") : null;
+    typeof window !== "undefined"
+      ? localStorage.getItem("iram_token")
+      : null;
 
   const token = options.token || savedToken;
 
@@ -29,6 +34,7 @@ export async function apiRequest(endpoint: string, options: ApiOptions = {}) {
   });
 
   const contentType = response.headers.get("content-type");
+
   const data = contentType?.includes("application/json")
     ? await response.json()
     : await response.text();
@@ -42,11 +48,27 @@ export async function apiRequest(endpoint: string, options: ApiOptions = {}) {
       data,
     });
 
-    throw new Error(
+    let message =
       typeof data === "string"
         ? data
-        : data?.message || `Request failed with status ${response.status}`
-    );
+        : data?.message ||
+          `Request failed with status ${response.status}`;
+
+    if (
+      typeof data !== "string" &&
+      data?.errors &&
+      typeof data.errors === "object"
+    ) {
+      const firstError = Object.values(data.errors)
+        .flat()
+        .find((error) => typeof error === "string");
+
+      if (typeof firstError === "string") {
+        message = firstError;
+      }
+    }
+
+    throw new Error(message);
   }
 
   return data;

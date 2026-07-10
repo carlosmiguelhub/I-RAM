@@ -15,6 +15,10 @@ class RecordFile extends Model
         'uploaded_by',
     ];
 
+    protected $casts = [
+        'file_size' => 'integer',
+    ];
+
     public function record()
     {
         return $this->belongsTo(Record::class);
