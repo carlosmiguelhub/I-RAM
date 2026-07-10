@@ -41,6 +41,13 @@ class RecordController extends Controller
             );
     }
 
+    private function staffOwnsRecord(
+        Request $request,
+        Record $record
+    ): bool {
+        return $record->created_by === $request->user()->id;
+    }
+
     private function recordRelations(): array
     {
         return [
@@ -48,6 +55,7 @@ class RecordController extends Controller
             'department',
             'creator',
             'reviewer',
+            'returner',
             'archiver',
             'files',
         ];
@@ -64,10 +72,71 @@ class RecordController extends Controller
         return null;
     }
 
+    private function audit(
+        Request $request,
+        Record $record,
+        string $action,
+        string $description
+    ): void {
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'record_id' => $record->id,
+            'action' => $action,
+            'description' => $description,
+            'ip_address' => $request->ip(),
+        ]);
+    }
+
+    private function storeFiles(
+        Request $request,
+        Record $record,
+        array &$storedFilePaths
+    ): int {
+        $count = 0;
+
+        foreach ($request->file('files', []) as $uploadedFile) {
+            $extension = strtolower(
+                $uploadedFile->getClientOriginalExtension()
+            );
+
+            $storedFileName = Str::uuid()->toString();
+
+            if ($extension !== '') {
+                $storedFileName .= '.' . $extension;
+            }
+
+            $filePath = $uploadedFile->storeAs(
+                'records/' . $record->id,
+                $storedFileName,
+                'local'
+            );
+
+            if ($filePath === false) {
+                throw new \RuntimeException(
+                    'Failed to store an uploaded file.'
+                );
+            }
+
+            $storedFilePaths[] = $filePath;
+
+            RecordFile::create([
+                'record_id' => $record->id,
+                'file_name' => $uploadedFile->getClientOriginalName(),
+                'file_path' => $filePath,
+                'file_type' => $uploadedFile->getMimeType(),
+                'file_size' => $uploadedFile->getSize(),
+                'uploaded_by' => $request->user()->id,
+            ]);
+
+            $count++;
+        }
+
+        return $count;
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
-
         $query = Record::with($this->recordRelations());
 
         if ($this->roleName($request) === 'Staff') {
@@ -100,16 +169,15 @@ class RecordController extends Controller
                 $allowedStaffStatuses = [
                     'received',
                     'under_review',
+                    'returned_for_correction',
                     'archived',
                 ];
 
-                if (
-                    !in_array(
-                        $request->status,
-                        $allowedStaffStatuses,
-                        true
-                    )
-                ) {
+                if (!in_array(
+                    $request->status,
+                    $allowedStaffStatuses,
+                    true
+                )) {
                     return response()->json([
                         'message' => 'You are not allowed to view records with this status.',
                     ], 403);
@@ -180,18 +248,12 @@ class RecordController extends Controller
                 'max:10240',
                 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,txt,csv',
             ],
-        ], [
-            'files.array' => 'The uploaded files must be submitted as a file list.',
-            'files.max' => 'You may upload a maximum of 5 files.',
-            'files.*.file' => 'Each attachment must be a valid file.',
-            'files.*.max' => 'Each file must not exceed 10 MB.',
-            'files.*.mimes' => 'Allowed file types are PDF, Word, Excel, PowerPoint, JPG, PNG, TXT, and CSV.',
         ]);
 
         if ($role === 'Staff') {
             if ($user->department_id === null) {
                 return response()->json([
-                    'message' => 'Your account is not assigned to a department. Please contact an administrator.',
+                    'message' => 'Your account is not assigned to a department.',
                 ], 422);
             }
 
@@ -201,80 +263,35 @@ class RecordController extends Controller
 
         $validated['status'] = 'received';
         $validated['created_by'] = $user->id;
-
-        unset($validated['files']);
-
         $storedFilePaths = [];
 
         try {
             $record = DB::transaction(function () use (
                 $request,
-                $user,
                 $validated,
                 &$storedFilePaths
             ) {
                 $record = Record::create($validated);
-
-                foreach ($request->file('files', []) as $uploadedFile) {
-                    $extension = strtolower(
-                        $uploadedFile->getClientOriginalExtension()
-                    );
-
-                    $storedFileName = Str::uuid()->toString();
-
-                    if ($extension !== '') {
-                        $storedFileName .= '.' . $extension;
-                    }
-
-                    $filePath = $uploadedFile->storeAs(
-                        'records/' . $record->id,
-                        $storedFileName,
-                        'local'
-                    );
-
-                    if ($filePath === false) {
-                        throw new \RuntimeException(
-                            'Failed to store an uploaded file.'
-                        );
-                    }
-
-                    $storedFilePaths[] = $filePath;
-
-                    RecordFile::create([
-                        'record_id' => $record->id,
-                        'file_name' => $uploadedFile
-                            ->getClientOriginalName(),
-                        'file_path' => $filePath,
-                        'file_type' => $uploadedFile->getMimeType(),
-                        'file_size' => $uploadedFile->getSize(),
-                        'uploaded_by' => $user->id,
-                    ]);
-                }
-
-                AuditLog::create([
-                    'user_id' => $user->id,
-                    'record_id' => $record->id,
-                    'action' => 'created_record',
-                    'description' => 'Created record: '
-                        . $record->record_code,
-                    'ip_address' => $request->ip(),
-                ]);
-
-                $uploadedFileCount = count(
-                    $request->file('files', [])
+                $uploadedCount = $this->storeFiles(
+                    $request,
+                    $record,
+                    $storedFilePaths
                 );
 
-                if ($uploadedFileCount > 0) {
-                    AuditLog::create([
-                        'user_id' => $user->id,
-                        'record_id' => $record->id,
-                        'action' => 'uploaded_record_files',
-                        'description' => 'Uploaded '
-                            . $uploadedFileCount
-                            . ' file(s) for record: '
-                            . $record->record_code,
-                        'ip_address' => $request->ip(),
-                    ]);
+                $this->audit(
+                    $request,
+                    $record,
+                    'created_record',
+                    'Created record: ' . $record->record_code
+                );
+
+                if ($uploadedCount > 0) {
+                    $this->audit(
+                        $request,
+                        $record,
+                        'uploaded_record_files',
+                        "Uploaded {$uploadedCount} file(s) for record: {$record->record_code}"
+                    );
                 }
 
                 return $record;
@@ -294,7 +311,7 @@ class RecordController extends Controller
             report($exception);
 
             return response()->json([
-                'message' => 'The record could not be submitted. Please try again.',
+                'message' => 'The record could not be submitted.',
             ], 500);
         }
     }
@@ -323,12 +340,11 @@ class RecordController extends Controller
         RecordFile $recordFile
     ) {
         $recordFile->load('record');
-
         $record = $recordFile->record;
 
         if (!$record) {
             return response()->json([
-                'message' => 'The record associated with this file no longer exists.',
+                'message' => 'The associated record no longer exists.',
             ], 404);
         }
 
@@ -341,24 +357,20 @@ class RecordController extends Controller
             ], 403);
         }
 
-        if (
-            !Storage::disk('local')->exists(
-                $recordFile->file_path
-            )
-        ) {
+        if (!Storage::disk('local')->exists(
+            $recordFile->file_path
+        )) {
             return response()->json([
-                'message' => 'The requested file could not be found in storage.',
+                'message' => 'The requested file could not be found.',
             ], 404);
         }
 
-        AuditLog::create([
-            'user_id' => $request->user()->id,
-            'record_id' => $record->id,
-            'action' => 'downloaded_record_file',
-            'description' => 'Downloaded file: '
-                . $recordFile->file_name,
-            'ip_address' => $request->ip(),
-        ]);
+        $this->audit(
+            $request,
+            $record,
+            'downloaded_record_file',
+            'Downloaded file: ' . $recordFile->file_name
+        );
 
         return Storage::disk('local')->download(
             $recordFile->file_path,
@@ -368,6 +380,67 @@ class RecordController extends Controller
                     ?: 'application/octet-stream',
             ]
         );
+    }
+
+    public function deleteFile(
+        Request $request,
+        RecordFile $recordFile
+    ) {
+        $recordFile->load('record');
+        $record = $recordFile->record;
+
+        if (!$record) {
+            return response()->json([
+                'message' => 'The associated record no longer exists.',
+            ], 404);
+        }
+
+        if (
+            $this->roleName($request) !== 'Staff'
+            || !$this->staffOwnsRecord($request, $record)
+        ) {
+            return response()->json([
+                'message' => 'You may only remove files from your own submission.',
+            ], 403);
+        }
+
+        if (!in_array(
+            $record->status,
+            ['received', 'returned_for_correction'],
+            true
+        )) {
+            return response()->json([
+                'message' => 'Files can only be removed before review or while correcting a returned submission.',
+            ], 422);
+        }
+
+        $fileName = $recordFile->file_name;
+        $filePath = $recordFile->file_path;
+
+        DB::transaction(function () use (
+            $request,
+            $record,
+            $recordFile,
+            $fileName
+        ) {
+            $recordFile->delete();
+
+            $this->audit(
+                $request,
+                $record,
+                'removed_record_file',
+                "Removed file {$fileName} from record: {$record->record_code}"
+            );
+        });
+
+        Storage::disk('local')->delete($filePath);
+
+        return response()->json([
+            'message' => 'File removed successfully.',
+            'record' => $record->fresh()->load(
+                $this->recordRelations()
+            ),
+        ]);
     }
 
     public function startReview(
@@ -385,7 +458,7 @@ class RecordController extends Controller
         }
 
         $validated = $request->validate([
-            'review_remarks' => ['nullable', 'string'],
+            'review_remarks' => ['nullable', 'string', 'max:5000'],
         ]);
 
         DB::transaction(function () use (
@@ -401,15 +474,12 @@ class RecordController extends Controller
                 'reviewed_at' => now(),
             ]);
 
-            AuditLog::create([
-                'user_id' => $request->user()->id,
-                'record_id' => $record->id,
-                'action' => 'started_record_review',
-                'description' => 'Started review for record: '
-                    . $record->record_code
-                    . ' (received to under_review)',
-                'ip_address' => $request->ip(),
-            ]);
+            $this->audit(
+                $request,
+                $record,
+                'started_record_review',
+                "Started review for record: {$record->record_code}"
+            );
         });
 
         return response()->json([
@@ -463,18 +533,239 @@ class RecordController extends Controller
                 'reviewed_at' => now(),
             ]);
 
-            AuditLog::create([
-                'user_id' => $request->user()->id,
-                'record_id' => $record->id,
-                'action' => 'updated_record_review',
-                'description' => 'Updated review details for record: '
-                    . $record->record_code,
-                'ip_address' => $request->ip(),
-            ]);
+            $this->audit(
+                $request,
+                $record,
+                'updated_record_review',
+                "Updated review details for record: {$record->record_code}"
+            );
         });
 
         return response()->json([
             'message' => 'Review details saved successfully.',
+            'record' => $record->fresh()->load(
+                $this->recordRelations()
+            ),
+        ]);
+    }
+
+    public function returnForCorrection(
+        Request $request,
+        Record $record
+    ) {
+        if ($response = $this->denyRecordManagement($request)) {
+            return $response;
+        }
+
+        if ($record->status !== 'under_review') {
+            return response()->json([
+                'message' => 'Only records under review can be returned for correction.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'correction_notes' => [
+                'required',
+                'string',
+                'max:5000',
+            ],
+        ], [
+            'correction_notes.required' =>
+                'Correction notes are required before returning the submission.',
+        ]);
+
+        DB::transaction(function () use (
+            $request,
+            $record,
+            $validated
+        ) {
+            $record->update([
+                'status' => 'returned_for_correction',
+                'correction_notes' =>
+                    $validated['correction_notes'],
+                'returned_by' => $request->user()->id,
+                'returned_at' => now(),
+                'resubmitted_at' => null,
+                'storage_location' => null,
+            ]);
+
+            $this->audit(
+                $request,
+                $record,
+                'returned_record_for_correction',
+                "Returned record {$record->record_code} for correction. Notes: {$validated['correction_notes']}"
+            );
+        });
+
+        return response()->json([
+            'message' => 'Record returned to Staff for correction.',
+            'record' => $record->fresh()->load(
+                $this->recordRelations()
+            ),
+        ]);
+    }
+
+    public function saveCorrection(
+        Request $request,
+        Record $record
+    ) {
+        if (
+            $this->roleName($request) !== 'Staff'
+            || !$this->staffOwnsRecord($request, $record)
+        ) {
+            return response()->json([
+                'message' => 'You may only correct your own returned submission.',
+            ], 403);
+        }
+
+        if ($record->status !== 'returned_for_correction') {
+            return response()->json([
+                'message' => 'Only returned submissions can be corrected.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'record_code' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:records,record_code,' . $record->id,
+            ],
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'category_id' => [
+                'required',
+                'exists:record_categories,id',
+            ],
+            'date_received' => ['required', 'date'],
+            'source' => ['nullable', 'string', 'max:255'],
+            'remarks' => ['nullable', 'string'],
+            'files' => ['nullable', 'array', 'max:5'],
+            'files.*' => [
+                'file',
+                'max:10240',
+                'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,txt,csv',
+            ],
+        ]);
+
+        $existingCount = $record->files()->count();
+        $newCount = count($request->file('files', []));
+
+        if ($existingCount + $newCount > 5) {
+            return response()->json([
+                'message' => 'A submission may contain a maximum of 5 files.',
+            ], 422);
+        }
+
+        $storedFilePaths = [];
+
+        try {
+            DB::transaction(function () use (
+                $request,
+                $record,
+                $validated,
+                &$storedFilePaths
+            ) {
+                $record->update([
+                    'record_code' => $validated['record_code'],
+                    'title' => $validated['title'],
+                    'description' =>
+                        $validated['description'] ?? null,
+                    'category_id' => $validated['category_id'],
+                    'department_id' =>
+                        $request->user()->department_id,
+                    'date_received' => $validated['date_received'],
+                    'source' => $validated['source'] ?? null,
+                    'remarks' => $validated['remarks'] ?? null,
+                ]);
+
+                $uploadedCount = $this->storeFiles(
+                    $request,
+                    $record,
+                    $storedFilePaths
+                );
+
+                $this->audit(
+                    $request,
+                    $record,
+                    'updated_returned_record',
+                    "Updated correction details for record: {$record->record_code}"
+                );
+
+                if ($uploadedCount > 0) {
+                    $this->audit(
+                        $request,
+                        $record,
+                        'uploaded_correction_files',
+                        "Uploaded {$uploadedCount} correction file(s) for record: {$record->record_code}"
+                    );
+                }
+            });
+
+            return response()->json([
+                'message' => 'Corrections saved successfully.',
+                'record' => $record->fresh()->load(
+                    $this->recordRelations()
+                ),
+            ]);
+        } catch (Throwable $exception) {
+            foreach ($storedFilePaths as $filePath) {
+                Storage::disk('local')->delete($filePath);
+            }
+
+            report($exception);
+
+            return response()->json([
+                'message' => 'The corrections could not be saved.',
+            ], 500);
+        }
+    }
+
+    public function resubmit(
+        Request $request,
+        Record $record
+    ) {
+        if (
+            $this->roleName($request) !== 'Staff'
+            || !$this->staffOwnsRecord($request, $record)
+        ) {
+            return response()->json([
+                'message' => 'You may only resubmit your own returned submission.',
+            ], 403);
+        }
+
+        if ($record->status !== 'returned_for_correction') {
+            return response()->json([
+                'message' => 'Only returned submissions can be resubmitted.',
+            ], 422);
+        }
+
+        if ($record->files()->count() === 0) {
+            return response()->json([
+                'message' => 'Attach at least one file before resubmitting.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($request, $record) {
+            $record->update([
+                'status' => 'received',
+                'resubmitted_at' => now(),
+                'review_remarks' => null,
+                'reviewed_by' => null,
+                'reviewed_at' => null,
+                'storage_location' => null,
+            ]);
+
+            $this->audit(
+                $request,
+                $record,
+                'resubmitted_record',
+                "Resubmitted corrected record: {$record->record_code}"
+            );
+        });
+
+        return response()->json([
+            'message' => 'Corrected submission sent back for review.',
             'record' => $record->fresh()->load(
                 $this->recordRelations()
             ),
@@ -506,11 +797,6 @@ class RecordController extends Controller
                 'string',
                 'max:255',
             ],
-        ], [
-            'review_remarks.required' =>
-                'Review remarks are required before archiving.',
-            'storage_location.required' =>
-                'A storage location is required before archiving.',
         ]);
 
         DB::transaction(function () use (
@@ -524,24 +810,16 @@ class RecordController extends Controller
                     $validated['review_remarks'],
                 'storage_location' =>
                     $validated['storage_location'],
-                'reviewed_by' =>
-                    $record->reviewed_by
-                    ?: $request->user()->id,
-                'reviewed_at' =>
-                    $record->reviewed_at ?: now(),
                 'archived_by' => $request->user()->id,
                 'archived_at' => now(),
             ]);
 
-            AuditLog::create([
-                'user_id' => $request->user()->id,
-                'record_id' => $record->id,
-                'action' => 'archived_record',
-                'description' => 'Archived record: '
-                    . $record->record_code
-                    . ' (under_review to archived)',
-                'ip_address' => $request->ip(),
-            ]);
+            $this->audit(
+                $request,
+                $record,
+                'archived_record',
+                "Archived record: {$record->record_code}"
+            );
         });
 
         return response()->json([
@@ -555,26 +833,19 @@ class RecordController extends Controller
     public function update(Request $request, Record $record)
     {
         if ($this->roleName($request) === 'Staff') {
-            if (
-                !$this->staffCanAccessRecord(
-                    $request,
-                    $record
-                )
-            ) {
+            if (!$this->staffOwnsRecord($request, $record)) {
                 return response()->json([
-                    'message' => 'You are not allowed to update this record.',
+                    'message' => 'You may only update your own submission.',
                 ], 403);
             }
 
-            if (
-                !in_array(
-                    $record->status,
-                    ['received', 'under_review'],
-                    true
-                )
-            ) {
+            if (!in_array(
+                $record->status,
+                ['received', 'returned_for_correction'],
+                true
+            )) {
                 return response()->json([
-                    'message' => 'You can no longer edit this record because it has already moved forward in the archive process.',
+                    'message' => 'This submission cannot be edited while it is under review or archived.',
                 ], 403);
             }
         }
@@ -602,26 +873,18 @@ class RecordController extends Controller
         ]);
 
         if ($this->roleName($request) === 'Staff') {
-            if ($request->user()->department_id === null) {
-                return response()->json([
-                    'message' => 'Your account is not assigned to a department.',
-                ], 422);
-            }
-
             $validated['department_id'] =
                 $request->user()->department_id;
         }
 
         $record->update($validated);
 
-        AuditLog::create([
-            'user_id' => $request->user()->id,
-            'record_id' => $record->id,
-            'action' => 'updated_record',
-            'description' => 'Updated record metadata: '
-                . $record->record_code,
-            'ip_address' => $request->ip(),
-        ]);
+        $this->audit(
+            $request,
+            $record,
+            'updated_record',
+            "Updated record metadata: {$record->record_code}"
+        );
 
         return response()->json([
             'message' => 'Record updated successfully.',
@@ -639,8 +902,6 @@ class RecordController extends Controller
             ], 403);
         }
 
-        $record->load('files');
-
         $recordCode = $record->record_code;
         $recordId = $record->id;
 
@@ -650,14 +911,12 @@ class RecordController extends Controller
                 $record,
                 $recordCode
             ) {
-                AuditLog::create([
-                    'user_id' => $request->user()->id,
-                    'record_id' => $record->id,
-                    'action' => 'deleted_record',
-                    'description' => 'Deleted record: '
-                        . $recordCode,
-                    'ip_address' => $request->ip(),
-                ]);
+                $this->audit(
+                    $request,
+                    $record,
+                    'deleted_record',
+                    'Deleted record: ' . $recordCode
+                );
 
                 $record->delete();
             });

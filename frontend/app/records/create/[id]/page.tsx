@@ -39,6 +39,8 @@ type RecordDetails = {
   storage_location?: string | null;
   remarks?: string | null;
   review_remarks?: string | null;
+  correction_notes?: string | null;
+  returned_at?: string | null;
   reviewed_at?: string | null;
   archived_at?: string | null;
   status: string;
@@ -46,6 +48,7 @@ type RecordDetails = {
   category?: { name?: string } | null;
   creator?: UserSummary | null;
   reviewer?: UserSummary | null;
+  returner?: UserSummary | null;
   archiver?: UserSummary | null;
   files?: RecordFile[];
   audit_logs?: AuditLog[];
@@ -66,6 +69,7 @@ export default function RecordDetailsPage() {
   >(null);
 
   const [reviewRemarks, setReviewRemarks] = useState("");
+  const [correctionNotes, setCorrectionNotes] = useState("");
   const [storageLocation, setStorageLocation] = useState("");
   const [workflowLoading, setWorkflowLoading] = useState(false);
   const [workflowError, setWorkflowError] = useState("");
@@ -91,6 +95,7 @@ export default function RecordDetailsPage() {
       setUser(meData.user);
       setRecord(recordData.record);
       setReviewRemarks(recordData.record?.review_remarks || "");
+      setCorrectionNotes(recordData.record?.correction_notes || "");
       setStorageLocation(
         recordData.record?.storage_location || ""
       );
@@ -122,6 +127,7 @@ export default function RecordDetailsPage() {
       const data = await apiRequest(endpoint, options);
       setRecord(data.record);
       setReviewRemarks(data.record?.review_remarks || "");
+      setCorrectionNotes(data.record?.correction_notes || "");
       setStorageLocation(data.record?.storage_location || "");
       setWorkflowSuccess(data.message || fallbackMessage);
 
@@ -166,6 +172,28 @@ export default function RecordDetailsPage() {
         }),
       },
       "Review details saved."
+    );
+  }
+
+  async function handleReturnForCorrection() {
+    if (!record) return;
+
+    if (!correctionNotes.trim()) {
+      setWorkflowError(
+        "Correction notes are required before returning the submission."
+      );
+      return;
+    }
+
+    await runWorkflowAction(
+      `/records/${record.id}/return-for-correction`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          correction_notes: correctionNotes.trim(),
+        }),
+      },
+      "Record returned to Staff for correction."
     );
   }
 
@@ -323,12 +351,24 @@ export default function RecordDetailsPage() {
             </p>
           </div>
 
-          <Link
-            href="/records"
-            className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto"
-          >
-            Back to Records
-          </Link>
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            {isStaff &&
+              record.status === "returned_for_correction" && (
+                <Link
+                  href={`/records/${record.id}/edit`}
+                  className="flex items-center justify-center rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-700"
+                >
+                  Edit & Resubmit
+                </Link>
+              )}
+
+            <Link
+              href="/records"
+              className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              Back to Records
+            </Link>
+          </div>
         </section>
 
         {showWorkflow && (
@@ -417,7 +457,23 @@ export default function RecordDetailsPage() {
                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
                   />
 
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                  <div className="mt-4">
+                    <label className="text-sm font-semibold text-slate-800">
+                      Correction notes
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={correctionNotes}
+                      onChange={(event) =>
+                        setCorrectionNotes(event.target.value)
+                      }
+                      disabled={workflowLoading}
+                      placeholder="Required when returning the submission. Explain what Staff must fix or replace."
+                      className="mt-2 w-full rounded-xl border border-amber-200 bg-amber-50/40 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-100 disabled:opacity-60"
+                    />
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     <button
                       type="button"
                       onClick={handleSaveReview}
@@ -427,6 +483,17 @@ export default function RecordDetailsPage() {
                       {workflowLoading
                         ? "Saving..."
                         : "Save Review"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleReturnForCorrection}
+                      disabled={workflowLoading}
+                      className="flex items-center justify-center rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-60"
+                    >
+                      {workflowLoading
+                        ? "Processing..."
+                        : "Return for Correction"}
                     </button>
 
                     <button
@@ -443,6 +510,33 @@ export default function RecordDetailsPage() {
                 </div>
               </div>
             )}
+          </section>
+        )}
+
+        {record.status === "returned_for_correction" && (
+          <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-bold text-amber-900">
+                  {isStaff
+                    ? "Corrections required"
+                    : "Returned for correction"}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-amber-800">
+                  {record.correction_notes ||
+                    "No correction notes were provided."}
+                </p>
+              </div>
+
+              {isStaff && (
+                <Link
+                  href={`/records/${record.id}/edit`}
+                  className="shrink-0 rounded-xl bg-amber-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-amber-700"
+                >
+                  Edit & Resubmit
+                </Link>
+              )}
+            </div>
           </section>
         )}
 
@@ -493,6 +587,10 @@ export default function RecordDetailsPage() {
                 value={record.reviewer?.name}
               />
               <Info
+                label="Returned By"
+                value={record.returner?.name}
+              />
+              <Info
                 label="Archived By"
                 value={record.archiver?.name}
               />
@@ -512,6 +610,11 @@ export default function RecordDetailsPage() {
               title="Review Remarks"
               value={record.review_remarks}
               emptyText="No review remarks recorded."
+            />
+            <DetailText
+              title="Correction Notes"
+              value={record.correction_notes}
+              emptyText="No correction notes recorded."
             />
           </div>
 
@@ -724,6 +827,8 @@ function StatusBadge({
     classes = "bg-blue-50 text-blue-700";
   } else if (status === "under_review") {
     classes = "bg-amber-50 text-amber-700";
+  } else if (status === "returned_for_correction") {
+    classes = "bg-amber-100 text-amber-800";
   } else if (status === "archived") {
     classes = "bg-emerald-50 text-emerald-700";
   } else if (status === "for_disposal") {
@@ -758,6 +863,10 @@ function getStatusLabel(status: string, isStaff: boolean) {
     return "Submitted";
   }
 
+  if (status === "returned_for_correction" && isStaff) {
+    return "Needs Correction";
+  }
+
   return status?.replaceAll("_", " ") || "unknown";
 }
 
@@ -773,6 +882,12 @@ function getStatusDescription(
 
   if (status === "under_review") {
     return "The record is currently being evaluated by the Records Office.";
+  }
+
+  if (status === "returned_for_correction") {
+    return isStaff
+      ? "The Records Officer returned this submission. Review the notes, correct the record, and resubmit it."
+      : "The submission is waiting for Staff to complete the requested corrections.";
   }
 
   if (status === "archived") {

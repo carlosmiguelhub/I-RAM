@@ -19,8 +19,12 @@ class Record extends Model
         'storage_location',
         'remarks',
         'review_remarks',
+        'correction_notes',
         'reviewed_by',
         'reviewed_at',
+        'returned_by',
+        'returned_at',
+        'resubmitted_at',
         'archived_by',
         'archived_at',
     ];
@@ -28,6 +32,8 @@ class Record extends Model
     protected $casts = [
         'date_received' => 'date',
         'reviewed_at' => 'datetime',
+        'returned_at' => 'datetime',
+        'resubmitted_at' => 'datetime',
         'archived_at' => 'datetime',
     ];
 
@@ -49,6 +55,11 @@ class Record extends Model
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function returner()
+    {
+        return $this->belongsTo(User::class, 'returned_by');
     }
 
     public function archiver()

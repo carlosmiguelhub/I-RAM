@@ -14,6 +14,7 @@ const allTabs = [
   { label: "All", value: "" },
   { label: "Received", value: "received" },
   { label: "Under Review", value: "under_review" },
+  { label: "Returned", value: "returned_for_correction" },
   { label: "Archived", value: "archived" },
   { label: "For Disposal", value: "for_disposal" },
 ];
@@ -22,6 +23,7 @@ const staffTabs = [
   { label: "All", value: "" },
   { label: "Submitted", value: "received" },
   { label: "Under Review", value: "under_review" },
+  { label: "Needs Correction", value: "returned_for_correction" },
   { label: "Archived", value: "archived" },
 ];
 
@@ -43,6 +45,8 @@ type RecordItem = {
   description?: string | null;
   remarks?: string | null;
   review_remarks?: string | null;
+  correction_notes?: string | null;
+  returned_at?: string | null;
   source?: string | null;
   date_received?: string | null;
   storage_location?: string | null;
@@ -53,6 +57,7 @@ type RecordItem = {
   department?: { name?: string | null } | null;
   creator?: UserSummary | null;
   reviewer?: UserSummary | null;
+  returner?: UserSummary | null;
   archiver?: UserSummary | null;
   files?: RecordFile[];
 };
@@ -82,6 +87,7 @@ export default function RecordsPage() {
   const [workflowError, setWorkflowError] = useState("");
   const [workflowSuccess, setWorkflowSuccess] = useState("");
   const [reviewRemarks, setReviewRemarks] = useState("");
+  const [correctionNotes, setCorrectionNotes] = useState("");
   const [storageLocation, setStorageLocation] = useState("");
 
   const roleName = user?.role?.name || "";
@@ -186,6 +192,7 @@ export default function RecordsPage() {
 
   function syncWorkflowFields(record: RecordItem) {
     setReviewRemarks(record.review_remarks || "");
+    setCorrectionNotes(record.correction_notes || "");
     setStorageLocation(record.storage_location || "");
   }
 
@@ -231,6 +238,7 @@ export default function RecordsPage() {
     setWorkflowSuccess("");
     setDownloadingFileId(null);
     setReviewRemarks("");
+    setCorrectionNotes("");
     setStorageLocation("");
   }
 
@@ -300,6 +308,28 @@ export default function RecordsPage() {
         }),
       },
       "Review details saved."
+    );
+  }
+
+  async function handleReturnForCorrection() {
+    if (!selectedRecord) return;
+
+    if (!correctionNotes.trim()) {
+      setWorkflowError(
+        "Correction notes are required before returning the submission."
+      );
+      return;
+    }
+
+    await runWorkflowAction(
+      `/records/${selectedRecord.id}/return-for-correction`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          correction_notes: correctionNotes.trim(),
+        }),
+      },
+      "Record returned to Staff for correction."
     );
   }
 
@@ -529,7 +559,20 @@ export default function RecordsPage() {
 
                 {canManageWorkflow &&
                   record.status === "under_review" && (
-                    <WorkflowHint text="Review in progress. Add remarks and storage location before archiving." />
+                    <WorkflowHint text="Review in progress. Archive the record or return it to Staff with correction notes." />
+                  )}
+
+                {isStaff &&
+                  record.status === "returned_for_correction" && (
+                    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                      <p className="text-xs font-bold text-amber-900">
+                        Action required
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-amber-800">
+                        {record.correction_notes ||
+                          "The Records Officer returned this submission for correction."}
+                      </p>
+                    </div>
                   )}
 
                 <button
@@ -545,6 +588,9 @@ export default function RecordsPage() {
                         record.status
                       )
                     ? "Review Record"
+                    : isStaff &&
+                      record.status === "returned_for_correction"
+                    ? "View Corrections"
                     : "View Record"}
                 </button>
               </article>
@@ -644,6 +690,10 @@ export default function RecordsPage() {
                                 "under_review",
                               ].includes(record.status)
                             ? "Review"
+                            : isStaff &&
+                              record.status ===
+                                "returned_for_correction"
+                            ? "Correct"
                             : "View"}
                         </button>
                       </td>
@@ -665,14 +715,17 @@ export default function RecordsPage() {
           isStaff={isStaff}
           canManageWorkflow={canManageWorkflow}
           reviewRemarks={reviewRemarks}
+          correctionNotes={correctionNotes}
           storageLocation={storageLocation}
           workflowLoading={workflowLoading}
           workflowError={workflowError}
           workflowSuccess={workflowSuccess}
           onReviewRemarksChange={setReviewRemarks}
+          onCorrectionNotesChange={setCorrectionNotes}
           onStorageLocationChange={setStorageLocation}
           onStartReview={handleStartReview}
           onSaveReview={handleSaveReview}
+          onReturnForCorrection={handleReturnForCorrection}
           onArchive={handleArchive}
           onClose={closePreview}
           onDownload={handleDownload}
@@ -691,14 +744,17 @@ function RecordPreviewModal({
   isStaff,
   canManageWorkflow,
   reviewRemarks,
+  correctionNotes,
   storageLocation,
   workflowLoading,
   workflowError,
   workflowSuccess,
   onReviewRemarksChange,
+  onCorrectionNotesChange,
   onStorageLocationChange,
   onStartReview,
   onSaveReview,
+  onReturnForCorrection,
   onArchive,
   onClose,
   onDownload,
@@ -711,14 +767,17 @@ function RecordPreviewModal({
   isStaff: boolean;
   canManageWorkflow: boolean;
   reviewRemarks: string;
+  correctionNotes: string;
   storageLocation: string;
   workflowLoading: boolean;
   workflowError: string;
   workflowSuccess: string;
   onReviewRemarksChange: (value: string) => void;
+  onCorrectionNotesChange: (value: string) => void;
   onStorageLocationChange: (value: string) => void;
   onStartReview: () => void;
   onSaveReview: () => void;
+  onReturnForCorrection: () => void;
   onArchive: () => void;
   onClose: () => void;
   onDownload: (file: RecordFile) => void;
@@ -890,7 +949,25 @@ function RecordPreviewModal({
                           />
                         </div>
 
-                        <div className="flex flex-col gap-3 sm:flex-row">
+                        <div>
+                          <label className="text-sm font-semibold text-slate-800">
+                            Correction notes
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={correctionNotes}
+                            onChange={(event) =>
+                              onCorrectionNotesChange(
+                                event.target.value
+                              )
+                            }
+                            disabled={workflowLoading}
+                            placeholder="Required only when returning the submission. Explain exactly what Staff must fix or replace."
+                            className="mt-2 w-full rounded-xl border border-amber-200 bg-amber-50/40 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-100 disabled:opacity-60"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                           <button
                             type="button"
                             onClick={onSaveReview}
@@ -900,6 +977,17 @@ function RecordPreviewModal({
                             {workflowLoading
                               ? "Saving..."
                               : "Save Review"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={onReturnForCorrection}
+                            disabled={workflowLoading}
+                            className="flex items-center justify-center rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {workflowLoading
+                              ? "Processing..."
+                              : "Return for Correction"}
                           </button>
 
                           <button
@@ -914,6 +1002,29 @@ function RecordPreviewModal({
                           </button>
                         </div>
                       </div>
+                    )}
+                  </section>
+                )}
+
+                {record.status === "returned_for_correction" && (
+                  <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-sm font-bold text-amber-900">
+                      {isStaff
+                        ? "Corrections required"
+                        : "Returned for correction"}
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-amber-800">
+                      {record.correction_notes ||
+                        "No correction notes were provided."}
+                    </p>
+
+                    {isStaff && (
+                      <Link
+                        href={`/records/${record.id}/edit`}
+                        className="mt-4 inline-flex rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700"
+                      >
+                        Edit & Resubmit
+                      </Link>
                     )}
                   </section>
                 )}
@@ -969,6 +1080,10 @@ function RecordPreviewModal({
                     <PreviewInfo
                       label="Reviewed By"
                       value={record.reviewer?.name || "N/A"}
+                    />
+                    <PreviewInfo
+                      label="Returned By"
+                      value={record.returner?.name || "N/A"}
                     />
                     <PreviewInfo
                       label="Archived By"
@@ -1123,6 +1238,16 @@ function RecordPreviewModal({
               Close
             </button>
 
+            {isStaff &&
+              record.status === "returned_for_correction" && (
+                <Link
+                  href={`/records/${record.id}/edit`}
+                  className="flex items-center justify-center rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-700"
+                >
+                  Edit & Resubmit
+                </Link>
+              )}
+
             <Link
               href={`/records/${record.id}`}
               className="flex items-center justify-center rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -1229,6 +1354,8 @@ function StatusBadge({
     classes = "bg-blue-50 text-blue-700";
   } else if (status === "under_review") {
     classes = "bg-amber-50 text-amber-700";
+  } else if (status === "returned_for_correction") {
+    classes = "bg-amber-100 text-amber-800";
   } else if (status === "archived") {
     classes = "bg-emerald-50 text-emerald-700";
   } else if (status === "for_disposal") {
@@ -1268,6 +1395,10 @@ function getStatusLabel(status: string, isStaff: boolean) {
     return "Submitted";
   }
 
+  if (status === "returned_for_correction" && isStaff) {
+    return "Needs Correction";
+  }
+
   return status?.replaceAll("_", " ") || "Unknown";
 }
 
@@ -1283,6 +1414,12 @@ function getStatusDescription(
 
   if (status === "under_review") {
     return "The submission is currently being checked and processed.";
+  }
+
+  if (status === "returned_for_correction") {
+    return isStaff
+      ? "The Records Officer found issues that must be corrected before the submission can continue."
+      : "The submission was returned to Staff and is waiting for corrections and resubmission.";
   }
 
   if (status === "archived") {

@@ -20,6 +20,11 @@ Route::middleware('auth:sanctum')->group(function () {
         [RecordController::class, 'downloadFile']
     );
 
+    Route::delete(
+        '/record-files/{recordFile}',
+        [RecordController::class, 'deleteFile']
+    );
+
     Route::post(
         '/records/{record}/start-review',
         [RecordController::class, 'startReview']
@@ -28,6 +33,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch(
         '/records/{record}/review',
         [RecordController::class, 'updateReview']
+    );
+
+    Route::post(
+        '/records/{record}/return-for-correction',
+        [RecordController::class, 'returnForCorrection']
+    );
+
+    Route::post(
+        '/records/{record}/correction',
+        [RecordController::class, 'saveCorrection']
+    );
+
+    Route::post(
+        '/records/{record}/resubmit',
+        [RecordController::class, 'resubmit']
     );
 
     Route::post(
@@ -40,34 +60,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('admin')
         ->middleware('admin')
         ->group(function () {
-            Route::get(
-                '/users',
-                [UserManagementController::class, 'index']
-            );
-
-            Route::post(
-                '/users',
-                [UserManagementController::class, 'store']
-            );
-
-            Route::get(
-                '/users/{user}',
-                [UserManagementController::class, 'show']
-            );
-
-            Route::patch(
-                '/users/{user}',
-                [UserManagementController::class, 'update']
-            );
-
-            Route::patch(
-                '/users/{user}/status',
-                [UserManagementController::class, 'updateStatus']
-            );
-
-            Route::patch(
-                '/users/{user}/password',
-                [UserManagementController::class, 'resetPassword']
-            );
+            Route::get('/users', [UserManagementController::class, 'index']);
+            Route::post('/users', [UserManagementController::class, 'store']);
+            Route::get('/users/{user}', [UserManagementController::class, 'show']);
+            Route::patch('/users/{user}', [UserManagementController::class, 'update']);
+            Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus']);
+            Route::patch('/users/{user}/password', [UserManagementController::class, 'resetPassword']);
         });
 });

@@ -31,6 +31,7 @@ class OptionController extends Controller
             'statuses' => [
                 'received',
                 'under_review',
+                'returned_for_correction',
                 'archived',
                 'for_disposal',
                 'disposed',
@@ -38,4 +39,3 @@ class OptionController extends Controller
         ]);
     }
 }
-
