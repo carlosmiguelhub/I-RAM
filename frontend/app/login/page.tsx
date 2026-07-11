@@ -108,7 +108,7 @@ export default function LoginPage() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.28),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.18),transparent_34%)]" />
 
           <div className="relative">
-            <div className="flex h-[118px] w-full max-w-[420px] items-center overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-white/20">
+            <div className="flex h-[148px] w-full max-w-[420px] items-center overflow-hidden rounded-2xl shadow-lg ring-1 ring-white/20">
               <Image
                 src="/iram-logo.png"
                 alt="IRAM logo"
@@ -156,7 +156,7 @@ export default function LoginPage() {
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.30),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.18),transparent_40%)]" />
 
             <div className="relative">
-              <div className="mx-auto flex h-[84px] w-full max-w-[330px] items-center overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-white/20">
+              <div className="mx-auto flex h-[84px] w-full max-w-[400px] items-center overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-white/20">
                 <Image
                   src="/iram-logo.png"
                   alt="IRAM logo"

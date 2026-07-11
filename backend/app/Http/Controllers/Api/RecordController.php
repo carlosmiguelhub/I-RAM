@@ -41,12 +41,15 @@ class RecordController extends Controller
             );
     }
 
-    private function staffOwnsRecord(
+    private function userOwnsRecord(
         Request $request,
         Record $record
     ): bool {
-        return $record->created_by === $request->user()->id;
+        return (int) $record->created_by ===
+            (int) $request->user()->id;
     }
+
+
 
     private function recordRelations(): array
     {
@@ -140,7 +143,11 @@ class RecordController extends Controller
         $user = $request->user();
         $query = Record::with($this->recordRelations());
 
-        if ($this->roleName($request) === 'Staff') {
+        $scope = (string) $request->query('scope', '');
+
+        if ($scope === 'mine') {
+            $query->where('created_by', $user->id);
+        } elseif ($this->roleName($request) === 'Staff') {
             $query->where(function ($query) use ($user) {
                 $query->where('created_by', $user->id);
 
@@ -400,10 +407,7 @@ class RecordController extends Controller
             ], 404);
         }
 
-        if (
-            $this->roleName($request) !== 'Staff'
-            || !$this->staffOwnsRecord($request, $record)
-        ) {
+        if (!$this->userOwnsRecord($request, $record)) {
             return response()->json([
                 'message' => 'You may only remove files from your own submission.',
             ], 403);
@@ -456,6 +460,8 @@ class RecordController extends Controller
             return $response;
         }
 
+
+
         if ($record->status !== 'received') {
             return response()->json([
                 'message' => 'Only received records can be moved to under review.',
@@ -502,6 +508,8 @@ class RecordController extends Controller
         if ($response = $this->denyRecordManagement($request)) {
             return $response;
         }
+
+
 
         if ($record->status !== 'under_review') {
             return response()->json([
@@ -562,6 +570,8 @@ class RecordController extends Controller
             return $response;
         }
 
+
+
         if ($record->status !== 'under_review') {
             return response()->json([
                 'message' => 'Only records under review can be returned for correction.',
@@ -603,7 +613,7 @@ class RecordController extends Controller
         });
 
         return response()->json([
-            'message' => 'Record returned to Staff for correction.',
+            'message' => 'Record returned to the submitter for correction.',
             'record' => $record->fresh()->load(
                 $this->recordRelations()
             ),
@@ -614,10 +624,7 @@ class RecordController extends Controller
         Request $request,
         Record $record
     ) {
-        if (
-            $this->roleName($request) !== 'Staff'
-            || !$this->staffOwnsRecord($request, $record)
-        ) {
+        if (!$this->userOwnsRecord($request, $record)) {
             return response()->json([
                 'message' => 'You may only correct your own returned submission.',
             ], 403);
@@ -677,8 +684,7 @@ class RecordController extends Controller
                     'description' =>
                         $validated['description'] ?? null,
                     'category_id' => $validated['category_id'],
-                    'department_id' =>
-                        $request->user()->department_id,
+                    'department_id' => $record->department_id,
                     'date_received' => $validated['date_received'],
                     'source' => $validated['source'] ?? null,
                     'remarks' => $validated['remarks'] ?? null,
@@ -730,10 +736,7 @@ class RecordController extends Controller
         Request $request,
         Record $record
     ) {
-        if (
-            $this->roleName($request) !== 'Staff'
-            || !$this->staffOwnsRecord($request, $record)
-        ) {
+        if (!$this->userOwnsRecord($request, $record)) {
             return response()->json([
                 'message' => 'You may only resubmit your own returned submission.',
             ], 403);
@@ -759,6 +762,8 @@ class RecordController extends Controller
                 'reviewed_by' => null,
                 'reviewed_at' => null,
                 'storage_location' => null,
+                'returned_by' => null,
+                'returned_at' => null,
             ]);
 
             $this->audit(
@@ -784,6 +789,8 @@ class RecordController extends Controller
         if ($response = $this->denyRecordManagement($request)) {
             return $response;
         }
+
+
 
         if ($record->status !== 'under_review') {
             return response()->json([
@@ -837,22 +844,20 @@ class RecordController extends Controller
 
     public function update(Request $request, Record $record)
     {
-        if ($this->roleName($request) === 'Staff') {
-            if (!$this->staffOwnsRecord($request, $record)) {
-                return response()->json([
-                    'message' => 'You may only update your own submission.',
-                ], 403);
-            }
+        if (!$this->userOwnsRecord($request, $record)) {
+            return response()->json([
+                'message' => 'You may only update records submitted by your account.',
+            ], 403);
+        }
 
-            if (!in_array(
-                $record->status,
-                ['received', 'returned_for_correction'],
-                true
-            )) {
-                return response()->json([
-                    'message' => 'This submission cannot be edited while it is under review or archived.',
-                ], 403);
-            }
+        if (!in_array(
+            $record->status,
+            ['received', 'returned_for_correction'],
+            true
+        )) {
+            return response()->json([
+                'message' => 'This submission cannot be edited while it is under review or archived.',
+            ], 403);
         }
 
         $validated = $request->validate([

@@ -3,6 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  Archive,
+  ArrowRight,
+  CheckCircle2,
+  ClipboardCheck,
+  FilePlus2,
+  Files,
+  FolderArchive,
+  Search,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { apiRequest } from "@/lib/api";
 
@@ -166,32 +178,41 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="w-full">
-        <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-blue-600">
-              {isStaff
-                ? "Submission Overview"
-                : "Records Management Overview"}
-            </p>
+      <div className="mx-auto w-full max-w-7xl">
+        <section className="overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 px-5 py-6 text-white shadow-xl shadow-slate-300/30 sm:px-7 sm:py-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 sm:flex">
+                <ShieldCheck className="h-6 w-6 text-blue-200" />
+              </div>
 
-            <h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-              Welcome, {user?.name || "IRAM User"}
-            </h1>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">
+                  {isStaff
+                    ? "Submission Overview"
+                    : "Records Management Overview"}
+                </p>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              {isStaff
-                ? "Track your submitted records and their progress through the review and archiving process."
-                : "Monitor incoming submissions, active reviews, and archived records from one place."}
-            </p>
+                <h1 className="mt-2 break-words text-2xl font-bold tracking-tight sm:text-3xl">
+                  Welcome, {user?.name || "IRAM User"}
+                </h1>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                  {isStaff
+                    ? "Track your submissions and monitor their progress through review and archiving."
+                    : "Monitor incoming submissions, active reviews, and archived records from one place."}
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href={primaryAction.href}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-slate-100 sm:w-auto"
+            >
+              <FilePlus2 className="h-4 w-4" />
+              {primaryAction.label.replace("+ ", "")}
+            </Link>
           </div>
-
-          <Link
-            href={primaryAction.href}
-            className="flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
-          >
-            {primaryAction.label}
-          </Link>
         </section>
 
         {loadError && (
@@ -203,7 +224,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title={isStaff ? "My Records" : "Total Records"}
             value={counts.total}
@@ -244,9 +265,9 @@ export default function DashboardPage() {
           />
         </section>
 
-        <section className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-3">
-          <div className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 xl:col-span-2">
-            <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <section className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,0.8fr)]">
+          <div className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+            <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
                   {recentTitle}
@@ -259,9 +280,10 @@ export default function DashboardPage() {
 
               <Link
                 href="/records"
-                className="text-sm font-semibold text-blue-600 transition hover:text-blue-700"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 transition hover:text-blue-700"
               >
-                View all records →
+                View all records
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
 
@@ -348,7 +370,7 @@ export default function DashboardPage() {
           </div>
 
           <aside className="space-y-5">
-            <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-sm sm:p-6">
+            <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">
@@ -363,7 +385,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-lg">
-                  {isStaff ? "↗" : "✓"}
+                  {isStaff ? <Archive className="h-5 w-5 text-blue-200" /> : <CheckCircle2 className="h-5 w-5 text-emerald-300" />}
                 </div>
               </div>
 
@@ -371,7 +393,7 @@ export default function DashboardPage() {
                 {workflowMessage}
               </p>
 
-              <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="mt-5 grid grid-cols-2 gap-3">
                 <MiniStat
                   label={isStaff ? "Submitted" : "Received"}
                   value={counts.received}
@@ -388,17 +410,18 @@ export default function DashboardPage() {
                     ? "/records?status=received"
                     : "/records"
                 }
-                className="mt-6 flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
               >
                 {isStaff
                   ? "View My Submissions"
                   : counts.received > 0
                   ? "Open Review Queue"
                   : "View All Records"}
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </section>
 
-            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
               <h2 className="text-lg font-bold text-slate-900">
                 Quick Actions
               </h2>
@@ -474,15 +497,20 @@ function StatCard({
   href?: string;
 }) {
   const content = (
-    <div className="h-full rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md sm:p-6">
-      <p className="text-sm font-medium text-slate-500">
-        {title}
-      </p>
+    <div className="h-full rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-medium text-slate-500">
+          {title}
+        </p>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+          <Files className="h-4.5 w-4.5" />
+        </div>
+      </div>
 
       {loading ? (
         <div className="mt-4 h-9 w-20 animate-pulse rounded-lg bg-slate-200" />
       ) : (
-        <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
+        <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
           {value}
         </h2>
       )}
@@ -576,8 +604,8 @@ function EmptyRecentRecords({
 }) {
   return (
     <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-sm ring-1 ring-slate-200">
-        □
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm ring-1 ring-slate-200">
+        <Files className="h-5 w-5" />
       </div>
 
       <h3 className="mt-4 font-bold text-slate-900">
@@ -597,7 +625,7 @@ function EmptyRecentRecords({
         {isStaff
           ? "Create your first submission"
           : "Add the first record"}{" "}
-        →
+        <ArrowRight className="h-4 w-4" />
       </Link>
     </div>
   );
@@ -635,23 +663,17 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="group rounded-xl border border-slate-200 p-4 transition hover:border-blue-200 hover:bg-blue-50/50"
+      className="group flex items-center gap-3 rounded-xl border border-slate-200 px-3.5 py-3 transition hover:border-blue-200 hover:bg-blue-50/50"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-slate-900 transition group-hover:text-blue-700">
-            {title}
-          </p>
-
-          <p className="mt-1 text-xs leading-5 text-slate-500">
-            {description}
-          </p>
-        </div>
-
-        <span className="text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-600">
-          →
-        </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-slate-900 transition group-hover:text-blue-700">
+          {title}
+        </p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          {description}
+        </p>
       </div>
+      <ArrowRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-600" />
     </Link>
   );
 }

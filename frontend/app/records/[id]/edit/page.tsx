@@ -92,8 +92,8 @@ export default function CorrectRecordPage() {
         const loadedRecord = recordData.record;
 
         if (
-          meData.user?.role?.name !== "Staff" ||
-          loadedRecord.created_by !== meData.user.id
+          Number(loadedRecord.created_by) !==
+          Number(meData.user?.id)
         ) {
           throw new Error(
             "You may only correct your own returned submission."
@@ -306,9 +306,19 @@ export default function CorrectRecordPage() {
         }
       );
 
-      setSuccess(data.message);
-      router.push("/records");
-router.refresh();
+      setSuccess(data.message || "Corrected submission sent back for review.");
+
+      const roleName = localStorage.getItem("iram_user")
+        ? JSON.parse(
+            localStorage.getItem("iram_user") as string
+          )?.role?.name
+        : "";
+
+      router.push(
+        roleName === "Staff"
+          ? "/records"
+          : "/records?scope=mine"
+      );
       router.refresh();
     } catch (error: unknown) {
       setError(
@@ -340,7 +350,7 @@ router.refresh();
           </h1>
           <p className="mt-2 text-sm text-red-700">{error}</p>
           <Link
-            href="/records"
+            href="/records?scope=mine"
             className="mt-5 inline-flex rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white"
           >
             Back to Records
@@ -369,7 +379,7 @@ router.refresh();
           </div>
 
           <Link
-            href={`/records/${record.id}`}
+            href="/records?scope=mine"
             className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700"
           >
             Back to Details
@@ -570,7 +580,7 @@ router.refresh();
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Link
-              href={`/records/${record.id}`}
+              href="/records?scope=mine"
               className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700"
             >
               Cancel
