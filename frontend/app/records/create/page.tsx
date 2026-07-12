@@ -50,6 +50,20 @@ const ALLOWED_EXTENSIONS = [
   "csv",
 ];
 
+function createFileId(file: File) {
+  const fallbackId = `${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+
+  const randomId =
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : fallbackId;
+
+  return `${file.name}-${file.size}-${file.lastModified}-${randomId}`;
+}
+
 export default function CreateRecordPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -180,7 +194,7 @@ export default function CreateRecordPage() {
     }
 
     const newFiles: SelectedFile[] = files.map((file) => ({
-      id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
+      id: createFileId(file),
       file,
     }));
 
@@ -244,19 +258,23 @@ export default function CreateRecordPage() {
       payload.append("title", form.title.trim());
       payload.append("description", form.description);
       payload.append("category_id", form.category_id);
+
       payload.append(
         "department_id",
         isStaff && user?.department_id
           ? String(user.department_id)
           : form.department_id
       );
+
       payload.append("date_received", form.date_received);
       payload.append("source", form.source);
       payload.append("status", isStaff ? "received" : form.status);
+
       payload.append(
         "storage_location",
         isStaff ? "" : form.storage_location
       );
+
       payload.append("remarks", form.remarks);
 
       selectedFiles.forEach(({ file }) => {
@@ -421,7 +439,7 @@ export default function CreateRecordPage() {
             <div className="mt-5">
               <label
                 htmlFor="record-files"
-                className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition ${
+                className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 text-center transition sm:px-6 sm:py-10 ${
                   selectedFiles.length >= MAX_FILES || loading
                     ? "cursor-not-allowed border-slate-200 bg-slate-100 opacity-70"
                     : "cursor-pointer border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50"
@@ -465,7 +483,7 @@ export default function CreateRecordPage() {
                   {selectedFiles.map(({ id, file }) => (
                     <div
                       key={id}
-                      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3"
+                      className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white p-3"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold uppercase text-slate-600">
                         {file.name
@@ -488,7 +506,7 @@ export default function CreateRecordPage() {
                         type="button"
                         onClick={() => removeFile(id)}
                         disabled={loading}
-                        className="rounded-lg px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Remove
                       </button>
@@ -641,7 +659,7 @@ function FormInput({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
+        className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 sm:text-sm"
       />
     </label>
   );
@@ -676,7 +694,7 @@ function FormSelect({
         onChange={onChange}
         required={required}
         disabled={disabled}
-        className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+        className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 sm:text-sm"
       >
         {children}
       </select>
@@ -711,7 +729,7 @@ function FormTextarea({
         onChange={onChange}
         placeholder={placeholder}
         rows={4}
-        className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
+        className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 sm:text-sm"
       />
     </label>
   );

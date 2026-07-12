@@ -39,15 +39,41 @@ type RecordDetails = {
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 const ALLOWED_EXTENSIONS = [
-  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
-  "jpg", "jpeg", "png", "txt", "csv",
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "jpg",
+  "jpeg",
+  "png",
+  "txt",
+  "csv",
 ];
+
+function createFileId(file: File) {
+  const fallbackId = `${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+
+  const randomId =
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : fallbackId;
+
+  return `${file.name}-${file.size}-${file.lastModified}-${randomId}`;
+}
 
 export default function CorrectRecordPage() {
   const params = useParams();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const rawId = params.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
 
@@ -55,6 +81,7 @@ export default function CorrectRecordPage() {
   const [categories, setCategories] = useState<Option[]>([]);
   const [existingFiles, setExistingFiles] = useState<ExistingFile[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+
   const [form, setForm] = useState({
     record_code: "",
     title: "",
@@ -68,6 +95,7 @@ export default function CorrectRecordPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [removingFileId, setRemovingFileId] = useState<number | null>(null);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [fileError, setFileError] = useState("");
@@ -82,12 +110,11 @@ export default function CorrectRecordPage() {
       setError("");
 
       try {
-        const [meData, recordData, optionsData] =
-          await Promise.all([
-            apiRequest("/me"),
-            apiRequest(`/records/${id}`),
-            apiRequest("/options"),
-          ]);
+        const [meData, recordData, optionsData] = await Promise.all([
+          apiRequest("/me"),
+          apiRequest(`/records/${id}`),
+          apiRequest("/options"),
+        ]);
 
         const loadedRecord = recordData.record;
 
@@ -109,6 +136,7 @@ export default function CorrectRecordPage() {
         setRecord(loadedRecord);
         setCategories(optionsData.categories || []);
         setExistingFiles(loadedRecord.files || []);
+
         setForm({
           record_code: loadedRecord.record_code || "",
           title: loadedRecord.title || "",
@@ -152,7 +180,13 @@ export default function CorrectRecordPage() {
     event: React.ChangeEvent<HTMLInputElement>
   ) {
     const files = Array.from(event.target.files || []);
+
     setFileError("");
+
+    if (files.length === 0) {
+      resetFileInput();
+      return;
+    }
 
     if (totalFiles + files.length > MAX_FILES) {
       setFileError(
@@ -177,14 +211,35 @@ export default function CorrectRecordPage() {
         resetFileInput();
         return;
       }
+
+      const duplicateExisting = existingFiles.some(
+        (existingFile) =>
+          existingFile.file_name.toLowerCase() ===
+          file.name.toLowerCase()
+      );
+
+      const duplicateSelected = selectedFiles.some(
+        (selectedFile) =>
+          selectedFile.file.name === file.name &&
+          selectedFile.file.size === file.size &&
+          selectedFile.file.lastModified === file.lastModified
+      );
+
+      if (duplicateExisting || duplicateSelected) {
+        setFileError(`${file.name} has already been attached.`);
+        resetFileInput();
+        return;
+      }
     }
+
+    const newFiles: SelectedFile[] = files.map((file) => ({
+      id: createFileId(file),
+      file,
+    }));
 
     setSelectedFiles((current) => [
       ...current,
-      ...files.map((file) => ({
-        id: crypto.randomUUID(),
-        file,
-      })),
+      ...newFiles,
     ]);
 
     resetFileInput();
@@ -200,6 +255,8 @@ export default function CorrectRecordPage() {
     setSelectedFiles((current) =>
       current.filter((item) => item.id !== fileId)
     );
+
+    setFileError("");
   }
 
   async function removeExistingFile(file: ExistingFile) {
@@ -216,7 +273,9 @@ export default function CorrectRecordPage() {
         current.filter((item) => item.id !== file.id)
       );
 
-      setSuccess("File removed. Save or resubmit when your corrections are complete.");
+      setSuccess(
+        "File removed. Save or resubmit when your corrections are complete."
+      );
     } catch (error: unknown) {
       setFileError(
         error instanceof Error
@@ -233,11 +292,24 @@ export default function CorrectRecordPage() {
       throw new Error("Record is not available.");
     }
 
+    if (!form.record_code.trim()) {
+      throw new Error("Record code is required.");
+    }
+
+    if (!form.title.trim()) {
+      throw new Error("Title is required.");
+    }
+
     if (!form.category_id) {
       throw new Error("Please select a category.");
     }
 
+    if (!form.date_received) {
+      throw new Error("Date submitted is required.");
+    }
+
     const payload = new FormData();
+
     payload.append("record_code", form.record_code.trim());
     payload.append("title", form.title.trim());
     payload.append("description", form.description);
@@ -261,6 +333,8 @@ export default function CorrectRecordPage() {
     setRecord(data.record);
     setExistingFiles(data.record.files || []);
     setSelectedFiles([]);
+    resetFileInput();
+
     setSuccess(data.message || "Corrections saved.");
 
     return data.record;
@@ -268,9 +342,11 @@ export default function CorrectRecordPage() {
 
   async function handleSave(event: React.FormEvent) {
     event.preventDefault();
+
     setSaving(true);
     setError("");
     setSuccess("");
+    setFileError("");
 
     try {
       await saveCorrections();
@@ -289,6 +365,7 @@ export default function CorrectRecordPage() {
     setSaving(true);
     setError("");
     setSuccess("");
+    setFileError("");
 
     try {
       const updatedRecord = await saveCorrections();
@@ -306,12 +383,15 @@ export default function CorrectRecordPage() {
         }
       );
 
-      setSuccess(data.message || "Corrected submission sent back for review.");
+      setSuccess(
+        data.message ||
+          "Corrected submission sent back for review."
+      );
 
-      const roleName = localStorage.getItem("iram_user")
-        ? JSON.parse(
-            localStorage.getItem("iram_user") as string
-          )?.role?.name
+      const savedUser = localStorage.getItem("iram_user");
+
+      const roleName = savedUser
+        ? JSON.parse(savedUser)?.role?.name
         : "";
 
       router.push(
@@ -319,6 +399,7 @@ export default function CorrectRecordPage() {
           ? "/records"
           : "/records?scope=mine"
       );
+
       router.refresh();
     } catch (error: unknown) {
       setError(
@@ -348,10 +429,14 @@ export default function CorrectRecordPage() {
           <h1 className="text-lg font-bold text-red-900">
             Unable to edit submission
           </h1>
-          <p className="mt-2 text-sm text-red-700">{error}</p>
+
+          <p className="mt-2 text-sm text-red-700">
+            {error}
+          </p>
+
           <Link
             href="/records?scope=mine"
-            className="mt-5 inline-flex rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white"
+            className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-red-700 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
           >
             Back to Records
           </Link>
@@ -364,53 +449,52 @@ export default function CorrectRecordPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto w-full max-w-5xl">
+      <div className="mx-auto w-full max-w-5xl pb-8">
         <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-semibold text-amber-600">
               Returned for Correction
             </p>
+
             <h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">
               Correct Submission
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+
+            <p className="mt-1 text-sm leading-6 text-slate-500">
               Update the record and replace any incorrect or missing files.
             </p>
           </div>
 
           <Link
             href="/records?scope=mine"
-            className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700"
+            className="flex min-h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
           >
             Back to Details
           </Link>
         </section>
 
-        <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
           <p className="text-sm font-bold text-amber-900">
             Records Officer notes
           </p>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-amber-800">
+
+          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-amber-800">
             {record.correction_notes ||
               "No correction notes were provided."}
           </p>
         </section>
 
         <form onSubmit={handleSave} className="mt-5 space-y-5">
-          {error && (
-            <Alert tone="error">{error}</Alert>
-          )}
+          {error && <Alert tone="error">{error}</Alert>}
 
-          {success && (
-            <Alert tone="success">{success}</Alert>
-          )}
+          {success && <Alert tone="success">{success}</Alert>}
 
-          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
             <h2 className="text-lg font-bold text-slate-900">
               Record Information
             </h2>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Record Code">
                 <input
                   required
@@ -453,6 +537,7 @@ export default function CorrectRecordPage() {
                   className={inputClass}
                 >
                   <option value="">Select category</option>
+
                   {categories.map((category) => (
                     <option
                       key={category.id}
@@ -499,24 +584,27 @@ export default function CorrectRecordPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-            <div className="flex items-start justify-between gap-3">
+          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
                   Supporting Files
                 </h2>
-                <p className="mt-1 text-sm text-slate-500">
+
+                <p className="mt-1 text-sm leading-6 text-slate-500">
                   Remove incorrect files and upload replacements.
                 </p>
               </div>
 
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+              <span className="w-fit shrink-0 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
                 {totalFiles}/{MAX_FILES}
               </span>
             </div>
 
             {fileError && (
-              <Alert tone="error">{fileError}</Alert>
+              <div className="mt-4">
+                <Alert tone="error">{fileError}</Alert>
+              </div>
             )}
 
             <div className="mt-5 space-y-3">
@@ -547,25 +635,27 @@ export default function CorrectRecordPage() {
               ))}
 
               {totalFiles === 0 && (
-                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
+                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
                   No files attached. Add at least one file before resubmitting.
                 </p>
               )}
             </div>
 
             <label
-              className={`mt-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 py-8 text-center ${
-                totalFiles >= MAX_FILES
+              className={`mt-4 flex min-h-36 flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition sm:px-5 ${
+                totalFiles >= MAX_FILES || saving
                   ? "cursor-not-allowed border-slate-200 bg-slate-100 opacity-60"
-                  : "border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50"
+                  : "cursor-pointer border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50"
               }`}
             >
               <span className="text-sm font-semibold text-slate-900">
                 Add replacement files
               </span>
-              <span className="mt-1 text-xs text-slate-500">
+
+              <span className="mt-1 text-xs leading-5 text-slate-500">
                 Maximum 5 files, 10 MB each
               </span>
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -578,30 +668,32 @@ export default function CorrectRecordPage() {
             </label>
           </section>
 
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Link
-              href="/records?scope=mine"
-              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700"
-            >
-              Cancel
-            </Link>
+          <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-slate-50/95 px-4 py-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Link
+                href="/records?scope=mine"
+                className="flex min-h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+              >
+                Cancel
+              </Link>
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-xl border border-blue-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 disabled:opacity-60"
-            >
-              {saving ? "Saving..." : "Save Corrections"}
-            </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="min-h-12 w-full rounded-xl border border-blue-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                {saving ? "Saving..." : "Save Corrections"}
+              </button>
 
-            <button
-              type="button"
-              onClick={handleSaveAndResubmit}
-              disabled={saving}
-              className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-            >
-              {saving ? "Processing..." : "Save & Resubmit"}
-            </button>
+              <button
+                type="button"
+                onClick={handleSaveAndResubmit}
+                disabled={saving}
+                className="min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                {saving ? "Processing..." : "Save & Resubmit"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -610,7 +702,7 @@ export default function CorrectRecordPage() {
 }
 
 const inputClass =
-  "mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50";
+  "mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 sm:text-sm";
 
 function Field({
   label,
@@ -641,15 +733,19 @@ function FileRow({
   onAction: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-xs font-bold text-blue-700">
         {getExtension(name)}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">
+        <p
+          title={name}
+          className="truncate text-sm font-semibold text-slate-900"
+        >
           {name}
         </p>
+
         <p className="mt-1 text-xs text-slate-500">
           {formatFileSize(size)}
         </p>
@@ -659,7 +755,7 @@ function FileRow({
         type="button"
         onClick={onAction}
         disabled={disabled}
-        className="rounded-lg px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+        className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {actionLabel}
       </button>
@@ -676,7 +772,8 @@ function Alert({
 }) {
   return (
     <div
-      className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+      role={tone === "error" ? "alert" : "status"}
+      className={`break-words rounded-xl border px-4 py-3 text-sm font-medium ${
         tone === "error"
           ? "border-red-200 bg-red-50 text-red-700"
           : "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -689,23 +786,33 @@ function Alert({
 
 function normalizeDate(date?: string | null) {
   if (!date) return "";
-  return date.includes("T") ? date.slice(0, 10) : date;
+
+  return date.includes("T")
+    ? date.slice(0, 10)
+    : date;
 }
 
 function getExtension(name: string) {
-  return name.split(".").pop()?.slice(0, 4).toUpperCase() || "FILE";
+  return (
+    name
+      .split(".")
+      .pop()
+      ?.slice(0, 4)
+      .toUpperCase() || "FILE"
+  );
 }
 
 function formatFileSize(bytes?: number | null) {
   if (!bytes) return "Unknown size";
 
   const units = ["Bytes", "KB", "MB", "GB"];
+
   const index = Math.min(
     Math.floor(Math.log(bytes) / Math.log(1024)),
     units.length - 1
   );
 
-  return `${(bytes / Math.pow(1024, index)).toFixed(
-    index === 0 ? 0 : 2
-  )} ${units[index]}`;
+  const value = bytes / Math.pow(1024, index);
+
+  return `${value.toFixed(index === 0 ? 0 : 2)} ${units[index]}`;
 }

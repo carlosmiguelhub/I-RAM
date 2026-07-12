@@ -1,5 +1,5 @@
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+console.log("CURRENT API URL:", process.env.NEXT_PUBLIC_API_URL);
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 type ApiOptions = RequestInit & {
   token?: string | null;
@@ -9,12 +9,22 @@ export async function apiRequest(
   endpoint: string,
   options: ApiOptions = {}
 ) {
+  if (!API_URL) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is missing. Check frontend/.env.local and restart Next.js."
+    );
+  }
+
+  const normalizedEndpoint = endpoint.startsWith("/")
+    ? endpoint
+    : `/${endpoint}`;
+
   const savedToken =
     typeof window !== "undefined"
       ? localStorage.getItem("iram_token")
       : null;
 
-  const token = options.token || savedToken;
+  const token = options.token ?? savedToken;
 
   const headers = new Headers(options.headers);
 
@@ -28,10 +38,30 @@ export async function apiRequest(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
+  const requestUrl = `${API_URL}${normalizedEndpoint}`;
+
+  console.log("API REQUEST:", {
+    method: options.method ?? "GET",
+    url: requestUrl,
   });
+
+  let response: Response;
+
+  try {
+    response = await fetch(requestUrl, {
+      ...options,
+      headers,
+    });
+  } catch (error) {
+    console.error("NETWORK ERROR:", {
+      url: requestUrl,
+      error,
+    });
+
+    throw new Error(
+      `Cannot connect to the Laravel server at ${API_URL}. Check your network IP, Laravel server, and firewall.`
+    );
+  }
 
   const contentType = response.headers.get("content-type");
 
@@ -42,9 +72,9 @@ export async function apiRequest(
   if (!response.ok) {
     console.error("API ERROR:", {
       status: response.status,
-      endpoint,
-      hasToken: !!token,
-      tokenPreview: token ? `${token.slice(0, 10)}...` : null,
+      endpoint: normalizedEndpoint,
+      url: requestUrl,
+      hasToken: Boolean(token),
       data,
     });
 
@@ -52,7 +82,7 @@ export async function apiRequest(
       typeof data === "string"
         ? data
         : data?.message ||
-          `Request failed with status ${response.status}`;
+          `Request failed with status ${response.status}.`;
 
     if (
       typeof data !== "string" &&

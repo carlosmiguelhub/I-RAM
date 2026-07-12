@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -31,10 +31,17 @@ export default function ArchiveFoldersPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [editingFolder, setEditingFolder] = useState<FolderItem | null>(null);
+  const [deletingFolderId, setDeletingFolderId] = useState<number | null>(
+    null
+  );
+
+  const [editingFolder, setEditingFolder] =
+    useState<FolderItem | null>(null);
+
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -52,10 +59,13 @@ export default function ArchiveFoldersPage() {
       }
 
       const data = await apiRequest("/archive/folders");
+
       setFolders(data.folders || []);
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to load archive folders."
+        err instanceof Error
+          ? err.message
+          : "Failed to load archive folders."
       );
     } finally {
       setLoading(false);
@@ -66,41 +76,78 @@ export default function ArchiveFoldersPage() {
     loadFolders();
   }, []);
 
-  const filteredFolders = folders.filter((folder) => {
-    const query = search.trim().toLowerCase();
-    if (!query) return true;
+  useEffect(() => {
+    if (!showModal) return;
 
-    return (
-      folder.name.toLowerCase().includes(query) ||
-      (folder.description || "").toLowerCase().includes(query)
-    );
-  });
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !saving) {
+        closeModal();
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [showModal, saving]);
+
+  const filteredFolders = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    if (!query) {
+      return folders;
+    }
+
+    return folders.filter((folder) => {
+      return (
+        folder.name.toLowerCase().includes(query) ||
+        (folder.description || "").toLowerCase().includes(query)
+      );
+    });
+  }, [folders, search]);
 
   function openCreateModal() {
     setEditingFolder(null);
     setName("");
     setDescription("");
-    setShowModal(true);
     setError("");
     setSuccess("");
+    setShowModal(true);
   }
 
   function openEditModal(folder: FolderItem) {
     setEditingFolder(folder);
     setName(folder.name);
     setDescription(folder.description || "");
-    setShowModal(true);
     setError("");
     setSuccess("");
+    setShowModal(true);
   }
 
   function closeModal() {
     if (saving) return;
+
     setShowModal(false);
+    setEditingFolder(null);
+    setName("");
+    setDescription("");
   }
 
-  async function saveFolder(event: React.FormEvent) {
+  async function saveFolder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      setError("Folder name is required.");
+      return;
+    }
+
     setSaving(true);
     setError("");
     setSuccess("");
@@ -113,17 +160,29 @@ export default function ArchiveFoldersPage() {
       const data = await apiRequest(endpoint, {
         method: editingFolder ? "PATCH" : "POST",
         body: JSON.stringify({
-          name: name.trim(),
+          name: trimmedName,
           description: description.trim() || null,
         }),
       });
 
-      setSuccess(data.message || "Archive folder saved successfully.");
       setShowModal(false);
+      setEditingFolder(null);
+      setName("");
+      setDescription("");
+
+      setSuccess(
+        data.message ||
+          (editingFolder
+            ? "Archive folder updated successfully."
+            : "Archive folder created successfully.")
+      );
+
       await loadFolders();
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to save archive folder."
+        err instanceof Error
+          ? err.message
+          : "Failed to save archive folder."
       );
     } finally {
       setSaving(false);
@@ -131,56 +190,69 @@ export default function ArchiveFoldersPage() {
   }
 
   async function deleteFolder(folder: FolderItem) {
+    const recordLabel =
+      folder.records_count === 1 ? "record" : "records";
+
     const confirmed = window.confirm(
-      `Delete "${folder.name}"? ${folder.records_count} record(s) will be moved back to Unfiled.`
+      `Delete "${folder.name}"? ${folder.records_count} ${recordLabel} will be moved back to Unfiled.`
     );
 
     if (!confirmed) return;
 
+    setDeletingFolderId(folder.id);
     setError("");
     setSuccess("");
 
     try {
-      const data = await apiRequest(`/archive/folders/${folder.id}`, {
-        method: "DELETE",
-      });
+      const data = await apiRequest(
+        `/archive/folders/${folder.id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       setSuccess(data.message || "Archive folder deleted.");
       await loadFolders();
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete archive folder."
+        err instanceof Error
+          ? err.message
+          : "Failed to delete archive folder."
       );
+    } finally {
+      setDeletingFolderId(null);
     }
   }
 
   return (
     <AppShell>
-      <div className="mx-auto w-full max-w-7xl">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+      <div className="mx-auto w-full max-w-7xl pb-8">
+        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <Link
               href="/archive"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-slate-500 transition hover:text-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-50"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Unfiled Records
+              <ArrowLeft className="h-4 w-4 shrink-0" />
+              <span>Back to Unfiled Records</span>
             </Link>
 
-            <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
               Archive Folders
             </h1>
+
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              Create and manage folders used to organize archived records.
+              Create and manage folders used to organize archived
+              records.
             </p>
           </div>
 
           <button
             type="button"
             onClick={openCreateModal}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 sm:w-auto"
+            className="inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:w-auto"
           >
-            <FolderPlus className="h-4 w-4" />
+            <FolderPlus className="h-5 w-5" />
             Create Folder
           </button>
         </header>
@@ -188,88 +260,106 @@ export default function ArchiveFoldersPage() {
         {error && <Alert tone="error">{error}</Alert>}
         {success && <Alert tone="success">{success}</Alert>}
 
-        <section className="mt-5 rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+        <section className="mt-5 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:mt-6">
           <div className="border-b border-slate-200 p-4 sm:p-5">
-            <div className="relative max-w-xl">
+            <div className="relative w-full sm:max-w-xl">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                type="search"
+                inputMode="search"
+                autoComplete="off"
                 placeholder="Search folders..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
+                aria-label="Search archive folders"
+                className="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 sm:text-sm"
               />
             </div>
           </div>
 
-          <div className="p-4 sm:p-5">
+          <div className="p-3 sm:p-5">
             {loading ? (
-              <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl bg-slate-50">
-                <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-                <p className="mt-3 text-sm font-medium text-slate-500">
-                  Loading archive folders...
-                </p>
-              </div>
+              <LoadingState />
             ) : filteredFolders.length === 0 ? (
-              <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 text-center">
-                <Folder className="h-9 w-9 text-slate-400" />
-                <h2 className="mt-4 font-bold text-slate-900">
-                  No archive folders found
-                </h2>
-                <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-                  Create a folder to start organizing archived records.
-                </p>
-              </div>
+              <EmptyState
+                hasSearch={Boolean(search.trim())}
+                onCreate={openCreateModal}
+              />
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {filteredFolders.map((folder) => (
-                  <article
-                    key={folder.id}
-                    className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-blue-200 hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-                        <FolderOpen className="h-5 w-5" />
+              <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {filteredFolders.map((folder) => {
+                  const isDeleting =
+                    deletingFolderId === folder.id;
+
+                  return (
+                    <article
+                      key={folder.id}
+                      className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:shadow-md sm:p-5"
+                    >
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                          <FolderOpen className="h-5 w-5" />
+                        </div>
+
+                        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 sm:px-3 sm:text-xs">
+                          {folder.records_count}{" "}
+                          {folder.records_count === 1
+                            ? "record"
+                            : "records"}
+                        </span>
                       </div>
 
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                        {folder.records_count} records
-                      </span>
-                    </div>
+                      <div className="min-w-0 flex-1">
+                        <h2
+                          className="mt-4 break-words text-base font-bold leading-6 text-slate-950 sm:text-lg"
+                          title={folder.name}
+                        >
+                          {folder.name}
+                        </h2>
 
-                    <h2 className="mt-4 truncate text-lg font-bold text-slate-950">
-                      {folder.name}
-                    </h2>
-                    <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">
-                      {folder.description || "No folder description."}
-                    </p>
+                        <p className="mt-2 line-clamp-3 min-h-[60px] break-words text-sm leading-5 text-slate-500">
+                          {folder.description ||
+                            "No folder description."}
+                        </p>
+                      </div>
 
-                    <Link
-                      href={`/archive/folders/${folder.id}`}
-                      className="mt-5 flex w-full items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                      Open Folder
-                    </Link>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(folder)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      <Link
+                        href={`/archive/folders/${folder.id}`}
+                        className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-200"
                       >
-                        <Pencil className="h-4 w-4" />
-                        Rename
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteFolder(folder)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                        Open Folder
+                      </Link>
+
+                      <div className="mt-3 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(folder)}
+                          disabled={isDeleting}
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Rename
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteFolder(folder)}
+                          disabled={isDeleting}
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-4 focus:ring-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isDeleting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+
+                          {isDeleting ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -278,22 +368,36 @@ export default function ArchiveFoldersPage() {
 
       {showModal && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          role="presentation"
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/60 backdrop-blur-sm sm:items-center sm:p-4"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeModal();
+            if (event.target === event.currentTarget) {
+              closeModal();
+            }
           }}
         >
           <form
             onSubmit={saveFolder}
-            className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="folder-modal-title"
+            className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 shadow-2xl sm:max-w-lg sm:rounded-3xl sm:p-6"
           >
+            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
+
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-blue-600">
                   Folder Management
                 </p>
-                <h2 className="mt-1 text-xl font-bold text-slate-950">
-                  {editingFolder ? "Edit Archive Folder" : "Create Archive Folder"}
+
+                <h2
+                  id="folder-modal-title"
+                  className="mt-1 text-xl font-bold leading-7 text-slate-950"
+                >
+                  {editingFolder
+                    ? "Edit Archive Folder"
+                    : "Create Archive Folder"}
                 </h2>
               </div>
 
@@ -301,60 +405,137 @@ export default function ArchiveFoldersPage() {
                 type="button"
                 onClick={closeModal}
                 disabled={saving}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
+                aria-label="Close folder form"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <label className="mt-5 block text-sm font-semibold text-slate-700">
+            <label
+              htmlFor="folder-name"
+              className="mt-5 block text-sm font-semibold text-slate-700"
+            >
               Folder name
-              <input
-                autoFocus
-                required
-                maxLength={100}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
-              />
             </label>
 
-            <label className="mt-4 block text-sm font-semibold text-slate-700">
-              Description
-              <textarea
-                rows={4}
-                maxLength={1000}
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
-              />
-            </label>
+            <input
+              id="folder-name"
+              autoFocus
+              required
+              maxLength={100}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Enter folder name"
+              className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 sm:text-sm"
+            />
 
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <label
+                htmlFor="folder-description"
+                className="text-sm font-semibold text-slate-700"
+              >
+                Description
+              </label>
+
+              <span className="text-xs text-slate-400">
+                {description.length}/1000
+              </span>
+            </div>
+
+            <textarea
+              id="folder-description"
+              rows={4}
+              maxLength={1000}
+              value={description}
+              onChange={(event) =>
+                setDescription(event.target.value)
+              }
+              placeholder="Add an optional description"
+              className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 sm:text-sm"
+            />
+
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:flex sm:justify-end">
               <button
                 type="button"
                 onClick={closeModal}
                 disabled={saving}
-                className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="order-2 min-h-12 rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:order-1"
               >
                 Cancel
               </button>
+
               <button
-                disabled={saving}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                type="submit"
+                disabled={saving || !name.trim()}
+                className="order-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-50 sm:order-2"
               >
-                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {saving && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+
                 {saving
                   ? "Saving..."
                   : editingFolder
-                  ? "Save Changes"
-                  : "Create Folder"}
+                    ? "Save Changes"
+                    : "Create Folder"}
               </button>
             </div>
           </form>
         </div>
       )}
     </AppShell>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl bg-slate-50 px-5 text-center">
+      <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+
+      <p className="mt-3 text-sm font-medium text-slate-500">
+        Loading archive folders...
+      </p>
+    </div>
+  );
+}
+
+function EmptyState({
+  hasSearch,
+  onCreate,
+}: {
+  hasSearch: boolean;
+  onCreate: () => void;
+}) {
+  return (
+    <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm ring-1 ring-slate-200">
+        <Folder className="h-7 w-7" />
+      </div>
+
+      <h2 className="mt-4 font-bold text-slate-900">
+        {hasSearch
+          ? "No matching folders found"
+          : "No archive folders yet"}
+      </h2>
+
+      <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+        {hasSearch
+          ? "Try another folder name or description."
+          : "Create a folder to start organizing archived records."}
+      </p>
+
+      {!hasSearch && (
+        <button
+          type="button"
+          onClick={onCreate}
+          className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
+        >
+          <FolderPlus className="h-4 w-4" />
+          Create First Folder
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -367,7 +548,8 @@ function Alert({
 }) {
   return (
     <div
-      className={`mt-5 rounded-2xl border px-4 py-3 text-sm font-medium ${
+      role={tone === "error" ? "alert" : "status"}
+      className={`mt-5 break-words rounded-2xl border px-4 py-3 text-sm font-medium ${
         tone === "error"
           ? "border-red-200 bg-red-50 text-red-700"
           : "border-emerald-200 bg-emerald-50 text-emerald-700"
