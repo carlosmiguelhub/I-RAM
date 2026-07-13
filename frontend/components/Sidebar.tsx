@@ -5,9 +5,11 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   Archive,
+  BookOpen,
   Building2,
   ChevronDown,
   ClipboardCheck,
+  ClipboardList,
   FilePlus2,
   FileUser,
   Files,
@@ -55,6 +57,18 @@ const mainMenuItems: SidebarItem[] = [
     href: "/records/create",
     icon: FilePlus2,
     roles: ["Staff"],
+  },
+  {
+    name: "Archive Catalog",
+    href: "/archive-catalog",
+    icon: BookOpen,
+    roles: ["Staff"],
+  },
+  {
+    name: "Document Requests",
+    href: "/document-requests",
+    icon: ClipboardList,
+    roles: ["Admin", "Records Officer", "Staff"],
   },
   {
     name: "Archive Repository",
@@ -153,7 +167,10 @@ export default function Sidebar({
   useEffect(() => {
     const storedUser = localStorage.getItem("iram_user");
 
-    if (!storedUser) return;
+    if (!storedUser) {
+      setRoleName("");
+      return;
+    }
 
     try {
       const user = JSON.parse(storedUser);
@@ -202,7 +219,8 @@ export default function Sidebar({
 
   const settingsSectionActive =
     canSeeSettingsGroup &&
-    (pathname.startsWith("/admin/") || pathname === "/profile");
+    (pathname.startsWith("/admin/") ||
+      pathname === "/profile");
 
   useEffect(() => {
     if (recordsSectionActive) {
@@ -225,6 +243,10 @@ export default function Sidebar({
     const [itemPath, queryString] = href.split("?");
 
     if (pathname !== itemPath) {
+      if (!queryString) {
+        return pathname.startsWith(`${itemPath}/`);
+      }
+
       return false;
     }
 
@@ -240,10 +262,7 @@ export default function Sidebar({
       return !currentStatus && !currentScope;
     }
 
-    return (
-      pathname === itemPath ||
-      pathname.startsWith(`${itemPath}/`)
-    );
+    return true;
   }
 
   function isRecordChildActive(href: string) {
@@ -290,17 +309,21 @@ export default function Sidebar({
         key={item.name}
         href={item.href}
         onClick={onClose}
-        className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+        className={`group relative flex min-h-12 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
           active
-            ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100"
-            : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+            ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
+            : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5]"
         }`}
       >
+        {active && (
+          <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[#D9961A]" />
+        )}
+
         <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
             active
-              ? "bg-blue-100 text-blue-700"
-              : "bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-blue-600 group-hover:ring-1 group-hover:ring-slate-200"
+              ? "bg-white/15 text-[#F4C25E]"
+              : "bg-[#EAE5D9] text-[#075A3A] group-hover:bg-[#075A3A] group-hover:text-[#F4C25E]"
           }`}
         >
           <Icon className="h-[18px] w-[18px]" />
@@ -309,7 +332,7 @@ export default function Sidebar({
         <span className="truncate">{item.name}</span>
 
         {active && (
-          <span className="ml-auto h-2 w-2 rounded-full bg-blue-600" />
+          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-[#F4C25E] shadow-[0_0_0_3px_rgba(244,194,94,0.18)]" />
         )}
       </Link>
     );
@@ -326,24 +349,24 @@ export default function Sidebar({
         key={item.name}
         href={item.href}
         onClick={onClose}
-        className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+        className={`group flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${
           active
-            ? "bg-blue-50 text-blue-700"
-            : "text-slate-500 hover:bg-slate-50 hover:text-slate-950"
+            ? "bg-[#FFF3D6] text-[#6B0F2B] ring-1 ring-[#E7C77F]"
+            : "text-[#667085] hover:bg-white hover:text-[#075A3A]"
         }`}
       >
         <Icon
-          className={`h-4 w-4 shrink-0 ${
+          className={`h-4 w-4 shrink-0 transition-colors ${
             active
-              ? "text-blue-600"
-              : "text-slate-400 group-hover:text-blue-600"
+              ? "text-[#B87510]"
+              : "text-[#8C938F] group-hover:text-[#075A3A]"
           }`}
         />
 
         <span className="truncate">{item.name}</span>
 
         {active && (
-          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-600" />
+          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[#D9961A]" />
         )}
       </Link>
     );
@@ -355,28 +378,31 @@ export default function Sidebar({
         <button
           type="button"
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-[#17231E]/55 backdrop-blur-sm lg:hidden"
           aria-label="Close sidebar overlay"
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-slate-200 bg-white px-4 py-5 shadow-xl shadow-slate-950/5 transition-transform duration-300 lg:translate-x-0 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-50 flex h-dvh w-[min(18rem,88vw)] flex-col border-r border-[#DED5C5] bg-[#F8F5EE] px-4 py-5 shadow-2xl shadow-black/10 transition-transform duration-300 lg:h-screen lg:w-72 lg:translate-x-0 lg:shadow-none ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-sm">
+          <div className="relative flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[#075A3A] to-[#043D28] p-3.5 shadow-lg shadow-[#075A3A]/20">
+            <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#D9961A]/15" />
+            <div className="absolute -bottom-10 right-8 h-20 w-20 rounded-full border border-white/10" />
+
+            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#D9961A] text-white shadow-md shadow-black/15 ring-1 ring-white/20">
               <Archive className="h-6 w-6" />
             </div>
 
-            <div className="min-w-0">
-              <h1 className="truncate text-sm font-bold text-slate-900">
+            <div className="relative min-w-0">
+              <h1 className="truncate text-sm font-extrabold tracking-wide text-white">
                 IRAM Archive
               </h1>
 
-              <p className="truncate text-xs text-slate-500">
+              <p className="mt-0.5 truncate text-xs font-medium text-[#E7DDBE]">
                 {roleName || "Records Management"}
               </p>
             </div>
@@ -385,14 +411,22 @@ export default function Sidebar({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 lg:hidden"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#6B0F2B] transition hover:bg-white hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5] lg:hidden"
             aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="mt-7 flex-1 space-y-1 overflow-y-auto pb-5">
+        <div className="mt-6 flex items-center gap-3 px-2">
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#9B8F7C]">
+            Main Navigation
+          </span>
+
+          <span className="h-px flex-1 bg-gradient-to-r from-[#D7CDBB] to-transparent" />
+        </div>
+
+        <nav className="mt-3 flex-1 space-y-1 overflow-y-auto overscroll-contain pb-5 pr-1">
           {visibleMainItems.map((item, index) => (
             <div key={item.name}>
               {index === 1 && canSeeRecordsGroup && (
@@ -403,17 +437,21 @@ export default function Sidebar({
                       setRecordsOpen((current) => !current)
                     }
                     aria-expanded={recordsOpen}
-                    className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                    className={`group relative flex min-h-12 w-full items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
                       recordsSectionActive
-                        ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+                        ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
+                        : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5]"
                     }`}
                   >
+                    {recordsSectionActive && (
+                      <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[#D9961A]" />
+                    )}
+
                     <span
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
                         recordsSectionActive
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-blue-600 group-hover:ring-1 group-hover:ring-slate-200"
+                          ? "bg-white/15 text-[#F4C25E]"
+                          : "bg-[#EAE5D9] text-[#075A3A] group-hover:bg-[#075A3A] group-hover:text-[#F4C25E]"
                       }`}
                     >
                       <Files className="h-[18px] w-[18px]" />
@@ -422,7 +460,7 @@ export default function Sidebar({
                     <span className="truncate">Records</span>
 
                     <ChevronDown
-                      className={`ml-auto h-4 w-4 transition-transform duration-200 ${
+                      className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 ${
                         recordsOpen ? "rotate-180" : ""
                       }`}
                     />
@@ -436,11 +474,11 @@ export default function Sidebar({
                     }`}
                   >
                     <div className="overflow-hidden">
-                      <div className="ml-5 space-y-1 border-l border-slate-200 pl-3">
-                        {visibleRecordItems.map((item) =>
+                      <div className="ml-5 space-y-1 border-l border-[#D7CDBB] pl-3">
+                        {visibleRecordItems.map((recordItem) =>
                           renderSubmenuItem(
-                            item,
-                            isRecordChildActive(item.href)
+                            recordItem,
+                            isRecordChildActive(recordItem.href)
                           )
                         )}
                       </div>
@@ -461,17 +499,21 @@ export default function Sidebar({
                   setSettingsOpen((current) => !current)
                 }
                 aria-expanded={settingsOpen}
-                className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                className={`group relative flex min-h-12 w-full items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
                   settingsSectionActive
-                    ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+                    ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
+                    : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5]"
                 }`}
               >
+                {settingsSectionActive && (
+                  <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[#D9961A]" />
+                )}
+
                 <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
                     settingsSectionActive
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-blue-600 group-hover:ring-1 group-hover:ring-slate-200"
+                      ? "bg-white/15 text-[#F4C25E]"
+                      : "bg-[#EAE5D9] text-[#075A3A] group-hover:bg-[#075A3A] group-hover:text-[#F4C25E]"
                   }`}
                 >
                   <Settings className="h-[18px] w-[18px]" />
@@ -480,7 +522,7 @@ export default function Sidebar({
                 <span className="truncate">Settings</span>
 
                 <ChevronDown
-                  className={`ml-auto h-4 w-4 transition-transform duration-200 ${
+                  className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 ${
                     settingsOpen ? "rotate-180" : ""
                   }`}
                 />
@@ -494,11 +536,13 @@ export default function Sidebar({
                 }`}
               >
                 <div className="overflow-hidden">
-                  <div className="ml-5 space-y-1 border-l border-slate-200 pl-3">
-                    {visibleSettingsItems.map((item) =>
+                  <div className="ml-5 space-y-1 border-l border-[#D7CDBB] pl-3">
+                    {visibleSettingsItems.map((settingsItem) =>
                       renderSubmenuItem(
-                        item,
-                        isSettingsChildActive(item.href)
+                        settingsItem,
+                        isSettingsChildActive(
+                          settingsItem.href
+                        )
                       )
                     )}
                   </div>
@@ -508,15 +552,22 @@ export default function Sidebar({
           )}
         </nav>
 
-        <div className="border-t border-slate-200 pt-4">
+        <div className="border-t border-[#D7CDBB] pt-4">
           <Link
             href="/records/create"
             onClick={onClose}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
+            className="group flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#6B0F2B] to-[#7C1735] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-[#6B0F2B]/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-[#571023] hover:to-[#6B0F2B] hover:shadow-xl hover:shadow-[#6B0F2B]/25 focus:outline-none focus:ring-4 focus:ring-[#D9961A]/25"
           >
-            <FilePlus2 className="h-4 w-4" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D9961A] text-white transition-transform duration-200 group-hover:rotate-6">
+              <FilePlus2 className="h-4 w-4" />
+            </span>
+
             {primaryAction}
           </Link>
+
+          <p className="mt-3 text-center text-[10px] font-medium uppercase tracking-[0.14em] text-[#A09582]">
+            Record Acquisition & Archiving
+          </p>
         </div>
       </aside>
     </>

@@ -2,16 +2,11 @@
 
 namespace App\Models;
 
-use App\Models\Role;
-use App\Models\Department;
-use App\Models\Record;
-use App\Models\RecordFile;
-use App\Models\AuditLog;
-use Laravel\Sanctum\HasApiTokens;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
@@ -40,7 +35,7 @@ class User extends Authenticatable
         ];
     }
 
-    public function role() 
+    public function role()
     {
         return $this->belongsTo(Role::class);
     }
@@ -52,16 +47,38 @@ class User extends Authenticatable
 
     public function records()
     {
-        return $this->hasMany(Record::class, 'created_by');
+        return $this->hasMany(
+            Record::class,
+            'created_by'
+        );
     }
 
     public function uploadedFiles()
     {
-        return $this->hasMany(RecordFile::class, 'uploaded_by');
+        return $this->hasMany(
+            RecordFile::class,
+            'uploaded_by'
+        );
     }
 
     public function auditLogs()
     {
         return $this->hasMany(AuditLog::class);
+    }
+
+    public function documentRequests()
+    {
+        return $this->hasMany(
+            DocumentRequest::class,
+            'requested_by'
+        );
+    }
+
+    public function assignedDocumentRequests()
+    {
+        return $this->hasMany(
+            DocumentRequest::class,
+            'assigned_to'
+        );
     }
 }

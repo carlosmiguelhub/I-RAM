@@ -357,21 +357,23 @@ export default function AdminSettingsPage() {
   return (
     <AppShell>
       <div className="mx-auto w-full max-w-7xl">
-        <section className="overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 p-6 text-white shadow-xl shadow-slate-300/30 sm:p-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] p-6 text-white shadow-xl shadow-[#075A3A]/20 sm:p-8">
+          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#D9961A]/15 blur-2xl" />
+          <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-[#6B0F2B]/30 blur-3xl" />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15">
-                <FileCog className="h-7 w-7 text-blue-200" />
+                <FileCog className="h-7 w-7 text-[#F4C25E]" />
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-blue-200">
+                <p className="text-sm font-semibold text-[#F4C25E]">
                   Administration
                 </p>
                 <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
                   System Settings
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#E5DDCC]">
                   Configure how IRAM handles records, workflows, file uploads,
                   registration, and system-wide safeguards.
                 </p>
@@ -397,7 +399,7 @@ export default function AdminSettingsPage() {
                 type="button"
                 onClick={saveSettings}
                 disabled={!hasChanges || saving || loading}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-950/30 transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F0F7F3]0 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/15 transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -430,9 +432,9 @@ export default function AdminSettingsPage() {
         )}
 
         <section className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[290px_minmax(0,1fr)]">
-          <aside className="h-fit rounded-3xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
+          <aside className="h-fit rounded-3xl bg-white p-3 shadow-sm ring-1 ring-[#DED5C5]">
             <div className="px-3 pb-3 pt-2">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#A09582]">
                 Settings sections
               </p>
             </div>
@@ -449,15 +451,15 @@ export default function AdminSettingsPage() {
                     onClick={() => setActiveSection(section.key)}
                     className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
                       active
-                        ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+                        ? "bg-[#FFF9EA] text-[#6B0F2B] ring-1 ring-[#E7D3A2]"
+                        : "text-[#625E56] hover:bg-[#F8F5EE] hover:text-[#252A27]"
                     }`}
                   >
                     <span
                       className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                         active
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-slate-100 text-slate-500 group-hover:bg-white group-hover:ring-1 group-hover:ring-slate-200"
+                          ? "bg-[#D9961A] text-white"
+                          : "bg-[#F0ECE4] text-[#766F63] group-hover:bg-white group-hover:ring-1 group-hover:ring-[#DED5C5]"
                       }`}
                     >
                       <Icon className="h-5 w-5" />
@@ -467,7 +469,7 @@ export default function AdminSettingsPage() {
                       <span className="block text-sm font-semibold">
                         {section.label}
                       </span>
-                      <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+                      <span className="mt-0.5 block text-xs leading-5 text-[#766F63]">
                         {section.description}
                       </span>
                     </span>
@@ -475,8 +477,8 @@ export default function AdminSettingsPage() {
                     <ChevronRight
                       className={`h-4 w-4 shrink-0 ${
                         active
-                          ? "text-blue-600"
-                          : "text-slate-300"
+                          ? "text-[#D9961A]"
+                          : "text-[#E5DDCC]"
                       }`}
                     />
                   </button>
@@ -485,18 +487,18 @@ export default function AdminSettingsPage() {
             </nav>
           </aside>
 
-          <section className="min-w-0 rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-            <header className="border-b border-slate-200 px-5 py-5 sm:px-7">
+          <section className="min-w-0 rounded-3xl bg-white shadow-sm ring-1 ring-[#DED5C5]">
+            <header className="border-b border-[#E3DCCE] px-5 py-5 sm:px-7">
               <div className="flex items-start gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-white">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#075A3A] text-[#F4C25E]">
                   <CurrentSectionIcon className="h-5 w-5" />
                 </div>
 
                 <div>
-                  <h2 className="text-xl font-bold text-slate-950">
+                  <h2 className="text-xl font-bold text-[#252A27]">
                     {currentSection.label} settings
                   </h2>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                  <p className="mt-1 text-sm leading-6 text-[#766F63]">
                     {currentSection.description}.
                   </p>
                 </div>
@@ -505,10 +507,10 @@ export default function AdminSettingsPage() {
 
             <div className="p-5 sm:p-7">
               {loading ? (
-                <div className="flex min-h-80 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+                <div className="flex min-h-80 items-center justify-center rounded-2xl border border-[#E3DCCE] bg-[#F8F5EE]">
                   <div className="text-center">
-                    <Loader2 className="mx-auto h-7 w-7 animate-spin text-blue-600" />
-                    <p className="mt-3 text-sm font-medium text-slate-500">
+                    <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#075A3A]" />
+                    <p className="mt-3 text-sm font-medium text-[#766F63]">
                       Loading system settings...
                     </p>
                   </div>
@@ -555,8 +557,8 @@ export default function AdminSettingsPage() {
             </div>
 
             {!loading && (
-              <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-                <p className="text-xs leading-5 text-slate-500">
+              <footer className="flex flex-col gap-3 border-t border-[#E3DCCE] bg-[#F8F5EE] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                <p className="text-xs leading-5 text-[#766F63]">
                   Changes affect IRAM system-wide and are recorded in the audit
                   trail.
                 </p>
@@ -565,7 +567,7 @@ export default function AdminSettingsPage() {
                   type="button"
                   onClick={saveSettings}
                   disabled={!hasChanges || saving}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {saving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -716,11 +718,11 @@ function RecordSettings({
             />
           </Field>
 
-          <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
+          <div className="mt-4 rounded-2xl border border-[#CFE0D6] bg-[#F0F7F3] p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-[#A66B00]">
               Example
             </p>
-            <p className="mt-1 font-mono text-sm font-semibold text-blue-950">
+            <p className="mt-1 font-mono text-sm font-semibold text-[#6B0F2B]">
               {values.record_code_prefix || "IRAM"}-2026-000001
             </p>
           </div>
@@ -884,16 +886,16 @@ function FileSettings({
                 onClick={() => onToggleExtension(extension)}
                 className={`flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold uppercase transition ${
                   selected
-                    ? "border-blue-200 bg-blue-50 text-blue-700"
-                    : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                    ? "border-[#E7D3A2] bg-[#FFF9EA] text-[#A66B00]"
+                    : "border-[#E3DCCE] bg-white text-[#766F63] hover:bg-[#F8F5EE]"
                 }`}
               >
                 .{extension}
                 <span
                   className={`flex h-5 w-5 items-center justify-center rounded-full ${
                     selected
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-100 text-slate-400"
+                      ? "bg-[#D9961A] text-white"
+                      : "bg-[#F0ECE4] text-[#A09582]"
                   }`}
                 >
                   {selected && <Check className="h-3.5 w-3.5" />}
@@ -1030,15 +1032,15 @@ function SettingsGroup({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200">
-      <header className="flex items-start gap-3 border-b border-slate-200 px-5 py-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+    <section className="overflow-hidden rounded-2xl border border-[#E3DCCE]">
+      <header className="flex items-start gap-3 border-b border-[#E3DCCE] px-5 py-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF3D6] text-[#A66B00]">
           {icon}
         </div>
 
         <div>
-          <h3 className="font-bold text-slate-950">{title}</h3>
-          <p className="mt-1 text-sm leading-5 text-slate-500">
+          <h3 className="font-bold text-[#252A27]">{title}</h3>
+          <p className="mt-1 text-sm leading-5 text-[#766F63]">
             {description}
           </p>
         </div>
@@ -1062,7 +1064,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-slate-700">
+      <span className="text-sm font-semibold text-[#514D46]">
         {label}
       </span>
 
@@ -1070,14 +1072,14 @@ function Field({
         {children}
 
         {suffix && (
-          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#A09582]">
             {suffix}
           </span>
         )}
       </div>
 
       {hint && (
-        <span className="mt-2 block text-xs leading-5 text-slate-500">
+        <span className="mt-2 block text-xs leading-5 text-[#766F63]">
           {hint}
         </span>
       )}
@@ -1097,10 +1099,10 @@ function ToggleRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div className="flex items-start justify-between gap-4 rounded-2xl border border-[#E3DCCE] bg-[#FCFAF5] p-4">
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-900">{title}</p>
-        <p className="mt-1 text-xs leading-5 text-slate-500">
+        <p className="text-sm font-semibold text-[#2D332F]">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-[#766F63]">
           {description}
         </p>
       </div>
@@ -1111,7 +1113,7 @@ function ToggleRow({
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={`relative mt-0.5 h-7 w-12 shrink-0 rounded-full transition ${
-          checked ? "bg-blue-600" : "bg-slate-300"
+          checked ? "bg-[#075A3A]" : "bg-[#D7CDBB]"
         }`}
       >
         <span
@@ -1175,4 +1177,4 @@ function normalizeSettings(
 }
 
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-20 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50";
+  "w-full rounded-xl border border-[#E3DCCE] bg-[#FCFAF5] px-4 py-3 pr-20 text-sm text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]";

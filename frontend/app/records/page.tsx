@@ -464,15 +464,15 @@
     return (
       <AppShell>
         <div className="mx-auto w-full max-w-7xl">
-          <section className="overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 px-5 py-6 text-white shadow-xl shadow-slate-300/30 sm:px-7 sm:py-7">
+          <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-5 py-6 text-white shadow-xl shadow-[#075A3A]/20 sm:px-7 sm:py-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-start gap-4">
                 <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 sm:flex">
-                  <Files className="h-6 w-6 text-blue-200" />
+                  <Files className="h-6 w-6 text-[#F4C25E]" />
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#F4C25E]">
                     {isMySubmissionsView
                       ? "Submission Tracking"
                       : canManageWorkflow
@@ -484,7 +484,7 @@
                     {isMySubmissionsView ? "My Submissions" : "All Records"}
                   </h1>
 
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[#E5DDCC]">
                     {isMySubmissionsView
                       ? "Track records submitted using your account, including items returned for correction."
                       : canManageWorkflow
@@ -496,23 +496,25 @@
 
               <Link
                 href="/records/create"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-slate-100 sm:w-auto"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#252A27] shadow-sm transition hover:bg-[#F0ECE4] sm:w-auto"
               >
-                <FilePlus2 className="h-4 w-4" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D9961A] text-white">
+                  <FilePlus2 className="h-4 w-4" />
+                </span>
                 {isStaff ? "New Submission" : "Add Record"}
               </Link>
             </div>
           </section>
 
-          <section className="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5">
+          <section className="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-5">
             <form
               onSubmit={handleSearch}
               className="flex flex-col gap-3 md:flex-row"
             >
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#A09582]" />
                 <input
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
+                  className="w-full rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] py-3 pl-12 pr-4 text-sm text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
                   placeholder="Search by code, title, description, or source..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -521,7 +523,7 @@
 
               <button
                 type="submit"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#075A3A] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#043D28] focus:outline-none focus:ring-4 focus:ring-[#CFE0D6]"
               >
                 <Search className="h-4 w-4" />
                 Search
@@ -540,8 +542,8 @@
                       onClick={() => handleTabChange(tab.value)}
                       className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                         active
-                          ? "bg-blue-600 text-white"
-                          : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+                          ? "bg-[#6B0F2B] text-white shadow-sm"
+                          : "bg-[#F0ECE4] text-[#625E56] hover:bg-[#FFF3D6] hover:text-[#6B0F2B]"
                       }`}
                     >
                       {tab.label}
@@ -563,14 +565,14 @@
               records.map((record) => (
                 <article
                   key={record.id}
-                  className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 transition hover:shadow-md"
+                  className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] transition hover:shadow-md"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-base font-bold text-slate-900">
+                      <p className="truncate text-base font-bold text-[#2D332F]">
                         {record.title}
                       </p>
-                      <p className="mt-1 text-xs font-medium text-slate-500">
+                      <p className="mt-1 text-xs font-medium text-[#766F63]">
                         {record.record_code}
                       </p>
                     </div>
@@ -581,7 +583,7 @@
                     />
                   </div>
 
-                  <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                  <div className="mt-4 grid gap-2 text-sm text-[#625E56]">
                     <InfoRow
                       label="Category"
                       value={record.category?.name || "N/A"}
@@ -627,7 +629,7 @@
                     type="button"
                     onClick={() => openPreview(record.id)}
                     disabled={openingRecordId !== null}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {openingRecordId === record.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -650,10 +652,10 @@
               ))}
           </section>
 
-          <section className="mt-5 hidden overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 md:block">
+          <section className="mt-5 hidden overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#DED5C5] md:block">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <thead className="bg-[#F8F5EE] text-xs uppercase tracking-wide text-[#766F63]">
                   <tr>
                     <th className="px-5 py-3.5">Record</th>
                     <th className="px-5 py-3.5">Category</th>
@@ -667,12 +669,12 @@
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-[#ECE5D8]">
                   {loading && (
                     <tr>
                       <td
                         colSpan={7}
-                        className="px-5 py-6 text-center text-slate-500"
+                        className="px-5 py-6 text-center text-[#766F63]"
                       >
                         Loading records...
                       </td>
@@ -683,7 +685,7 @@
                     <tr>
                       <td
                         colSpan={7}
-                        className="px-5 py-6 text-center text-slate-500"
+                        className="px-5 py-6 text-center text-[#766F63]"
                       >
                         No records found.
                       </td>
@@ -694,30 +696,30 @@
                     records.map((record) => (
                       <tr
                         key={record.id}
-                        className="transition hover:bg-slate-50"
+                        className="transition hover:bg-[#F8F5EE]"
                       >
                         <td className="px-5 py-3.5">
-                          <p className="font-bold text-slate-900">
+                          <p className="font-bold text-[#2D332F]">
                             {record.title}
                           </p>
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 text-xs text-[#766F63]">
                             {record.record_code}
                           </p>
                         </td>
 
-                        <td className="px-5 py-4 text-slate-600">
+                        <td className="px-5 py-4 text-[#625E56]">
                           {record.category?.name || "N/A"}
                         </td>
 
-                        <td className="px-5 py-4 text-slate-600">
+                        <td className="px-5 py-4 text-[#625E56]">
                           {record.department?.name || "N/A"}
                         </td>
 
-                        <td className="px-5 py-4 text-slate-600">
+                        <td className="px-5 py-4 text-[#625E56]">
                           {formatDate(record.date_received)}
                         </td>
 
-                        <td className="px-5 py-4 text-slate-600">
+                        <td className="px-5 py-4 text-[#625E56]">
                           {record.files?.length || 0}
                         </td>
 
@@ -733,7 +735,7 @@
                             type="button"
                             onClick={() => openPreview(record.id)}
                             disabled={openingRecordId !== null}
-                            className="font-semibold text-blue-600 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="font-semibold text-[#075A3A] transition hover:text-[#075A3A] disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {openingRecordId === record.id
                               ? "Loading..."
@@ -852,7 +854,7 @@
 
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-0 backdrop-blur-sm sm:p-5"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-[#17231E]/75 p-0 backdrop-blur-sm sm:p-5"
         onMouseDown={(event) => {
           if (
             event.target === event.currentTarget &&
@@ -868,10 +870,10 @@
           aria-labelledby="record-preview-title"
           className="flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:max-h-[94vh] sm:max-w-6xl sm:rounded-3xl"
         >
-          <header className="bg-gradient-to-r from-slate-950 to-slate-800 px-5 py-5 text-white sm:px-7">
+          <header className="bg-gradient-to-r from-[#075A3A] to-[#043D28] px-5 py-5 text-white sm:px-7">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-blue-300">
+                <p className="text-sm font-semibold text-[#F4C25E]">
                   {showWorkflow
                     ? "Records Officer Review"
                     : isRecordOwner
@@ -887,7 +889,7 @@
                 </h2>
 
                 {record?.record_code && (
-                  <p className="mt-1 text-sm text-slate-300">
+                  <p className="mt-1 text-sm text-[#E5DDCC]">
                     {record.record_code}
                   </p>
                 )}
@@ -907,8 +909,8 @@
 
           <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
             {loading && !record ? (
-              <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl bg-slate-50 text-sm font-medium text-slate-500">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl bg-[#F8F5EE] text-sm font-medium text-[#766F63]">
+                <Loader2 className="h-6 w-6 animate-spin text-[#075A3A]" />
                 <span className="mt-3">Loading record details...</span>
               </div>
             ) : record ? (
@@ -929,13 +931,13 @@
                   )}
 
                   {showWorkflow && (
-                    <section className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5">
+                    <section className="rounded-2xl border border-[#CFE0D6] bg-gradient-to-br from-[#F0F7F3] to-[#FFF9EA] p-5">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <h3 className="text-lg font-bold text-slate-950">
+                          <h3 className="text-lg font-bold text-[#252A27]">
                             Review Workflow
                           </h3>
-                          <p className="mt-1 text-sm leading-6 text-slate-600">
+                          <p className="mt-1 text-sm leading-6 text-[#625E56]">
                             {isReceived
                               ? "Start the formal review after checking the submitted metadata and attachments."
                               : "Document the review result, assign the physical or digital storage location, then archive the record."}
@@ -946,7 +948,7 @@
 
                       {isReceived && (
                         <div className="mt-5">
-                          <label className="text-sm font-semibold text-slate-800">
+                          <label className="text-sm font-semibold text-[#3F443F]">
                             Initial review note
                           </label>
                           <textarea
@@ -959,14 +961,14 @@
                             }
                             disabled={workflowLoading}
                             placeholder="Optional note before starting review..."
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+                            className="mt-2 w-full rounded-xl border border-[#E3DCCE] bg-white px-4 py-3 text-sm text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:ring-4 focus:ring-[#CFE0D6] disabled:opacity-60"
                           />
 
                           <button
                             type="button"
                             onClick={onStartReview}
                             disabled={workflowLoading}
-                            className="mt-4 flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                            className="mt-4 flex w-full items-center justify-center rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                           >
                             {workflowLoading
                               ? "Starting Review..."
@@ -978,7 +980,7 @@
                       {isUnderReview && (
                         <div className="mt-5 space-y-4">
                           <div>
-                            <label className="text-sm font-semibold text-slate-800">
+                            <label className="text-sm font-semibold text-[#3F443F]">
                               Review remarks
                             </label>
                             <textarea
@@ -991,12 +993,12 @@
                               }
                               disabled={workflowLoading}
                               placeholder="Describe the verification performed and the review result..."
-                              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+                              className="mt-2 w-full rounded-xl border border-[#E3DCCE] bg-white px-4 py-3 text-sm text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:ring-4 focus:ring-[#CFE0D6] disabled:opacity-60"
                             />
                           </div>
 
                           <div>
-                            <label className="text-sm font-semibold text-slate-800">
+                            <label className="text-sm font-semibold text-[#3F443F]">
                               Storage location
                             </label>
                             <input
@@ -1008,12 +1010,12 @@
                               }
                               disabled={workflowLoading}
                               placeholder="Example: Archive Room A / Shelf 2 / Box 14"
-                              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+                              className="mt-2 w-full rounded-xl border border-[#E3DCCE] bg-white px-4 py-3 text-sm text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:ring-4 focus:ring-[#CFE0D6] disabled:opacity-60"
                             />
                           </div>
 
                           <div>
-                            <label className="text-sm font-semibold text-slate-800">
+                            <label className="text-sm font-semibold text-[#3F443F]">
                               Correction notes
                             </label>
                             <textarea
@@ -1026,7 +1028,7 @@
                               }
                               disabled={workflowLoading}
                               placeholder="Required only when returning the submission. Explain exactly what Staff must fix or replace."
-                              className="mt-2 w-full rounded-xl border border-amber-200 bg-amber-50/40 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-100 disabled:opacity-60"
+                              className="mt-2 w-full rounded-xl border border-amber-200 bg-amber-50/40 px-4 py-3 text-sm text-[#2D332F] outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-100 disabled:opacity-60"
                             />
                           </div>
 
@@ -1035,7 +1037,7 @@
                               type="button"
                               onClick={onSaveReview}
                               disabled={workflowLoading}
-                              className="flex items-center justify-center rounded-xl border border-blue-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="flex items-center justify-center rounded-xl border border-[#CFE0D6] bg-white px-5 py-3 text-sm font-semibold text-[#075A3A] transition hover:bg-[#F0F7F3] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {workflowLoading
                                 ? "Saving..."
@@ -1092,15 +1094,15 @@ href={`/records/${record.id}/edit`}
                     </section>
                   )}
 
-                  <section className="rounded-2xl border border-slate-200 p-5">
+                  <section className="rounded-2xl border border-[#E3DCCE] p-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <h3 className="text-lg font-bold text-slate-900">
+                        <h3 className="text-lg font-bold text-[#2D332F]">
                           {isRecordOwner
                             ? "Submission Information"
                             : "Record Information"}
                         </h3>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-[#766F63]">
                           Submission and classification details.
                         </p>
                       </div>
@@ -1178,14 +1180,14 @@ href={`/records/${record.id}/edit`}
                 </div>
 
                 <aside className="space-y-5">
-                  <section className="rounded-2xl bg-slate-950 p-5 text-white">
+                  <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#6B0F2B] to-[#4B0B1E] p-5 text-white shadow-lg shadow-[#6B0F2B]/15">
                     <h3 className="text-lg font-bold">
                       {isRecordOwner
                         ? "Submission Status"
                         : "Record Status"}
                     </h3>
 
-                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                    <p className="mt-2 text-sm leading-6 text-[#E5DDCC]">
                       {getStatusDescription(
                         record.status,
                         isRecordOwner
@@ -1202,18 +1204,18 @@ href={`/records/${record.id}/edit`}
                     </div>
                   </section>
 
-                  <section className="rounded-2xl border border-slate-200 p-5">
+                  <section className="rounded-2xl border border-[#E3DCCE] p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-bold text-slate-900">
+                        <h3 className="text-lg font-bold text-[#2D332F]">
                           Files
                         </h3>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-[#766F63]">
                           Inspect each attachment before completing review.
                         </p>
                       </div>
 
-                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                      <span className="rounded-full bg-[#FFF3D6] px-3 py-1 text-xs font-extrabold text-[#A66B00] ring-1 ring-[#EBCF8F]">
                         {files.length}
                       </span>
                     </div>
@@ -1223,7 +1225,7 @@ href={`/records/${record.id}/edit`}
                     )}
 
                     {files.length === 0 ? (
-                      <p className="mt-4 text-sm leading-6 text-slate-500">
+                      <p className="mt-4 text-sm leading-6 text-[#766F63]">
                         No files uploaded for this record.
                       </p>
                     ) : (
@@ -1235,10 +1237,10 @@ href={`/records/${record.id}/edit`}
                           return (
                             <div
                               key={file.id}
-                              className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                              className="rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] p-3"
                             >
                               <div className="flex items-start gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-xs font-bold text-blue-700">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FFF3D6] text-xs font-extrabold text-[#A66B00] ring-1 ring-[#EBCF8F]">
                                   {getFileExtension(
                                     file.file_name
                                   )}
@@ -1247,15 +1249,15 @@ href={`/records/${record.id}/edit`}
                                 <div className="min-w-0 flex-1">
                                   <p
                                     title={file.file_name}
-                                    className="truncate text-sm font-semibold text-slate-900"
+                                    className="truncate text-sm font-semibold text-[#2D332F]"
                                   >
                                     {file.file_name}
                                   </p>
-                                  <p className="mt-1 truncate text-xs text-slate-500">
+                                  <p className="mt-1 truncate text-xs text-[#766F63]">
                                     {file.file_type ||
                                       "Unknown file type"}
                                   </p>
-                                  <p className="mt-1 text-xs text-slate-400">
+                                  <p className="mt-1 text-xs text-[#A09582]">
                                     {formatFileSize(
                                       file.file_size
                                     )}
@@ -1269,7 +1271,7 @@ href={`/records/${record.id}/edit`}
                                 disabled={
                                   downloadingFileId !== null
                                 }
-                                className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[#6B0F2B] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 {isDownloading ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1296,12 +1298,12 @@ href={`/records/${record.id}/edit`}
           </div>
 
           {record && (
-            <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+            <footer className="flex flex-col-reverse gap-3 border-t border-[#E3DCCE] bg-[#F8F5EE] px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={workflowLoading}
-                className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                className="flex items-center justify-center rounded-xl border border-[#E3DCCE] bg-white px-5 py-3 text-sm font-semibold text-[#514D46] transition hover:bg-[#F0ECE4] disabled:opacity-60"
               >
                 Close
               </button>
@@ -1317,7 +1319,7 @@ href={`/records/${record.id}/edit`}
 
               <Link
                 href={`/records/${record.id}`}
-                className="flex items-center justify-center rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="flex items-center justify-center rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#571023]"
               >
                 Open Full Details
               </Link>
@@ -1362,9 +1364,9 @@ href={`/records/${record.id}/edit`}
     emptyText: string;
   }) {
     return (
-      <section className="rounded-2xl border border-slate-200 p-5">
-        <h3 className="font-bold text-slate-900">{title}</h3>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+      <section className="rounded-2xl border border-[#E3DCCE] p-5">
+        <h3 className="font-bold text-[#2D332F]">{title}</h3>
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#625E56]">
           {value || emptyText}
         </p>
       </section>
@@ -1379,11 +1381,11 @@ href={`/records/${record.id}/edit`}
     value: string;
   }) {
     return (
-      <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+      <div className="rounded-xl bg-[#F8F5EE] p-4 ring-1 ring-[#DED5C5]">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#A09582]">
           {label}
         </p>
-        <p className="mt-1 break-words text-sm font-semibold text-slate-900">
+        <p className="mt-1 break-words text-sm font-semibold text-[#2D332F]">
           {value}
         </p>
       </div>
@@ -1392,7 +1394,7 @@ href={`/records/${record.id}/edit`}
 
   function WorkflowHint({ text }: { text: string }) {
     return (
-      <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-semibold leading-5 text-blue-800">
+      <div className="mt-4 rounded-xl border border-[#CFE0D6] bg-[#F0F7F3] px-4 py-3 text-xs font-semibold leading-5 text-[#064D33]">
         {text}
       </div>
     );
@@ -1400,8 +1402,8 @@ href={`/records/${record.id}/edit`}
 
   function EmptyCard({ text }: { text: string }) {
     return (
-      <div className="flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-center text-sm text-slate-500 shadow-sm">
-        <Files className="h-6 w-6 text-slate-400" />
+      <div className="flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed border-[#D7CDBB] bg-white p-5 text-center text-sm text-[#766F63] shadow-sm">
+        <Files className="h-6 w-6 text-[#A09582]" />
         <p className="mt-3">{text}</p>
       </div>
     );
@@ -1416,10 +1418,10 @@ href={`/records/${record.id}/edit`}
   }) {
     const label = getStatusLabel(status, isStaff);
 
-    let classes = "bg-slate-100 text-slate-700";
+    let classes = "bg-[#F0ECE4] text-[#514D46]";
 
     if (status === "received") {
-      classes = "bg-blue-50 text-blue-700";
+      classes = "bg-[#F0F7F3] text-[#075A3A]";
     } else if (status === "under_review") {
       classes = "bg-amber-50 text-amber-700";
     } else if (status === "returned_for_correction") {
@@ -1429,7 +1431,7 @@ href={`/records/${record.id}/edit`}
     } else if (status === "for_disposal") {
       classes = "bg-red-50 text-red-700";
     } else if (status === "disposed") {
-      classes = "bg-slate-200 text-slate-700";
+      classes = "bg-[#E3DCCE] text-[#514D46]";
     }
 
     return (
@@ -1450,8 +1452,8 @@ href={`/records/${record.id}/edit`}
   }) {
     return (
       <div className="flex items-center justify-between gap-3">
-        <span className="text-slate-400">{label}</span>
-        <span className="truncate font-medium text-slate-700">
+        <span className="text-[#A09582]">{label}</span>
+        <span className="truncate font-medium text-[#514D46]">
           {value}
         </span>
       </div>

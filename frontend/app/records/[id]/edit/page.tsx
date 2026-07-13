@@ -415,7 +415,7 @@ export default function CorrectRecordPage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
+        <div className="rounded-2xl bg-white p-6 text-sm text-[#766F63] shadow-sm ring-1 ring-[#DED5C5]">
           Loading correction form...
         </div>
       </AppShell>
@@ -456,29 +456,29 @@ export default function CorrectRecordPage() {
               Returned for Correction
             </p>
 
-            <h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">
+            <h1 className="mt-1 text-2xl font-bold text-[#252A27] sm:text-3xl">
               Correct Submission
             </h1>
 
-            <p className="mt-1 text-sm leading-6 text-slate-500">
+            <p className="mt-1 text-sm leading-6 text-[#766F63]">
               Update the record and replace any incorrect or missing files.
             </p>
           </div>
 
           <Link
             href="/records?scope=mine"
-            className="flex min-h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+            className="flex min-h-12 w-full items-center justify-center rounded-xl border border-[#E3DCCE] bg-white px-5 py-3 text-center text-sm font-semibold text-[#514D46] transition hover:bg-[#F8F5EE] sm:w-auto"
           >
             Back to Details
           </Link>
         </section>
 
-        <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
-          <p className="text-sm font-bold text-amber-900">
+        <section className="mt-6 rounded-2xl border border-[#EBCF8F] bg-gradient-to-br from-[#FFF9EA] to-[#FFF3D6] p-4 shadow-sm sm:p-5">
+          <p className="text-sm font-extrabold text-[#7A4A00]">
             Records Officer notes
           </p>
 
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-amber-800">
+          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#8A5A08]">
             {record.correction_notes ||
               "No correction notes were provided."}
           </p>
@@ -489,8 +489,9 @@ export default function CorrectRecordPage() {
 
           {success && <Alert tone="success">{success}</Alert>}
 
-          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-            <h2 className="text-lg font-bold text-slate-900">
+          <section className="relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-6">
+            <div className="absolute inset-x-0 top-0 h-1 bg-[#075A3A]" />
+            <h2 className="text-lg font-extrabold text-[#2D332F]">
               Record Information
             </h2>
 
@@ -584,19 +585,20 @@ export default function CorrectRecordPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+          <section className="relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <div className="absolute inset-x-0 top-0 h-1 bg-[#D9961A]" />
+                <h2 className="text-lg font-extrabold text-[#2D332F]">
                   Supporting Files
                 </h2>
 
-                <p className="mt-1 text-sm leading-6 text-slate-500">
+                <p className="mt-1 text-sm leading-6 text-[#766F63]">
                   Remove incorrect files and upload replacements.
                 </p>
               </div>
 
-              <span className="w-fit shrink-0 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+              <span className="w-fit shrink-0 rounded-full bg-[#FFF3D6] px-3 py-1 text-xs font-extrabold text-[#A66B00] ring-1 ring-[#EBCF8F]">
                 {totalFiles}/{MAX_FILES}
               </span>
             </div>
@@ -635,7 +637,7 @@ export default function CorrectRecordPage() {
               ))}
 
               {totalFiles === 0 && (
-                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
+                <p className="rounded-xl border border-dashed border-[#D7CDBB] bg-[#FCFAF5] p-5 text-sm leading-6 text-[#766F63]">
                   No files attached. Add at least one file before resubmitting.
                 </p>
               )}
@@ -644,15 +646,15 @@ export default function CorrectRecordPage() {
             <label
               className={`mt-4 flex min-h-36 flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition sm:px-5 ${
                 totalFiles >= MAX_FILES || saving
-                  ? "cursor-not-allowed border-slate-200 bg-slate-100 opacity-60"
-                  : "cursor-pointer border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50"
+                  ? "cursor-not-allowed border-[#E3DCCE] bg-[#F0ECE4] opacity-60"
+                  : "cursor-pointer border-[#D7CDBB] bg-[#F8F5EE] hover:border-[#91BAA3] hover:bg-[#F0F7F3]"
               }`}
             >
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm font-semibold text-[#2D332F]">
                 Add replacement files
               </span>
 
-              <span className="mt-1 text-xs leading-5 text-slate-500">
+              <span className="mt-1 text-xs leading-5 text-[#766F63]">
                 Maximum 5 files, 10 MB each
               </span>
 
@@ -668,11 +670,11 @@ export default function CorrectRecordPage() {
             </label>
           </section>
 
-          <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-slate-50/95 px-4 py-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0">
+          <div className="sticky bottom-0 -mx-4 border-t border-[#E3DCCE] bg-[#F8F5EE]/95 px-4 py-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0">
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Link
                 href="/records?scope=mine"
-                className="flex min-h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+                className="flex min-h-12 w-full items-center justify-center rounded-xl border border-[#E3DCCE] bg-white px-5 py-3 text-center text-sm font-semibold text-[#514D46] transition hover:bg-[#F8F5EE] sm:w-auto"
               >
                 Cancel
               </Link>
@@ -680,7 +682,7 @@ export default function CorrectRecordPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="min-h-12 w-full rounded-xl border border-blue-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="min-h-12 w-full rounded-xl border border-[#CFE0D6] bg-white px-5 py-3 text-sm font-bold text-[#075A3A] transition hover:bg-[#F0F7F3] focus:outline-none focus:ring-4 focus:ring-[#CFE0D6] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {saving ? "Saving..." : "Save Corrections"}
               </button>
@@ -689,7 +691,7 @@ export default function CorrectRecordPage() {
                 type="button"
                 onClick={handleSaveAndResubmit}
                 disabled={saving}
-                className="min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="min-h-12 w-full rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#6B0F2B]/20 transition hover:-translate-y-0.5 hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {saving ? "Processing..." : "Save & Resubmit"}
               </button>
@@ -702,7 +704,7 @@ export default function CorrectRecordPage() {
 }
 
 const inputClass =
-  "mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 sm:text-sm";
+  "mt-2 min-h-12 w-full rounded-xl border border-[#E3DCCE] bg-[#FCFAF5] px-4 py-3 text-base text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] sm:text-sm";
 
 function Field({
   label,
@@ -712,7 +714,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block text-sm font-semibold text-slate-700">
+    <label className="block text-sm font-semibold text-[#514D46]">
       {label}
       {children}
     </label>
@@ -733,20 +735,20 @@ function FileRow({
   onAction: () => void;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-xs font-bold text-blue-700">
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-[#E3DCCE] bg-[#FCFAF5] p-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FFF3D6] text-xs font-extrabold text-[#A66B00] ring-1 ring-[#EBCF8F]">
         {getExtension(name)}
       </div>
 
       <div className="min-w-0 flex-1">
         <p
           title={name}
-          className="truncate text-sm font-semibold text-slate-900"
+          className="truncate text-sm font-semibold text-[#2D332F]"
         >
           {name}
         </p>
 
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-[#766F63]">
           {formatFileSize(size)}
         </p>
       </div>

@@ -99,13 +99,13 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-slate-100 lg:flex lg:items-center lg:justify-center lg:px-4 lg:py-5">
-      <div className="pointer-events-none absolute -left-24 -top-24 hidden h-72 w-72 rounded-full bg-blue-200/45 blur-3xl sm:block" />
-      <div className="pointer-events-none absolute -bottom-28 -right-20 hidden h-80 w-80 rounded-full bg-emerald-200/40 blur-3xl sm:block" />
+    <main className="relative min-h-screen w-full overflow-hidden bg-[#F4F0E8] lg:flex lg:items-center lg:justify-center lg:px-4 lg:py-5">
+      <div className="pointer-events-none absolute -left-24 -top-24 hidden h-72 w-72 rounded-full bg-[#D9961A]/25 blur-3xl sm:block" />
+      <div className="pointer-events-none absolute -bottom-28 -right-20 hidden h-80 w-80 rounded-full bg-[#075A3A]/20 blur-3xl sm:block" />
 
-      <div className="relative mx-auto grid min-h-screen w-full overflow-hidden bg-white shadow-2xl shadow-slate-300/50 lg:min-h-[610px] lg:max-w-5xl lg:grid-cols-[0.95fr_1.05fr] lg:rounded-3xl lg:ring-1 lg:ring-slate-200">
-        <section className="relative hidden min-h-[610px] overflow-hidden bg-slate-950 p-8 text-white lg:flex lg:flex-col lg:justify-between">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.28),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.18),transparent_34%)]" />
+      <div className="relative mx-auto grid min-h-screen w-full overflow-hidden bg-white shadow-2xl shadow-[#7D6F5A]/20 lg:min-h-[610px] lg:max-w-5xl lg:grid-cols-[0.95fr_1.05fr] lg:rounded-3xl lg:ring-1 lg:ring-[#DED5C5]">
+        <section className="relative hidden min-h-[610px] overflow-hidden bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] p-8 text-white lg:flex lg:flex-col lg:justify-between">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(217,150,26,0.22),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(107,15,43,0.22),transparent_34%)]" />
 
           <div className="relative">
             <div className="flex h-[148px] w-full max-w-[420px] items-center overflow-hidden rounded-2xl shadow-lg ring-1 ring-white/20">
@@ -119,8 +119,8 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="mt-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-blue-100 backdrop-blur">
-              <ShieldCheck className="h-4 w-4 text-emerald-300" />
+            <div className="mt-7 inline-flex items-center gap-2 rounded-full border border-[#D9961A]/30 bg-[#D9961A]/10 px-3 py-1.5 text-xs font-bold text-[#F4C25E] backdrop-blur">
+              <ShieldCheck className="h-4 w-4 text-[#F4C25E]" />
               Secure records management
             </div>
 
@@ -128,7 +128,7 @@ export default function LoginPage() {
               Manage institutional records with confidence.
             </h1>
 
-            <p className="mt-4 max-w-md text-sm leading-6 text-slate-300">
+            <p className="mt-4 max-w-md text-sm leading-6 text-[#E5DDCC]">
               A centralized platform for record acquisition, review, correction,
               archiving, and controlled access.
             </p>
@@ -152,8 +152,8 @@ export default function LoginPage() {
         </section>
 
         <section className="flex min-h-screen flex-col bg-white lg:min-h-[610px] lg:justify-center">
-          <div className="relative overflow-hidden bg-slate-950 px-5 pb-7 pt-5 text-white lg:hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.30),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.18),transparent_40%)]" />
+          <div className="relative overflow-hidden bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-5 pb-7 pt-5 text-white lg:hidden">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(217,150,26,0.24),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(107,15,43,0.22),transparent_40%)]" />
 
             <div className="relative">
               <div className="mx-auto flex h-[84px] w-full max-w-[400px] items-center overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-white/20">
@@ -167,8 +167,8 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div className="mt-5 flex items-center justify-center gap-2 text-center text-xs font-semibold text-blue-100">
-                <ShieldCheck className="h-4 w-4 text-emerald-300" />
+              <div className="mt-5 flex items-center justify-center gap-2 text-center text-xs font-semibold text-[#F4C25E]">
+                <ShieldCheck className="h-4 w-4 text-[#F4C25E]" />
                 Secure records management
               </div>
             </div>
@@ -176,15 +176,15 @@ export default function LoginPage() {
 
           <div className="flex flex-1 items-center px-5 py-7 sm:px-8 sm:py-9 lg:px-10 lg:py-10">
             <div className="mx-auto w-full max-w-md">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600 sm:text-sm">
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#D9961A] sm:text-sm">
                 Welcome back
               </p>
 
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#252A27] sm:text-3xl">
                 Sign in to IRAM
               </h2>
 
-              <p className="mt-2 text-sm leading-6 text-slate-500">
+              <p className="mt-2 text-sm leading-6 text-[#766F63]">
                 Enter your account details to access the records management
                 dashboard.
               </p>
@@ -206,13 +206,13 @@ export default function LoginPage() {
                 <div>
                   <label
                     htmlFor="email"
-                    className="text-sm font-semibold text-slate-700"
+                    className="text-sm font-semibold text-[#514D46]"
                   >
                     Email address
                   </label>
 
                   <div className="relative mt-2">
-                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#A09582]" />
 
                     <input
                       id="email"
@@ -223,10 +223,10 @@ export default function LoginPage() {
                       inputMode="email"
                       placeholder="name@example.com"
                       aria-invalid={Boolean(fieldErrors.email)}
-                      className={`h-12 w-full rounded-xl border bg-slate-50 pl-12 pr-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-4 sm:text-sm ${
+                      className={`h-12 w-full rounded-xl border bg-[#FCFAF5] pl-12 pr-4 text-base text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:bg-white focus:ring-4 sm:text-sm ${
                         fieldErrors.email
                           ? "border-red-300 focus:border-red-500 focus:ring-red-50"
-                          : "border-slate-200 focus:border-blue-500 focus:ring-blue-50"
+                          : "border-[#E3DCCE] focus:border-[#075A3A] focus:ring-[#E6F2EC]"
                       }`}
                     />
                   </div>
@@ -241,13 +241,13 @@ export default function LoginPage() {
                 <div>
                   <label
                     htmlFor="password"
-                    className="text-sm font-semibold text-slate-700"
+                    className="text-sm font-semibold text-[#514D46]"
                   >
                     Password
                   </label>
 
                   <div className="relative mt-2">
-                    <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#A09582]" />
 
                     <input
                       id="password"
@@ -257,17 +257,17 @@ export default function LoginPage() {
                       autoComplete="current-password"
                       placeholder="Enter your password"
                       aria-invalid={Boolean(fieldErrors.password)}
-                      className={`h-12 w-full rounded-xl border bg-slate-50 pl-12 pr-12 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-4 sm:text-sm ${
+                      className={`h-12 w-full rounded-xl border bg-[#FCFAF5] pl-12 pr-12 text-base text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:bg-white focus:ring-4 sm:text-sm ${
                         fieldErrors.password
                           ? "border-red-300 focus:border-red-500 focus:ring-red-50"
-                          : "border-slate-200 focus:border-blue-500 focus:ring-blue-50"
+                          : "border-[#E3DCCE] focus:border-[#075A3A] focus:ring-[#E6F2EC]"
                       }`}
                     />
 
                     <button
                       type="button"
                       onClick={() => setShowPassword((current) => !current)}
-                      className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-blue-600"
+                      className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-[#A09582] transition hover:bg-[#F4F0E8] hover:text-[#075A3A]"
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
                       }
@@ -290,25 +290,25 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-5 text-sm font-bold text-white shadow-lg shadow-[#6B0F2B]/20 transition hover:-translate-y-0.5 hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                   {loading ? "Signing in..." : "Sign in"}
                 </button>
               </form>
 
-              <p className="mt-5 text-center text-sm text-slate-500 sm:mt-6">
+              <p className="mt-5 text-center text-sm text-[#766F63] sm:mt-6">
                 No account yet?{" "}
                 <Link
                   href="/register"
-                  className="font-semibold text-blue-600 transition hover:text-blue-700"
+                  className="font-semibold text-[#075A3A] transition hover:text-[#075A3A]"
                 >
                   Create an account
                 </Link>
               </p>
 
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs leading-5 text-slate-500 sm:mt-6 sm:text-left">
-                <span className="font-semibold text-slate-700">
+              <div className="mt-5 rounded-2xl border border-[#E7D3A2] bg-[#FFF9EA] px-4 py-3 text-center text-xs leading-5 text-[#766F63] sm:mt-6 sm:text-left">
+                <span className="font-semibold text-[#514D46]">
                   Demo administrator:
                 </span>{" "}
                 <span className="break-all sm:break-normal">
@@ -316,7 +316,7 @@ export default function LoginPage() {
                 </span>
               </div>
 
-              <p className="mt-5 text-center text-[11px] leading-5 text-slate-400 lg:hidden">
+              <p className="mt-5 text-center text-[11px] leading-5 text-[#A09582] lg:hidden">
                 Record Acquisition and Archiving Management System
               </p>
             </div>
@@ -338,12 +338,12 @@ function Feature({
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/20 text-blue-200">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#D9961A] text-white shadow-sm">
         {icon}
       </div>
 
       <p className="mt-3 text-sm font-semibold text-white">{title}</p>
-      <p className="mt-1 text-xs leading-5 text-slate-300">{text}</p>
+      <p className="mt-1 text-xs leading-5 text-[#E5DDCC]">{text}</p>
     </div>
   );
 }

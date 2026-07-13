@@ -354,27 +354,34 @@ export default function UserManagementPage() {
   return (
     <AppShell>
       <div className="w-full">
-        <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-blue-600">
-              Administration
-            </p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">
-              User Management
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-              Create accounts, assign roles and departments,
-              control access, and reset passwords.
-            </p>
-          </div>
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-5 py-6 text-white shadow-xl shadow-[#075A3A]/20 sm:px-7 sm:py-7">
+          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#D9961A]/15 blur-2xl" />
+          <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-[#6B0F2B]/30 blur-3xl" />
 
-          <button
-            type="button"
-            onClick={openCreate}
-            className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-          >
-            + Create User
-          </button>
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#F4C25E]">
+                Administration
+              </p>
+
+              <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
+                User Management
+              </h1>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#E5DDCC]">
+                Create accounts, assign roles and departments,
+                control access, and reset passwords.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center justify-center rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-black/15 transition hover:-translate-y-0.5 hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30"
+            >
+              + Create User
+            </button>
+          </div>
         </section>
 
         {success && (
@@ -389,7 +396,8 @@ export default function UserManagementPage() {
           </div>
         )}
 
-        <section className="mt-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+        <section className="relative mt-6 overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-6">
+          <div className="absolute inset-x-0 top-0 h-1 bg-[#D9961A]" />
           <form
             onSubmit={handleSearch}
             className="grid gap-3 md:grid-cols-5"
@@ -400,7 +408,7 @@ export default function UserManagementPage() {
                 setSearch(event.target.value)
               }
               placeholder="Search name or email..."
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 md:col-span-2"
+              className="rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-4 py-3 text-sm outline-none focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] md:col-span-2"
             />
 
             <select
@@ -408,7 +416,7 @@ export default function UserManagementPage() {
               onChange={(event) =>
                 setRoleFilter(event.target.value)
               }
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+              className="rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-4 py-3 text-sm outline-none"
             >
               <option value="">All roles</option>
               {roles.map((role) => (
@@ -428,7 +436,7 @@ export default function UserManagementPage() {
                   event.target.value
                 )
               }
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+              className="rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-4 py-3 text-sm outline-none"
             >
               <option value="">All departments</option>
               {departments.map((department) => (
@@ -447,7 +455,7 @@ export default function UserManagementPage() {
                 onChange={(event) =>
                   setStatusFilter(event.target.value)
                 }
-                className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none"
+                className="min-w-0 flex-1 rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-3 py-3 text-sm outline-none"
               >
                 <option value="">All status</option>
                 <option value="active">Active</option>
@@ -457,7 +465,7 @@ export default function UserManagementPage() {
               </select>
 
               <button
-                className="rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white"
+                className="rounded-xl bg-[#075A3A] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#043D28]"
               >
                 Search
               </button>
@@ -478,14 +486,14 @@ export default function UserManagementPage() {
             users.map((user) => (
               <article
                 key={user.id}
-                className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
+                className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#DED5C5]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate font-bold text-slate-900">
+                    <p className="truncate font-bold text-[#2D332F]">
                       {user.name}
                     </p>
-                    <p className="mt-1 truncate text-sm text-slate-500">
+                    <p className="mt-1 truncate text-sm text-[#766F63]">
                       {user.email}
                     </p>
                   </div>
@@ -524,10 +532,10 @@ export default function UserManagementPage() {
             ))}
         </section>
 
-        <section className="mt-5 hidden overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 md:block">
+        <section className="relative mt-5 hidden overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#DED5C5] md:block">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[950px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="bg-[#F7F3EA] text-xs uppercase tracking-wide text-[#817766]">
                 <tr>
                   <th className="px-5 py-4">User</th>
                   <th className="px-5 py-4">Role</th>
@@ -540,12 +548,12 @@ export default function UserManagementPage() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-[#ECE5D8]">
                 {loading && (
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-5 py-8 text-center text-slate-500"
+                      className="px-5 py-8 text-center text-[#766F63]"
                     >
                       Loading users...
                     </td>
@@ -556,7 +564,7 @@ export default function UserManagementPage() {
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-5 py-8 text-center text-slate-500"
+                      className="px-5 py-8 text-center text-[#766F63]"
                     >
                       No users found.
                     </td>
@@ -567,20 +575,20 @@ export default function UserManagementPage() {
                   users.map((user) => (
                     <tr
                       key={user.id}
-                      className="hover:bg-slate-50"
+                      className="hover:bg-[#F8F5EE]"
                     >
                       <td className="px-5 py-4">
-                        <p className="font-bold text-slate-900">
+                        <p className="font-bold text-[#2D332F]">
                           {user.name}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-[#766F63]">
                           {user.email}
                         </p>
                       </td>
-                      <td className="px-5 py-4 text-slate-600">
+                      <td className="px-5 py-4 text-[#625E56]">
                         {user.role?.name || "N/A"}
                       </td>
-                      <td className="px-5 py-4 text-slate-600">
+                      <td className="px-5 py-4 text-[#625E56]">
                         {user.department?.name ||
                           "N/A"}
                       </td>
@@ -589,7 +597,7 @@ export default function UserManagementPage() {
                           status={user.status}
                         />
                       </td>
-                      <td className="px-5 py-4 text-slate-600">
+                      <td className="px-5 py-4 text-[#625E56]">
                         {formatDate(user.created_at)}
                       </td>
                       <td className="px-5 py-4">
@@ -619,7 +627,7 @@ export default function UserManagementPage() {
 
       {modalMode && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#6B0F2B]/60 p-4 backdrop-blur-sm"
           onMouseDown={(event) => {
             if (
               event.target === event.currentTarget &&
@@ -629,13 +637,13 @@ export default function UserManagementPage() {
             }
           }}
         >
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
-            <header className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl ring-1 ring-[#DED5C5]">
+            <header className="flex items-start justify-between border-b border-[#E3DCCE] px-6 py-5">
               <div>
-                <p className="text-sm font-semibold text-blue-600">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#D9961A]">
                   Administrator Action
                 </p>
-                <h2 className="mt-1 text-xl font-bold text-slate-950">
+                <h2 className="mt-1 text-xl font-bold text-[#252A27]">
                   {modalMode === "create" &&
                     "Create User"}
                   {modalMode === "edit" &&
@@ -656,7 +664,7 @@ export default function UserManagementPage() {
                 type="button"
                 onClick={closeModal}
                 disabled={submitting}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xl text-slate-600"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F0ECE4] text-xl text-[#625E56]"
               >
                 ×
               </button>
@@ -825,7 +833,7 @@ export default function UserManagementPage() {
 
                   <button
                     disabled={submitting}
-                    className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                    className="rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#6B0F2B]/20 transition hover:-translate-y-0.5 hover:bg-[#571023] disabled:opacity-60"
                   >
                     {submitting
                       ? "Saving..."
@@ -841,7 +849,7 @@ export default function UserManagementPage() {
                   onSubmit={submitPassword}
                   className="grid gap-5"
                 >
-                  <p className="text-sm leading-6 text-slate-600">
+                  <p className="text-sm leading-6 text-[#625E56]">
                     Set a new password for{" "}
                     <strong>
                       {selectedUser?.name}
@@ -886,7 +894,7 @@ export default function UserManagementPage() {
 
                   <button
                     disabled={submitting}
-                    className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                    className="rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#6B0F2B]/20 disabled:opacity-60"
                   >
                     {submitting
                       ? "Resetting..."
@@ -897,7 +905,7 @@ export default function UserManagementPage() {
 
               {modalMode === "status" && (
                 <div>
-                  <p className="text-sm leading-6 text-slate-600">
+                  <p className="text-sm leading-6 text-[#625E56]">
                     {selectedUser?.status ===
                     "active"
                       ? `Deactivate ${selectedUser.name}? They will be signed out and unable to log in.`
@@ -909,7 +917,7 @@ export default function UserManagementPage() {
                       type="button"
                       onClick={closeModal}
                       disabled={submitting}
-                      className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700"
+                      className="rounded-xl border border-[#E3DCCE] px-5 py-3 text-sm font-semibold text-[#514D46]"
                     >
                       Cancel
                     </button>
@@ -944,7 +952,7 @@ export default function UserManagementPage() {
 }
 
 const inputClass =
-  "mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50";
+  "mt-2 w-full rounded-xl border border-[#E3DCCE] bg-[#FCFAF5] px-4 py-3 text-sm text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]";
 
 function FormField({
   label,
@@ -954,7 +962,7 @@ function FormField({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block text-sm font-semibold text-slate-700">
+    <label className="block text-sm font-semibold text-[#514D46]">
       {label}
       {children}
     </label>
@@ -981,7 +989,7 @@ function UserActions({
       <button
         type="button"
         onClick={onEdit}
-        className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+        className="rounded-lg bg-[#F0F7F3] px-3 py-2 text-xs font-semibold text-[#075A3A] ring-1 ring-[#CFE0D6] hover:bg-[#E6F2EC]"
       >
         Edit
       </button>
@@ -989,7 +997,7 @@ function UserActions({
       <button
         type="button"
         onClick={onPassword}
-        className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+        className="rounded-lg bg-[#F0ECE4] px-3 py-2 text-xs font-semibold text-[#514D46] hover:bg-[#E3DCCE]"
       >
         Reset Password
       </button>
@@ -1027,7 +1035,7 @@ function StatusBadge({
       className={`inline-flex rounded-full px-3 py-1 text-xs font-bold capitalize ${
         status === "active"
           ? "bg-emerald-50 text-emerald-700"
-          : "bg-slate-200 text-slate-700"
+          : "bg-[#E3DCCE] text-[#514D46]"
       }`}
     >
       {status}
@@ -1044,10 +1052,10 @@ function InfoRow({
 }) {
   return (
     <div className="flex justify-between gap-3">
-      <span className="text-slate-400">
+      <span className="text-[#A09582]">
         {label}
       </span>
-      <span className="truncate font-medium text-slate-700">
+      <span className="truncate font-medium text-[#514D46]">
         {value}
       </span>
     </div>
@@ -1056,7 +1064,7 @@ function InfoRow({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
+    <div className="rounded-2xl bg-white p-5 text-sm text-[#766F63] shadow-sm ring-1 ring-[#DED5C5]">
       {text}
     </div>
   );

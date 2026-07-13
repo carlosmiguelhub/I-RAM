@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\OptionController;
 use App\Http\Controllers\Api\UserManagementController;
 use App\Http\Controllers\Api\ArchiveController;
 use App\Http\Controllers\Api\SystemSettingController;
+use App\Http\Controllers\Api\DocumentRequestController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -22,6 +23,63 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Staff Archive Catalog and Document Requests
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get(
+        '/staff/archive-catalog',
+        [DocumentRequestController::class, 'catalog']
+    );
+
+    Route::get(
+        '/document-requests',
+        [DocumentRequestController::class, 'index']
+    );
+
+    Route::post(
+        '/document-requests',
+        [DocumentRequestController::class, 'store']
+    );
+
+    Route::get(
+        '/document-requests/{documentRequest}',
+        [DocumentRequestController::class, 'show']
+    );
+
+    Route::post(
+        '/document-requests/{documentRequest}/start-review',
+        [DocumentRequestController::class, 'startReview']
+    );
+
+    Route::post(
+        '/document-requests/{documentRequest}/approve',
+        [DocumentRequestController::class, 'approve']
+    );
+
+    Route::post(
+        '/document-requests/{documentRequest}/reject',
+        [DocumentRequestController::class, 'reject']
+    );
+
+    Route::post(
+        '/document-requests/{documentRequest}/release',
+        [DocumentRequestController::class, 'release']
+    );
+
+    Route::post(
+        '/document-requests/{documentRequest}/cancel',
+        [DocumentRequestController::class, 'cancel']
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Record Files
+    |--------------------------------------------------------------------------
+    */
+
     Route::get(
         '/record-files/{recordFile}/download',
         [RecordController::class, 'downloadFile']
@@ -31,6 +89,12 @@ Route::middleware('auth:sanctum')->group(function () {
         '/record-files/{recordFile}',
         [RecordController::class, 'deleteFile']
     );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Record Review Workflow
+    |--------------------------------------------------------------------------
+    */
 
     Route::post(
         '/records/{record}/start-review',
@@ -64,6 +128,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('records', RecordController::class);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Archive Repository
+    |--------------------------------------------------------------------------
+    */
+
     Route::prefix('archive')->group(function () {
         Route::get(
             '/records',
@@ -94,7 +164,18 @@ Route::middleware('auth:sanctum')->group(function () {
             '/records/{record}/move',
             [ArchiveController::class, 'moveRecord']
         );
+
+        Route::patch(
+            '/records/{record}/staff-access',
+            [ArchiveController::class, 'updateStaffAccess']
+        );
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Routes
+    |--------------------------------------------------------------------------
+    */
 
     Route::prefix('admin')
         ->middleware('admin')

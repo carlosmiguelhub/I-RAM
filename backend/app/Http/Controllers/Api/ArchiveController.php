@@ -106,6 +106,30 @@ class ArchiveController extends Controller
             );
         }
 
+        if ($request->filled('staff_visible')) {
+            $query->where(
+                'staff_visible',
+                $request->boolean('staff_visible')
+            );
+        }
+
+        if ($request->filled('access_level')) {
+            $request->validate([
+                'access_level' => [
+                    Rule::in([
+                        'internal',
+                        'restricted',
+                        'confidential',
+                    ]),
+                ],
+            ]);
+
+            $query->where(
+                'access_level',
+                $request->access_level
+            );
+        }
+
         return response()->json(
             $query->latest('archived_at')->paginate(12)
         );
@@ -151,7 +175,11 @@ class ArchiveController extends Controller
                 'max:100',
                 'unique:archive_folders,name',
             ],
-            'description' => ['nullable', 'string', 'max:1000'],
+            'description' => [
+                'nullable',
+                'string',
+                'max:1000',
+            ],
         ]);
 
         $folder = ArchiveFolder::create([
@@ -167,7 +195,8 @@ class ArchiveController extends Controller
 
         return response()->json([
             'message' => 'Archive folder created successfully.',
-            'folder' => $folder->load('creator:id,name')
+            'folder' => $folder
+                ->load('creator:id,name')
                 ->loadCount('records'),
         ], 201);
     }
@@ -188,10 +217,15 @@ class ArchiveController extends Controller
                 Rule::unique('archive_folders', 'name')
                     ->ignore($archiveFolder->id),
             ],
-            'description' => ['nullable', 'string', 'max:1000'],
+            'description' => [
+                'nullable',
+                'string',
+                'max:1000',
+            ],
         ]);
 
         $oldName = $archiveFolder->name;
+
         $archiveFolder->update($validated);
 
         $this->logFolderAction(
@@ -202,7 +236,8 @@ class ArchiveController extends Controller
 
         return response()->json([
             'message' => 'Archive folder updated successfully.',
-            'folder' => $archiveFolder->fresh()
+            'folder' => $archiveFolder
+                ->fresh()
                 ->load('creator:id,name')
                 ->loadCount('records'),
         ]);
@@ -217,7 +252,9 @@ class ArchiveController extends Controller
         }
 
         $folderName = $archiveFolder->name;
-        $recordsCount = $archiveFolder->records()
+
+        $recordsCount = $archiveFolder
+            ->records()
             ->where('status', 'archived')
             ->count();
 
@@ -272,6 +309,7 @@ class ArchiveController extends Controller
         ]);
 
         $record->load('archiveFolder');
+
         $newFolder = $record->archiveFolder?->name ?? 'Unfiled';
 
         AuditLog::create([
@@ -284,9 +322,84 @@ class ArchiveController extends Controller
 
         return response()->json([
             'message' => 'Archived record moved successfully.',
-            'record' => $record->fresh()->load(
-                $this->recordRelations()
+            'record' => $record
+                ->fresh()
+                ->load($this->recordRelations()),
+        ]);
+    }
+
+    public function updateStaffAccess(
+        Request $request,
+        Record $record
+    ) {
+        if ($response = $this->denyArchiveAccess($request)) {
+            return $response;
+        }
+
+        if ($record->status !== 'archived') {
+            return response()->json([
+                'message' => 'Staff access settings can only be changed for archived records.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'staff_visible' => [
+                'required',
+                'boolean',
+            ],
+            'access_level' => [
+                'required',
+                Rule::in([
+                    'internal',
+                    'restricted',
+                    'confidential',
+                ]),
+            ],
+        ]);
+
+        $staffVisible = (bool) $validated['staff_visible'];
+        $accessLevel = $validated['access_level'];
+
+        /*
+         * Confidential records must never appear in the normal
+         * Staff Archive Catalog.
+         */
+        if ($accessLevel === 'confidential') {
+            $staffVisible = false;
+        }
+
+        $oldVisible = (bool) $record->staff_visible;
+        $oldAccessLevel = $record->access_level ?? 'restricted';
+
+        $record->update([
+            'staff_visible' => $staffVisible,
+            'access_level' => $accessLevel,
+        ]);
+
+        $visibilityLabel = $staffVisible
+            ? 'visible to staff'
+            : 'hidden from staff';
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'record_id' => $record->id,
+            'action' => 'updated_archive_staff_access',
+            'description' => sprintf(
+                'Updated staff access for %s from %s/%s to %s/%s',
+                $record->record_code,
+                $oldVisible ? 'visible' : 'hidden',
+                $oldAccessLevel,
+                $staffVisible ? 'visible' : 'hidden',
+                $accessLevel
             ),
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => "Access settings updated. This record is now {$visibilityLabel}.",
+            'record' => $record
+                ->fresh()
+                ->load($this->recordRelations()),
         ]);
     }
 }

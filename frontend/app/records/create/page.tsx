@@ -304,15 +304,15 @@ export default function CreateRecordPage() {
       <div className="mx-auto w-full max-w-5xl">
         <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-blue-600">
+            <p className="text-sm font-semibold text-[#075A3A]">
               {isStaff ? "Staff Submission" : "Record Encoder"}
             </p>
 
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#252A27] sm:text-3xl">
               {isStaff ? "New Submission" : "Add New Record"}
             </h1>
 
-            <p className="mt-1 max-w-xl text-sm leading-6 text-slate-500">
+            <p className="mt-1 max-w-xl text-sm leading-6 text-[#766F63]">
               {isStaff
                 ? "Submit a digital or physical record for review by the Records Office."
                 : "Encode a newly acquired physical or digital document into the IRAM archive."}
@@ -321,7 +321,7 @@ export default function CreateRecordPage() {
 
           <Link
             href="/records"
-            className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto"
+            className="flex w-full items-center justify-center rounded-xl border border-[#E3DCCE] bg-white px-5 py-3 text-sm font-semibold text-[#514D46] shadow-sm transition hover:bg-[#F8F5EE] sm:w-auto"
           >
             Back to Records
           </Link>
@@ -337,12 +337,13 @@ export default function CreateRecordPage() {
             </div>
           )}
 
-          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-            <h2 className="text-lg font-bold text-slate-900">
+          <section className="relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-6">
+            <div className="absolute inset-x-0 top-0 h-1 bg-[#075A3A]" />
+            <h2 className="text-lg font-extrabold text-[#2D332F]">
               Basic Information
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-[#766F63]">
               Required details for identifying and classifying the record.
             </p>
 
@@ -410,7 +411,7 @@ export default function CreateRecordPage() {
               </FormSelect>
 
               {isStaff && (
-                <p className="-mt-1 text-xs text-slate-500 md:col-start-2">
+                <p className="-mt-1 text-xs text-[#766F63] md:col-start-2">
                   Your department is assigned automatically from your
                   account.
                 </p>
@@ -418,20 +419,21 @@ export default function CreateRecordPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+          <section className="relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <div className="absolute inset-x-0 top-0 h-1 bg-[#D9961A]" />
+                <h2 className="text-lg font-extrabold text-[#2D332F]">
                   Record Files
                 </h2>
 
-                <p className="mt-1 text-sm leading-6 text-slate-500">
+                <p className="mt-1 text-sm leading-6 text-[#766F63]">
                   Attach supporting documents. You may upload up to 5
                   files, with a maximum size of 10 MB per file.
                 </p>
               </div>
 
-              <span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+              <span className="w-fit rounded-full bg-[#FFF3D6] px-3 py-1 text-xs font-extrabold text-[#A66B00] ring-1 ring-[#EBCF8F]">
                 {selectedFiles.length}/{MAX_FILES} files
               </span>
             </div>
@@ -441,19 +443,19 @@ export default function CreateRecordPage() {
                 htmlFor="record-files"
                 className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 text-center transition sm:px-6 sm:py-10 ${
                   selectedFiles.length >= MAX_FILES || loading
-                    ? "cursor-not-allowed border-slate-200 bg-slate-100 opacity-70"
-                    : "cursor-pointer border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50"
+                    ? "cursor-not-allowed border-[#E3DCCE] bg-[#F0ECE4] opacity-70"
+                    : "cursor-pointer border-[#D7CDBB] bg-[#F8F5EE] hover:border-[#91BAA3] hover:bg-[#F0F7F3]/50"
                 }`}
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-2xl font-bold text-blue-700">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#D9961A] text-2xl font-extrabold text-white shadow-md shadow-[#D9961A]/20">
                   ↑
                 </span>
 
-                <span className="mt-3 text-sm font-semibold text-slate-900">
+                <span className="mt-3 text-sm font-semibold text-[#2D332F]">
                   Choose files to upload
                 </span>
 
-                <span className="mt-1 text-xs leading-5 text-slate-500">
+                <span className="mt-1 text-xs leading-5 text-[#766F63]">
                   PDF, Word, Excel, PowerPoint, image, CSV, or text files
                 </span>
 
@@ -483,9 +485,9 @@ export default function CreateRecordPage() {
                   {selectedFiles.map(({ id, file }) => (
                     <div
                       key={id}
-                      className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white p-3"
+                      className="flex min-w-0 items-center gap-3 rounded-xl border border-[#E3DCCE] bg-white p-3"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold uppercase text-slate-600">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FFF3D6] text-xs font-extrabold uppercase text-[#A66B00] ring-1 ring-[#EBCF8F]">
                         {file.name
                           .split(".")
                           .pop()
@@ -493,11 +495,11 @@ export default function CreateRecordPage() {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-900">
+                        <p className="truncate text-sm font-semibold text-[#2D332F]">
                           {file.name}
                         </p>
 
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        <p className="mt-0.5 text-xs text-[#766F63]">
                           {formatFileSize(file.size)}
                         </p>
                       </div>
@@ -513,7 +515,7 @@ export default function CreateRecordPage() {
                     </div>
                   ))}
 
-                  <div className="flex justify-end text-xs font-medium text-slate-500">
+                  <div className="flex justify-end text-xs font-medium text-[#766F63]">
                     Total size: {formatFileSize(totalFileSize)}
                   </div>
                 </div>
@@ -521,12 +523,13 @@ export default function CreateRecordPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-            <h2 className="text-lg font-bold text-slate-900">
+          <section className="relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-6">
+            <div className="absolute inset-x-0 top-0 h-1 bg-[#6B0F2B]" />
+            <h2 className="text-lg font-extrabold text-[#2D332F]">
               {isStaff ? "Submission Details" : "Archive Details"}
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-[#766F63]">
               {isStaff
                 ? "Add the source, description, and optional notes for review."
                 : "Add source, status, location, and notes for archive tracking."}
@@ -542,12 +545,12 @@ export default function CreateRecordPage() {
               />
 
               {isStaff ? (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
-                  <p className="text-sm font-semibold text-blue-900">
+                <div className="rounded-xl border border-[#CFE0D6] bg-gradient-to-br from-[#F0F7F3] to-[#FFF9EA] px-4 py-3">
+                  <p className="text-sm font-semibold text-[#064D33]">
                     Initial Status: Received
                   </p>
 
-                  <p className="mt-1 text-xs leading-5 text-blue-700">
+                  <p className="mt-1 text-xs leading-5 text-[#075A3A]">
                     A Records Officer will review the submission and
                     assign its archive status and storage location.
                   </p>
@@ -601,11 +604,11 @@ export default function CreateRecordPage() {
             </div>
           </section>
 
-          <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-slate-50/95 px-4 py-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0">
+          <div className="sticky bottom-0 -mx-4 border-t border-[#E3DCCE] bg-[#F8F5EE]/95 px-4 py-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0">
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
               <Link
                 href="/records"
-                className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 sm:w-auto"
+                className="flex w-full items-center justify-center rounded-xl border border-[#E3DCCE] bg-white px-5 py-3 text-sm font-semibold text-[#514D46] transition hover:bg-[#FCFAF5] hover:text-[#6B0F2B] sm:w-auto"
               >
                 Cancel
               </Link>
@@ -613,7 +616,7 @@ export default function CreateRecordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="flex w-full items-center justify-center rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#6B0F2B]/20 transition hover:-translate-y-0.5 hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {loading
                   ? "Submitting..."
@@ -648,7 +651,7 @@ function FormInput({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-slate-700">
+      <span className="text-sm font-semibold text-[#514D46]">
         {label}
       </span>
 
@@ -659,7 +662,7 @@ function FormInput({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 sm:text-sm"
+        className="mt-2 min-h-12 w-full rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-4 py-3 text-base text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] sm:text-sm"
       />
     </label>
   );
@@ -684,7 +687,7 @@ function FormSelect({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-slate-700">
+      <span className="text-sm font-semibold text-[#514D46]">
         {label}
       </span>
 
@@ -694,7 +697,7 @@ function FormSelect({
         onChange={onChange}
         required={required}
         disabled={disabled}
-        className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 sm:text-sm"
+        className="mt-2 min-h-12 w-full rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-4 py-3 text-base text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] disabled:cursor-not-allowed disabled:bg-[#F0ECE4] disabled:text-[#766F63] sm:text-sm"
       >
         {children}
       </select>
@@ -719,7 +722,7 @@ function FormTextarea({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-slate-700">
+      <span className="text-sm font-semibold text-[#514D46]">
         {label}
       </span>
 
@@ -729,7 +732,7 @@ function FormTextarea({
         onChange={onChange}
         placeholder={placeholder}
         rows={4}
-        className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 sm:text-sm"
+        className="mt-2 w-full resize-none rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-4 py-3 text-base text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] sm:text-sm"
       />
     </label>
   );

@@ -28,6 +28,10 @@ class Record extends Model
         'archived_by',
         'archived_at',
         'archive_folder_id',
+
+        // Staff archive access
+        'staff_visible',
+        'access_level',
     ];
 
     protected $casts = [
@@ -36,11 +40,15 @@ class Record extends Model
         'returned_at' => 'datetime',
         'resubmitted_at' => 'datetime',
         'archived_at' => 'datetime',
+        'staff_visible' => 'boolean',
     ];
 
     public function category()
     {
-        return $this->belongsTo(RecordCategory::class, 'category_id');
+        return $this->belongsTo(
+            RecordCategory::class,
+            'category_id'
+        );
     }
 
     public function department()
@@ -50,27 +58,42 @@ class Record extends Model
 
     public function creator()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(
+            User::class,
+            'created_by'
+        );
     }
 
     public function reviewer()
     {
-        return $this->belongsTo(User::class, 'reviewed_by');
+        return $this->belongsTo(
+            User::class,
+            'reviewed_by'
+        );
     }
 
     public function returner()
     {
-        return $this->belongsTo(User::class, 'returned_by');
+        return $this->belongsTo(
+            User::class,
+            'returned_by'
+        );
     }
 
     public function archiver()
     {
-        return $this->belongsTo(User::class, 'archived_by');
+        return $this->belongsTo(
+            User::class,
+            'archived_by'
+        );
     }
 
     public function archiveFolder()
     {
-        return $this->belongsTo(ArchiveFolder::class, 'archive_folder_id');
+        return $this->belongsTo(
+            ArchiveFolder::class,
+            'archive_folder_id'
+        );
     }
 
     public function files()
@@ -81,5 +104,10 @@ class Record extends Model
     public function auditLogs()
     {
         return $this->hasMany(AuditLog::class);
+    }
+
+    public function documentRequests()
+    {
+        return $this->hasMany(DocumentRequest::class);
     }
 }
