@@ -8,7 +8,10 @@ use App\Models\SystemSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 class SystemSettingController extends Controller
 {
@@ -237,6 +240,255 @@ class SystemSettingController extends Controller
                 : 'System settings updated successfully.',
             'changes' => $changes,
         ]);
+    }
+
+
+    /**
+     * Temporary local-development endpoint.
+     * Remove this method and its route before production deployment.
+     */
+    public function practiceDataSummary(): JsonResponse
+    {
+        if (!$this->developmentToolsEnabled()) {
+            return response()->json([
+                'message' => 'Development tools are disabled in this environment.',
+            ], 403);
+        }
+
+        return response()->json([
+            'enabled' => true,
+            'counts' => [
+                'records' => DB::table('records')->count(),
+                'record_files' => DB::table('record_files')->count(),
+                'document_requests' => DB::table('document_requests')->count(),
+                'archive_folders' => DB::table('archive_folders')->count(),
+                'related_audit_logs' => DB::table('audit_logs')
+                    ->whereIn('action', $this->practiceAuditActions())
+                    ->count(),
+            ],
+        ]);
+    }
+
+    /**
+     * Temporary local-development endpoint.
+     * Deletes practice submissions while preserving users, roles,
+     * departments, categories, and system settings.
+     */
+    public function clearPracticeData(Request $request): JsonResponse
+    {
+        if (!$this->developmentToolsEnabled()) {
+            return response()->json([
+                'message' => 'Development tools are disabled in this environment.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'confirmation' => [
+                'required',
+                'string',
+                Rule::in(['CLEAR PRACTICE DATA']),
+            ],
+            'password' => ['required', 'string'],
+            'clear_archive_folders' => ['sometimes', 'boolean'],
+        ]);
+
+        $user = $request->user();
+
+        if (!$user || !Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'message' => 'The administrator password is incorrect.',
+                'errors' => [
+                    'password' => [
+                        'The administrator password is incorrect.',
+                    ],
+                ],
+            ], 422);
+        }
+
+        $clearArchiveFolders = (bool) (
+            $validated['clear_archive_folders'] ?? false
+        );
+
+        $filePaths = DB::table('record_files')
+            ->whereNotNull('file_path')
+            ->pluck('file_path')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $deleted = [
+            'records' => 0,
+            'record_files' => 0,
+            'document_requests' => 0,
+            'archive_folders' => 0,
+            'related_audit_logs' => 0,
+            'physical_files' => 0,
+            'physical_file_failures' => 0,
+        ];
+
+        DB::transaction(function () use (
+            $clearArchiveFolders,
+            &$deleted
+        ) {
+            $deleted['document_requests'] = DB::table(
+                'document_requests'
+            )->delete();
+
+            $deleted['record_files'] = DB::table(
+                'record_files'
+            )->delete();
+
+            $deleted['records'] = DB::table(
+                'records'
+            )->delete();
+
+            if ($clearArchiveFolders) {
+                $deleted['archive_folders'] = DB::table(
+                    'archive_folders'
+                )->delete();
+            }
+
+            $deleted['related_audit_logs'] = DB::table(
+                'audit_logs'
+            )
+                ->whereIn('action', $this->practiceAuditActions())
+                ->delete();
+
+            $this->resetPracticeAutoIncrement(
+                $clearArchiveFolders
+            );
+        });
+
+        foreach ($filePaths as $filePath) {
+            try {
+                if ($this->deleteStoredRecordFile((string) $filePath)) {
+                    $deleted['physical_files']++;
+                }
+            } catch (Throwable) {
+                $deleted['physical_file_failures']++;
+            }
+        }
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'development.practice_data_cleared',
+            'description' => sprintf(
+                'Cleared practice data: %d records, %d files, %d requests%s.',
+                $deleted['records'],
+                $deleted['record_files'],
+                $deleted['document_requests'],
+                $clearArchiveFolders
+                    ? sprintf(
+                        ', and %d archive folders',
+                        $deleted['archive_folders']
+                    )
+                    : ''
+            ),
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => $deleted['physical_file_failures'] > 0
+                ? 'Practice data was cleared, but some physical files could not be removed.'
+                : 'Practice data cleared successfully.',
+            'deleted' => $deleted,
+        ]);
+    }
+
+    private function developmentToolsEnabled(): bool
+    {
+        return app()->environment([
+            'local',
+            'development',
+            'testing',
+        ]);
+    }
+
+    private function practiceAuditActions(): array
+    {
+        return [
+            'created_record',
+            'uploaded_record_files',
+            'started_review',
+            'returned_for_correction',
+            'resubmitted_record',
+            'archived_record',
+            'downloaded_record_file',
+            'deleted_record_file',
+            'created_archive_folder',
+            'updated_archive_folder',
+            'deleted_archive_folder',
+            'moved_archived_record',
+            'document_request_created',
+            'document_request_started_review',
+            'document_request_approved',
+            'document_request_rejected',
+            'document_request_released',
+            'document_request_cancelled',
+            'record.created',
+            'record.files_uploaded',
+            'record.review_started',
+            'record.returned_for_correction',
+            'record.resubmitted',
+            'record.archived',
+            'record_file.downloaded',
+            'record_file.deleted',
+            'archive_folder.created',
+            'archive_folder.updated',
+            'archive_folder.deleted',
+            'archive_record.moved',
+            'document_request.created',
+            'document_request.review_started',
+            'document_request.approved',
+            'document_request.rejected',
+            'document_request.released',
+            'document_request.cancelled',
+        ];
+    }
+
+    private function resetPracticeAutoIncrement(
+        bool $clearArchiveFolders
+    ): void {
+        DB::statement(
+            'ALTER TABLE document_requests AUTO_INCREMENT = 1'
+        );
+        DB::statement(
+            'ALTER TABLE record_files AUTO_INCREMENT = 1'
+        );
+        DB::statement(
+            'ALTER TABLE records AUTO_INCREMENT = 1'
+        );
+
+        if ($clearArchiveFolders) {
+            DB::statement(
+                'ALTER TABLE archive_folders AUTO_INCREMENT = 1'
+            );
+        }
+    }
+
+    private function deleteStoredRecordFile(
+        string $filePath
+    ): bool {
+        $normalized = str_replace('\\', '/', trim($filePath));
+        $normalized = ltrim($normalized, '/');
+
+        $candidates = array_values(array_unique(array_filter([
+            $normalized,
+            preg_replace('#^storage/#', '', $normalized),
+            preg_replace('#^public/#', '', $normalized),
+        ])));
+
+        foreach ($candidates as $candidate) {
+            if (Storage::disk('public')->exists($candidate)) {
+                return Storage::disk('public')->delete($candidate);
+            }
+
+            if (Storage::disk('local')->exists($candidate)) {
+                return Storage::disk('local')->delete($candidate);
+            }
+        }
+
+        return false;
     }
 
     private function definitions(): array

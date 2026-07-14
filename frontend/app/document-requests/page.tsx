@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Archive,
@@ -11,6 +11,7 @@ import {
   FileClock,
   FileX2,
   Loader2,
+  RefreshCcw,
   Search,
   Send,
   ShieldCheck,
@@ -112,7 +113,10 @@ export default function DocumentRequestsPage() {
   const [total, setTotal] = useState(0);
 
   const [loading, setLoading] = useState(true);
+  const [silentRefreshing, setSilentRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [autoRefreshNotice, setAutoRefreshNotice] = useState("");
 
   const [selectedRequest, setSelectedRequest] =
     useState<DocumentRequest | null>(null);
@@ -127,6 +131,13 @@ export default function DocumentRequestsPage() {
   const [success, setSuccess] = useState("");
   const [modalError, setModalError] = useState("");
 
+  const currentPageRef = useRef(1);
+  const searchRef = useRef("");
+  const statusFilterRef = useRef("");
+  const actionLoadingRef = useRef(false);
+  const knownRequestIdsRef = useRef<Set<number>>(new Set());
+  const pollingReadyRef = useRef(false);
+
   const roleName = user?.role?.name || "";
 
   const canManage =
@@ -140,10 +151,15 @@ export default function DocumentRequestsPage() {
   async function loadRequests(
     page = 1,
     customSearch = search,
-    customStatus = statusFilter
+    customStatus = statusFilter,
+    silent = false
   ) {
-    setLoading(true);
-    setError("");
+    if (silent) {
+      setSilentRefreshing(true);
+    } else {
+      setLoading(true);
+      setError("");
+    }
 
     try {
       const params = new URLSearchParams();
@@ -162,10 +178,39 @@ export default function DocumentRequestsPage() {
         `/document-requests?${params.toString()}`
       );
 
-      setRequests(data.data || []);
+      const loadedRequests = data.data || [];
+      const loadedIds = new Set(
+        loadedRequests.map((request) => request.id)
+      );
+
+      if (silent && pollingReadyRef.current && canManage) {
+        const newRequestCount = loadedRequests.filter(
+          (request) =>
+            !knownRequestIdsRef.current.has(request.id) &&
+            request.status === "pending"
+        ).length;
+
+        if (newRequestCount > 0) {
+          setAutoRefreshNotice(
+            `${newRequestCount} new ${
+              newRequestCount === 1 ? "request" : "requests"
+            } received automatically.`
+          );
+
+          window.setTimeout(() => {
+            setAutoRefreshNotice("");
+          }, 5000);
+        }
+      }
+
+      knownRequestIdsRef.current = loadedIds;
+      pollingReadyRef.current = true;
+
+      setRequests(loadedRequests);
       setCurrentPage(data.current_page || 1);
       setLastPage(data.last_page || 1);
       setTotal(data.total || 0);
+      setLastUpdatedAt(new Date());
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -173,7 +218,11 @@ export default function DocumentRequestsPage() {
           : "Failed to load document requests."
       );
     } finally {
-      setLoading(false);
+      if (silent) {
+        setSilentRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }
 
@@ -206,6 +255,71 @@ export default function DocumentRequestsPage() {
 
     initializePage();
   }, []);
+
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
+
+  useEffect(() => {
+    statusFilterRef.current = statusFilter;
+  }, [statusFilter]);
+
+  useEffect(() => {
+    actionLoadingRef.current = actionLoading;
+  }, [actionLoading]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    async function silentlyRefresh() {
+      if (
+        document.visibilityState !== "visible" ||
+        actionLoadingRef.current
+      ) {
+        return;
+      }
+
+      await loadRequests(
+        currentPageRef.current,
+        searchRef.current,
+        statusFilterRef.current,
+        true
+      );
+    }
+
+    const intervalId = window.setInterval(() => {
+      void silentlyRefresh();
+    }, 5000);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void silentlyRefresh();
+      }
+    }
+
+    function handleWindowFocus() {
+      void silentlyRefresh();
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+    window.addEventListener("focus", handleWindowFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+      window.removeEventListener("focus", handleWindowFocus);
+    };
+  }, [user, canManage]);
 
   useEffect(() => {
     if (!selectedRequest) return;
@@ -417,9 +531,43 @@ export default function DocumentRequestsPage() {
         {error && <Alert tone="error">{error}</Alert>}
         {success && <Alert tone="success">{success}</Alert>}
 
+        {autoRefreshNotice && (
+          <Alert tone="success">{autoRefreshNotice}</Alert>
+        )}
+
         <section className="relative mt-5 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#DED5C5] sm:mt-6">
           <div className="absolute inset-x-0 top-0 h-1 bg-[#D9961A]" />
           <div className="border-b border-[#E3DCCE] bg-[#FCFAF5] p-4 pt-5 sm:p-5 sm:pt-6">
+            <div className="mb-4 flex flex-col gap-2 rounded-xl border border-[#CFE0D6] bg-[#F0F7F3] px-4 py-3 text-xs text-[#075A3A] sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 font-semibold">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-40" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                </span>
+                Automatic updates are active every 5 seconds.
+              </div>
+
+              <div className="flex items-center gap-2 text-[#4E695B]">
+                {silentRefreshing && (
+                  <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
+                )}
+                <span>
+                  {silentRefreshing
+                    ? "Checking for updates..."
+                    : lastUpdatedAt
+                      ? `Last updated ${lastUpdatedAt.toLocaleTimeString(
+                          "en-PH",
+                          {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          }
+                        )}`
+                      : "Waiting for first update"}
+                </span>
+              </div>
+            </div>
+
             <form
               onSubmit={handleSearch}
               className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto]"
@@ -622,7 +770,7 @@ function RequestCard({
     ["pending", "under_review"].includes(request.status);
 
   return (
-    <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E3DCCE] bg-white p-4 transition hover:border-[#CFE0D6] hover:shadow-md sm:p-5">
+    <article className="relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E3DCCE] bg-white p-4 transition hover:border-[#CFE0D6] hover:shadow-md sm:p-5">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#075A3A] via-[#D9961A] to-[#6B0F2B]" />
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#075A3A] text-[#F4C25E] shadow-sm">

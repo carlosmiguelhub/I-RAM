@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
@@ -62,6 +62,9 @@ export default function RecordDetailsPage() {
   const [record, setRecord] = useState<RecordDetails | null>(null);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [silentRefreshing, setSilentRefreshing] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [autoRefreshNotice, setAutoRefreshNotice] = useState("");
   const [loadError, setLoadError] = useState("");
   const [downloadError, setDownloadError] = useState("");
   const [downloadingFileId, setDownloadingFileId] = useState<
@@ -75,16 +78,30 @@ export default function RecordDetailsPage() {
   const [workflowError, setWorkflowError] = useState("");
   const [workflowSuccess, setWorkflowSuccess] = useState("");
 
+  const workflowLoadingRef = useRef(false);
+  const downloadingFileIdRef = useRef<number | null>(null);
+  const previousStatusRef = useRef<string | null>(null);
+  const pollingReadyRef = useRef(false);
+
   const roleName = user?.role?.name || "";
   const isStaff = roleName === "Staff";
   const canManageWorkflow =
     roleName === "Admin" || roleName === "Records Officer";
 
-  async function loadRecord(showLoading = true) {
+  async function loadRecord(
+    showLoading = true,
+    silent = false
+  ) {
     if (!id) return;
 
-    if (showLoading) setLoading(true);
-    setLoadError("");
+    if (showLoading) {
+      setLoading(true);
+      setLoadError("");
+    }
+
+    if (silent) {
+      setSilentRefreshing(true);
+    }
 
     try {
       const [recordData, meData] = await Promise.all([
@@ -92,13 +109,40 @@ export default function RecordDetailsPage() {
         user ? Promise.resolve({ user }) : apiRequest("/me"),
       ]);
 
+      const loadedRecord = recordData.record;
+
+      if (
+        silent &&
+        pollingReadyRef.current &&
+        previousStatusRef.current &&
+        previousStatusRef.current !== loadedRecord?.status
+      ) {
+        setAutoRefreshNotice(
+          `Record status changed to ${getStatusLabel(
+            loadedRecord.status,
+            meData.user?.role?.name === "Staff"
+          )}.`
+        );
+
+        window.setTimeout(() => {
+          setAutoRefreshNotice("");
+        }, 5000);
+      }
+
+      previousStatusRef.current = loadedRecord?.status || null;
+      pollingReadyRef.current = true;
+
       setUser(meData.user);
-      setRecord(recordData.record);
-      setReviewRemarks(recordData.record?.review_remarks || "");
-      setCorrectionNotes(recordData.record?.correction_notes || "");
-      setStorageLocation(
-        recordData.record?.storage_location || ""
-      );
+      setRecord(loadedRecord);
+      setLastUpdatedAt(new Date());
+
+      if (!silent) {
+        setReviewRemarks(loadedRecord?.review_remarks || "");
+        setCorrectionNotes(loadedRecord?.correction_notes || "");
+        setStorageLocation(
+          loadedRecord?.storage_location || ""
+        );
+      }
     } catch (error: unknown) {
       setLoadError(
         error instanceof Error
@@ -107,12 +151,78 @@ export default function RecordDetailsPage() {
       );
     } finally {
       if (showLoading) setLoading(false);
+      if (silent) setSilentRefreshing(false);
     }
   }
 
   useEffect(() => {
     loadRecord();
   }, [id]);
+
+  useEffect(() => {
+    workflowLoadingRef.current = workflowLoading;
+  }, [workflowLoading]);
+
+  useEffect(() => {
+    downloadingFileIdRef.current = downloadingFileId;
+  }, [downloadingFileId]);
+
+  useEffect(() => {
+    if (!id || !record) return;
+
+    async function silentlyRefreshRecord() {
+      if (
+        document.visibilityState !== "visible" ||
+        workflowLoadingRef.current ||
+        downloadingFileIdRef.current !== null
+      ) {
+        return;
+      }
+
+      await loadRecord(false, true);
+    }
+
+    const intervalId = window.setInterval(() => {
+      void silentlyRefreshRecord();
+    }, 5000);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void silentlyRefreshRecord();
+      }
+    }
+
+    function handleWindowFocus() {
+      void silentlyRefreshRecord();
+    }
+
+    function handleRecordsChanged() {
+      void silentlyRefreshRecord();
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+    window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener(
+      "iram:records-changed",
+      handleRecordsChanged
+    );
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+      window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener(
+        "iram:records-changed",
+        handleRecordsChanged
+      );
+    };
+  }, [id, record?.id]);
 
   async function runWorkflowAction(
     endpoint: string,
@@ -370,6 +480,35 @@ export default function RecordDetailsPage() {
             </Link>
           </div>
         </section>
+
+        {autoRefreshNotice && (
+          <Alert tone="success">{autoRefreshNotice}</Alert>
+        )}
+
+        <div className="mt-5 flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 font-semibold">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-40" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
+            </span>
+            This record updates automatically every 5 seconds.
+          </div>
+
+          <span>
+            {silentRefreshing
+              ? "Checking for updates..."
+              : lastUpdatedAt
+                ? `Last updated ${lastUpdatedAt.toLocaleTimeString(
+                    "en-PH",
+                    {
+                      hour: "numeric",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    }
+                  )}`
+                : "Waiting for first update"}
+          </span>
+        </div>
 
         {showWorkflow && (
           <section className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/50 p-5 shadow-sm sm:p-6">

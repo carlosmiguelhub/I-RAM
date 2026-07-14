@@ -8,11 +8,13 @@ import {
   Check,
   CheckSquare2,
   Eye,
+  EyeOff,
   Folder,
   FolderInput,
   FolderOpen,
   Loader2,
   Search,
+  ShieldCheck,
   Square,
   X,
 } from "lucide-react";
@@ -531,7 +533,13 @@ export default function ArchiveUnfiledPage() {
     Archived
   </span>
 
-  <ArchiveAccessBadge record={record} />
+  <AccessLevelBadge
+    accessLevel={record.access_level}
+  />
+
+  <StaffVisibilityBadge
+    staffVisible={Boolean(record.staff_visible)}
+  />
 </div>
 
                     </div>
@@ -960,38 +968,63 @@ function formatDate(date?: string | null) {
   });
 }
 
-function ArchiveAccessBadge({
-  record,
+function AccessLevelBadge({
+  accessLevel,
 }: {
-  record: ArchiveRecord;
+  accessLevel?: string | null;
 }) {
-  if (record.access_level === "confidential") {
-    return (
-      <span className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-700">
-        Confidential
-      </span>
-    );
-  }
+  const normalized = (accessLevel || "internal").toLowerCase();
 
-  if (!record.staff_visible) {
-    return (
-      <span className="rounded-full bg-[#F0ECE4] px-2.5 py-1 text-[11px] font-bold text-[#625E56]">
-        Hidden
-      </span>
-    );
-  }
+  const styles: Record<string, string> = {
+    internal:
+      "bg-blue-50 text-blue-700 ring-blue-200",
+    restricted:
+      "bg-amber-50 text-amber-800 ring-amber-200",
+    confidential:
+      "bg-red-50 text-red-700 ring-red-200",
+    public:
+      "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  };
 
-  if (record.access_level === "internal") {
-    return (
-      <span className="rounded-full bg-[#F0F7F3] px-2.5 py-1 text-[11px] font-bold text-[#075A3A]">
-        Internal
-      </span>
-    );
-  }
+  const labels: Record<string, string> = {
+    internal: "Internal",
+    restricted: "Restricted",
+    confidential: "Confidential",
+    public: "Public",
+  };
 
   return (
-    <span className="rounded-full bg-[#FFF3D6] px-2.5 py-1 text-[11px] font-bold text-[#A66B00] ring-1 ring-[#EBCF8F]">
-      Restricted
+    <span
+      className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${
+        styles[normalized] ||
+        "bg-slate-50 text-slate-700 ring-slate-200"
+      }`}
+    >
+      <ShieldCheck className="h-3.5 w-3.5" />
+      {labels[normalized] || accessLevel || "Internal"}
+    </span>
+  );
+}
+
+function StaffVisibilityBadge({
+  staffVisible,
+}: {
+  staffVisible: boolean;
+}) {
+  return (
+    <span
+      className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${
+        staffVisible
+          ? "bg-violet-50 text-violet-700 ring-violet-200"
+          : "bg-slate-100 text-slate-600 ring-slate-200"
+      }`}
+    >
+      {staffVisible ? (
+        <Eye className="h-3.5 w-3.5" />
+      ) : (
+        <EyeOff className="h-3.5 w-3.5" />
+      )}
+      {staffVisible ? "Staff Visible" : "Staff Hidden"}
     </span>
   );
 }

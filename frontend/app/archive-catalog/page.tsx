@@ -82,6 +82,8 @@ export default function ArchiveCatalogPage() {
   const [loading, setLoading] = useState(true);
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [backgroundRefreshing, setBackgroundRefreshing] =
+    useState(false);
 
   const [selectedRecord, setSelectedRecord] =
     useState<ArchiveRecord | null>(null);
@@ -137,10 +139,15 @@ export default function ArchiveCatalogPage() {
 
   async function loadCatalog(
     page = 1,
-    customSearch = search
+    customSearch = search,
+    silent = false
   ) {
-    setLoading(true);
-    setError("");
+    if (silent) {
+      setBackgroundRefreshing(true);
+    } else {
+      setLoading(true);
+      setError("");
+    }
 
     try {
       const params = new URLSearchParams();
@@ -172,13 +179,19 @@ export default function ArchiveCatalogPage() {
       setLastPage(data.last_page || 1);
       setTotal(data.total || 0);
     } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to load the archive catalog."
-      );
+      if (!silent) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load the archive catalog."
+        );
+      }
     } finally {
-      setLoading(false);
+      if (silent) {
+        setBackgroundRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }
 
@@ -206,6 +219,67 @@ export default function ArchiveCatalogPage() {
 
     initializePage();
   }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (
+        document.visibilityState === "visible" &&
+        !selectedRecord &&
+        !submitting
+      ) {
+        void loadCatalog(currentPage, search, true);
+      }
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [
+    currentPage,
+    search,
+    categoryId,
+    departmentId,
+    accessLevel,
+    selectedRecord,
+    submitting,
+  ]);
+
+  useEffect(() => {
+    function refreshWhenVisible() {
+      if (
+        document.visibilityState === "visible" &&
+        !selectedRecord &&
+        !submitting
+      ) {
+        void loadCatalog(currentPage, search, true);
+      }
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      refreshWhenVisible
+    );
+    window.addEventListener("focus", refreshWhenVisible);
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        refreshWhenVisible
+      );
+      window.removeEventListener(
+        "focus",
+        refreshWhenVisible
+      );
+    };
+  }, [
+    currentPage,
+    search,
+    categoryId,
+    departmentId,
+    accessLevel,
+    selectedRecord,
+    submitting,
+  ]);
 
   useEffect(() => {
     if (!selectedRecord) return;
@@ -343,11 +417,26 @@ export default function ArchiveCatalogPage() {
               </p>
             </div>
 
-            <div className="flex w-fit items-center gap-2 rounded-xl bg-[#6B0F2B] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-black/15 ring-1 ring-white/10">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D9961A]">
-                <Archive className="h-4 w-4" />
-              </span>
-              {total} available {total === 1 ? "record" : "records"}
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <div className="flex w-fit items-center gap-2 rounded-xl bg-[#6B0F2B] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-black/15 ring-1 ring-white/10">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D9961A]">
+                  <Archive className="h-4 w-4" />
+                </span>
+                {total} available {total === 1 ? "record" : "records"}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#E5DDCC]">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    backgroundRefreshing
+                      ? "animate-pulse bg-[#F4C25E]"
+                      : "bg-emerald-300"
+                  }`}
+                />
+                {backgroundRefreshing
+                  ? "Checking for updates..."
+                  : "Auto-refresh active"}
+              </div>
             </div>
           </div>
         </header>

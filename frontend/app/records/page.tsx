@@ -1,6 +1,6 @@
 "use client";
 
-  import { useEffect, useMemo, useState } from "react";
+  import { useEffect, useMemo, useRef, useState } from "react";
   import Link from "next/link";
   import { useRouter, useSearchParams } from "next/navigation";
   import {
@@ -14,6 +14,7 @@
     Files,
     FolderArchive,
     Loader2,
+    RefreshCcw,
     RotateCcw,
     Search,
     ShieldCheck,
@@ -88,6 +89,9 @@
     const [search, setSearch] = useState("");
     const [activeStatus, setActiveStatus] = useState("");
     const [loading, setLoading] = useState(true);
+    const [silentRefreshing, setSilentRefreshing] = useState(false);
+    const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+    const [autoRefreshNotice, setAutoRefreshNotice] = useState("");
     const [user, setUser] = useState<any>(null);
 
     const [selectedRecord, setSelectedRecord] =
@@ -109,6 +113,12 @@
     const [correctionNotes, setCorrectionNotes] = useState("");
     const [storageLocation, setStorageLocation] = useState("");
 
+    const searchRef = useRef("");
+    const activeStatusRef = useRef("");
+    const workflowLoadingRef = useRef(false);
+    const knownRecordIdsRef = useRef<Set<number>>(new Set());
+    const pollingReadyRef = useRef(false);
+
     const roleName = user?.role?.name || "";
     const isStaff = roleName === "Staff";
     const canManageWorkflow =
@@ -123,9 +133,14 @@
 
     async function loadRecords(
       searchValue = search,
-      statusValue = activeStatus
+      statusValue = activeStatus,
+      silent = false
     ) {
-      setLoading(true);
+      if (silent) {
+        setSilentRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
       try {
         const params = new URLSearchParams();
@@ -147,7 +162,35 @@
           query ? `/records?${query}` : "/records"
         );
 
-        setRecords(data.data || []);
+        const loadedRecords: RecordItem[] = data.data || [];
+        const loadedIds = new Set(
+          loadedRecords.map((record) => record.id)
+        );
+
+        if (silent && pollingReadyRef.current) {
+          const newCount = loadedRecords.filter(
+            (record) =>
+              !knownRecordIdsRef.current.has(record.id)
+          ).length;
+
+          if (newCount > 0) {
+            setAutoRefreshNotice(
+              `${newCount} new ${
+                newCount === 1 ? "record" : "records"
+              } received automatically.`
+            );
+
+            window.setTimeout(() => {
+              setAutoRefreshNotice("");
+            }, 5000);
+          }
+        }
+
+        knownRecordIdsRef.current = loadedIds;
+        pollingReadyRef.current = true;
+
+        setRecords(loadedRecords);
+        setLastUpdatedAt(new Date());
       } catch (error: unknown) {
         const message =
           error instanceof Error ? error.message : "";
@@ -161,7 +204,11 @@
 
         alert(message || "Failed to load records.");
       } finally {
-        setLoading(false);
+        if (silent) {
+          setSilentRefreshing(false);
+        } else {
+          setLoading(false);
+        }
       }
     }
 
@@ -186,6 +233,79 @@
 
       initPage();
     }, [router, scope]);
+
+    useEffect(() => {
+      searchRef.current = search;
+    }, [search]);
+
+    useEffect(() => {
+      activeStatusRef.current = activeStatus;
+    }, [activeStatus]);
+
+    useEffect(() => {
+      workflowLoadingRef.current = workflowLoading;
+    }, [workflowLoading]);
+
+    useEffect(() => {
+      if (!user) return;
+
+      async function silentlyRefreshRecords() {
+        if (
+          document.visibilityState !== "visible" ||
+          workflowLoadingRef.current ||
+          openingRecordId !== null
+        ) {
+          return;
+        }
+
+        await loadRecords(
+          searchRef.current,
+          activeStatusRef.current,
+          true
+        );
+      }
+
+      const intervalId = window.setInterval(() => {
+        void silentlyRefreshRecords();
+      }, 5000);
+
+      function handleVisibilityChange() {
+        if (document.visibilityState === "visible") {
+          void silentlyRefreshRecords();
+        }
+      }
+
+      function handleWindowFocus() {
+        void silentlyRefreshRecords();
+      }
+
+      function handleRecordsChanged() {
+        void silentlyRefreshRecords();
+      }
+
+      document.addEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+      window.addEventListener("focus", handleWindowFocus);
+      window.addEventListener(
+        "iram:records-changed",
+        handleRecordsChanged
+      );
+
+      return () => {
+        window.clearInterval(intervalId);
+        document.removeEventListener(
+          "visibilitychange",
+          handleVisibilityChange
+        );
+        window.removeEventListener("focus", handleWindowFocus);
+        window.removeEventListener(
+          "iram:records-changed",
+          handleRecordsChanged
+        );
+      };
+    }, [user, openingRecordId]);
 
     useEffect(() => {
       function handleKeyDown(event: KeyboardEvent) {
@@ -506,7 +626,40 @@
             </div>
           </section>
 
+          {autoRefreshNotice && (
+            <Alert tone="success">{autoRefreshNotice}</Alert>
+          )}
+
           <section className="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-5">
+            <div className="mb-4 flex flex-col gap-2 rounded-xl border border-[#CFE0D6] bg-[#F0F7F3] px-4 py-3 text-xs text-[#075A3A] sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 font-semibold">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-40" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                </span>
+                Automatic updates are active every 5 seconds.
+              </div>
+
+              <div className="flex items-center gap-2 text-[#4E695B]">
+                {silentRefreshing && (
+                  <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
+                )}
+                <span>
+                  {silentRefreshing
+                    ? "Checking for updates..."
+                    : lastUpdatedAt
+                      ? `Last updated ${lastUpdatedAt.toLocaleTimeString(
+                          "en-PH",
+                          {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          }
+                        )}`
+                      : "Waiting for first update"}
+                </span>
+              </div>
+            </div>
             <form
               onSubmit={handleSearch}
               className="flex flex-col gap-3 md:flex-row"

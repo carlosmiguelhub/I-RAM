@@ -286,6 +286,14 @@ export default function CreateRecordPage() {
         body: payload,
       });
 
+      localStorage.setItem(
+        "iram_records_changed_at",
+        String(Date.now())
+      );
+      window.dispatchEvent(
+        new CustomEvent("iram:records-changed")
+      );
+
       router.push("/records");
       router.refresh();
     } catch (error: unknown) {

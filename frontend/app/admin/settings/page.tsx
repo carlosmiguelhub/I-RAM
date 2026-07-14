@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   Archive,
   Check,
+  Database,
   ChevronRight,
   FileCog,
   FileText,
@@ -16,7 +18,9 @@ import {
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
   UploadCloud,
+  X,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { apiRequest } from "@/lib/api";
@@ -58,7 +62,19 @@ type SectionKey =
   | "records"
   | "workflow"
   | "files"
-  | "security";
+  | "security"
+  | "development";
+
+type PracticeDataSummary = {
+  enabled: boolean;
+  counts: {
+    records: number;
+    record_files: number;
+    document_requests: number;
+    archive_folders: number;
+    related_audit_logs: number;
+  };
+};
 
 const defaultSettings: SettingsPayload = {
   general: {
@@ -138,6 +154,12 @@ const sections: Array<{
     description: "Registration, sessions, and login safeguards",
     icon: ShieldCheck,
   },
+  {
+    key: "development",
+    label: "Development Tools",
+    description: "Temporary tools for clearing practice data",
+    icon: Database,
+  },
 ];
 
 const availableExtensions = [
@@ -166,6 +188,18 @@ export default function AdminSettingsPage() {
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const [practiceSummary, setPracticeSummary] =
+    useState<PracticeDataSummary | null>(null);
+  const [loadingPracticeSummary, setLoadingPracticeSummary] =
+    useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [clearingPracticeData, setClearingPracticeData] =
+    useState(false);
+  const [clearConfirmation, setClearConfirmation] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [clearArchiveFolders, setClearArchiveFolders] =
+    useState(false);
 
   const hasChanges = useMemo(
     () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
@@ -349,6 +383,85 @@ export default function AdminSettingsPage() {
     }, 300);
   }
 
+
+  async function loadPracticeSummary() {
+    setLoadingPracticeSummary(true);
+    setError("");
+
+    try {
+      const data = await apiRequest("/admin/practice-data");
+      setPracticeSummary(data);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load practice-data summary."
+      );
+    } finally {
+      setLoadingPracticeSummary(false);
+    }
+  }
+
+  function openClearPracticeModal() {
+    setClearConfirmation("");
+    setAdminPassword("");
+    setClearArchiveFolders(false);
+    setShowClearModal(true);
+  }
+
+  function closeClearPracticeModal() {
+    if (clearingPracticeData) return;
+
+    setShowClearModal(false);
+    setClearConfirmation("");
+    setAdminPassword("");
+    setClearArchiveFolders(false);
+  }
+
+  async function clearPracticeData() {
+    if (clearConfirmation !== "CLEAR PRACTICE DATA") {
+      setError('Type "CLEAR PRACTICE DATA" exactly.');
+      return;
+    }
+
+    if (!adminPassword) {
+      setError("Enter your administrator password.");
+      return;
+    }
+
+    setClearingPracticeData(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const data = await apiRequest("/admin/practice-data", {
+        method: "DELETE",
+        body: JSON.stringify({
+          confirmation: clearConfirmation,
+          password: adminPassword,
+          clear_archive_folders: clearArchiveFolders,
+        }),
+      });
+
+      setSuccess(
+        data.message || "Practice data cleared successfully."
+      );
+      setShowClearModal(false);
+      setClearConfirmation("");
+      setAdminPassword("");
+      setClearArchiveFolders(false);
+      await loadPracticeSummary();
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to clear practice data."
+      );
+    } finally {
+      setClearingPracticeData(false);
+    }
+  }
+
   const currentSection =
     sections.find((section) => section.key === activeSection) ??
     sections[0];
@@ -399,7 +512,7 @@ export default function AdminSettingsPage() {
                 type="button"
                 onClick={saveSettings}
                 disabled={!hasChanges || saving || loading}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F0F7F3]0 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/15 transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/15 transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -448,7 +561,13 @@ export default function AdminSettingsPage() {
                   <button
                     key={section.key}
                     type="button"
-                    onClick={() => setActiveSection(section.key)}
+                    onClick={() => {
+                      setActiveSection(section.key);
+
+                      if (section.key === "development") {
+                        void loadPracticeSummary();
+                      }
+                    }}
                     className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
                       active
                         ? "bg-[#FFF9EA] text-[#6B0F2B] ring-1 ring-[#E7D3A2]"
@@ -552,11 +671,20 @@ export default function AdminSettingsPage() {
                       onChange={updateSecurity}
                     />
                   )}
+
+                  {activeSection === "development" && (
+                    <DevelopmentTools
+                      summary={practiceSummary}
+                      loading={loadingPracticeSummary}
+                      onRefresh={loadPracticeSummary}
+                      onClear={openClearPracticeModal}
+                    />
+                  )}
                 </>
               )}
             </div>
 
-            {!loading && (
+            {!loading && activeSection !== "development" && (
               <footer className="flex flex-col gap-3 border-t border-[#E3DCCE] bg-[#F8F5EE] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
                 <p className="text-xs leading-5 text-[#766F63]">
                   Changes affect IRAM system-wide and are recorded in the audit
@@ -581,7 +709,263 @@ export default function AdminSettingsPage() {
           </section>
         </section>
       </div>
+
+      {showClearModal && (
+        <ClearPracticeDataModal
+          summary={practiceSummary}
+          confirmation={clearConfirmation}
+          password={adminPassword}
+          clearArchiveFolders={clearArchiveFolders}
+          clearing={clearingPracticeData}
+          onConfirmationChange={setClearConfirmation}
+          onPasswordChange={setAdminPassword}
+          onClearArchiveFoldersChange={setClearArchiveFolders}
+          onClose={closeClearPracticeModal}
+          onConfirm={clearPracticeData}
+        />
+      )}
     </AppShell>
+  );
+}
+
+function DevelopmentTools({
+  summary,
+  loading,
+  onRefresh,
+  onClear,
+}: {
+  summary: PracticeDataSummary | null;
+  loading: boolean;
+  onRefresh: () => void;
+  onClear: () => void;
+}) {
+  const counts = summary?.counts;
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+          <div>
+            <h3 className="font-bold text-amber-900">
+              Temporary development feature
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-amber-800">
+              Remove this section and its API routes before production.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <SettingsGroup
+        icon={<Database className="h-5 w-5" />}
+        title="Practice data overview"
+        description="Review what will be removed before cleanup."
+      >
+        {loading ? (
+          <div className="flex min-h-40 items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-[#075A3A]" />
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <PracticeCount label="Records" value={counts?.records ?? 0} />
+              <PracticeCount label="Files" value={counts?.record_files ?? 0} />
+              <PracticeCount label="Requests" value={counts?.document_requests ?? 0} />
+              <PracticeCount label="Folders" value={counts?.archive_folders ?? 0} />
+              <PracticeCount label="Audit logs" value={counts?.related_audit_logs ?? 0} />
+            </div>
+
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#D8CDBB] bg-white px-4 py-2.5 text-sm font-semibold text-[#514D46] transition hover:bg-[#F8F5EE]"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              Refresh counts
+            </button>
+          </>
+        )}
+      </SettingsGroup>
+
+      <section className="overflow-hidden rounded-2xl border border-red-200">
+        <header className="flex items-start gap-3 border-b border-red-200 bg-red-50 px-5 py-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700">
+            <Trash2 className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-red-900">
+              Clear practice submissions
+            </h3>
+            <p className="mt-1 text-sm leading-5 text-red-700">
+              Deletes test records, files, requests, and related audit logs.
+            </p>
+          </div>
+        </header>
+
+        <div className="p-5">
+          <p className="text-sm leading-6 text-[#625E56]">
+            Users, roles, departments, categories, and system settings stay
+            untouched. Archive folders are optional.
+          </p>
+
+          <button
+            type="button"
+            onClick={onClear}
+            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-red-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-800"
+          >
+            <Trash2 className="h-4 w-4" />
+            Clear practice data
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PracticeCount({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#E3DCCE] bg-[#FCFAF5] p-4">
+      <p className="text-2xl font-bold text-[#252A27]">{value}</p>
+      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[#766F63]">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function ClearPracticeDataModal({
+  summary,
+  confirmation,
+  password,
+  clearArchiveFolders,
+  clearing,
+  onConfirmationChange,
+  onPasswordChange,
+  onClearArchiveFoldersChange,
+  onClose,
+  onConfirm,
+}: {
+  summary: PracticeDataSummary | null;
+  confirmation: string;
+  password: string;
+  clearArchiveFolders: boolean;
+  clearing: boolean;
+  onConfirmationChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onClearArchiveFoldersChange: (value: boolean) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const ready =
+    confirmation === "CLEAR PRACTICE DATA" &&
+    password.length > 0 &&
+    !clearing;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+        <header className="flex items-start justify-between gap-4 border-b border-red-100 bg-red-50 px-5 py-5 sm:px-6">
+          <div>
+            <h2 className="text-xl font-bold text-red-900">
+              Clear practice data?
+            </h2>
+            <p className="mt-1 text-sm text-red-700">
+              This action cannot be undone.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={clearing}
+            className="rounded-xl p-2 text-red-700 hover:bg-red-100 disabled:opacity-50"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </header>
+
+        <div className="space-y-5 p-5 sm:p-6">
+          <div className="grid grid-cols-3 gap-3">
+            <PracticeCount label="Records" value={summary?.counts.records ?? 0} />
+            <PracticeCount label="Files" value={summary?.counts.record_files ?? 0} />
+            <PracticeCount label="Requests" value={summary?.counts.document_requests ?? 0} />
+          </div>
+
+          <label className="block">
+            <span className="text-sm font-semibold text-[#514D46]">
+              Type CLEAR PRACTICE DATA
+            </span>
+            <input
+              value={confirmation}
+              onChange={(event) => onConfirmationChange(event.target.value)}
+              placeholder="CLEAR PRACTICE DATA"
+              className={`${inputClass} mt-2 pr-4`}
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-semibold text-[#514D46]">
+              Administrator password
+            </span>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => onPasswordChange(event.target.value)}
+              className={`${inputClass} mt-2 pr-4`}
+            />
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#E3DCCE] bg-[#FCFAF5] p-4">
+            <input
+              type="checkbox"
+              checked={clearArchiveFolders}
+              onChange={(event) =>
+                onClearArchiveFoldersChange(event.target.checked)
+              }
+              className="mt-1 h-4 w-4"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-[#2D332F]">
+                Also delete all archive folders
+              </span>
+              <span className="mt-1 block text-xs text-[#766F63]">
+                Leave unchecked to keep your folder structure.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <footer className="flex flex-col-reverse gap-3 border-t border-[#E3DCCE] bg-[#F8F5EE] px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={clearing}
+            className="rounded-xl border border-[#D8CDBB] bg-white px-5 py-3 text-sm font-semibold text-[#514D46]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={!ready}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-700 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {clearing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            {clearing ? "Clearing..." : "Permanently clear data"}
+          </button>
+        </footer>
+      </div>
+    </div>
   );
 }
 

@@ -6,9 +6,11 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Eye,
+  EyeOff,
   FolderInput,
   Loader2,
   Search,
+  ShieldCheck,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import ArchiveRecordModal, {
@@ -251,7 +253,7 @@ export default function ArchiveFolderDetailPage() {
                   return (
                     <article
                       key={record.id}
-                      className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E3DCCE] bg-white p-4 transition hover:border-[#CFE0D6] hover:shadow-md sm:p-5"
+                      className="relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E3DCCE] bg-white p-4 transition hover:border-[#CFE0D6] hover:shadow-md sm:p-5"
                     >
                       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#075A3A] via-[#D9961A] to-[#6B0F2B]" />
                       <div className="flex min-w-0 flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
@@ -268,9 +270,19 @@ export default function ArchiveFolderDetailPage() {
                           </p>
                         </div>
 
-                        <span className="w-fit shrink-0 rounded-full bg-[#E6F2EC] px-2.5 py-1 text-[11px] font-bold text-[#075A3A] ring-1 ring-[#CFE0D6]">
-                          Archived
-                        </span>
+                        <div className="flex shrink-0 flex-col items-start gap-1.5 min-[420px]:items-end">
+                          <span className="w-fit rounded-full bg-[#E6F2EC] px-2.5 py-1 text-[11px] font-bold text-[#075A3A] ring-1 ring-[#CFE0D6]">
+                            Archived
+                          </span>
+
+                          <AccessLevelBadge
+                            accessLevel={record.access_level}
+                          />
+
+                          <StaffVisibilityBadge
+                            staffVisible={Boolean(record.staff_visible)}
+                          />
+                        </div>
                       </div>
 
                       <div className="mt-4 min-w-0 space-y-3 rounded-xl bg-[#FCFAF5] p-3 text-xs ring-1 ring-[#E8E0D4] sm:p-4">
@@ -363,9 +375,82 @@ export default function ArchiveFolderDetailPage() {
           loading={openingRecordId !== null}
           error={viewError}
           onClose={closeRecordModal}
+          onRecordUpdated={(updatedRecord) => {
+            setViewRecord(updatedRecord);
+
+            setRecords((current) =>
+              current.map((record) =>
+                record.id === updatedRecord.id
+                  ? updatedRecord
+                  : record
+              )
+            );
+
+            setSuccess(
+              "Staff catalog access updated successfully."
+            );
+          }}
         />
       )}
     </AppShell>
+  );
+}
+
+
+function AccessLevelBadge({
+  accessLevel,
+}: {
+  accessLevel?: string | null;
+}) {
+  const normalized = (accessLevel || "internal").toLowerCase();
+
+  const styles: Record<string, string> = {
+    internal: "bg-blue-50 text-blue-700 ring-blue-200",
+    restricted: "bg-amber-50 text-amber-800 ring-amber-200",
+    confidential: "bg-red-50 text-red-700 ring-red-200",
+    public: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  };
+
+  const labels: Record<string, string> = {
+    internal: "Internal",
+    restricted: "Restricted",
+    confidential: "Confidential",
+    public: "Public",
+  };
+
+  return (
+    <span
+      className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${
+        styles[normalized] ||
+        "bg-slate-50 text-slate-700 ring-slate-200"
+      }`}
+    >
+      <ShieldCheck className="h-3.5 w-3.5" />
+      {labels[normalized] || accessLevel || "Internal"}
+    </span>
+  );
+}
+
+function StaffVisibilityBadge({
+  staffVisible,
+}: {
+  staffVisible: boolean;
+}) {
+  return (
+    <span
+      className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${
+        staffVisible
+          ? "bg-violet-50 text-violet-700 ring-violet-200"
+          : "bg-slate-100 text-slate-600 ring-slate-200"
+      }`}
+    >
+      {staffVisible ? (
+        <Eye className="h-3.5 w-3.5" />
+      ) : (
+        <EyeOff className="h-3.5 w-3.5" />
+      )}
+      {staffVisible ? "Staff Visible" : "Staff Hidden"}
+    </span>
   );
 }
 
