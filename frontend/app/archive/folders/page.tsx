@@ -227,29 +227,29 @@ export default function ArchiveFoldersPage() {
   return (
     <AppShell>
       <div className="mx-auto w-full max-w-7xl pb-8">
-        <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-5 py-6 text-white shadow-xl shadow-[#075A3A]/20 sm:px-7 sm:py-7">
-          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#D9961A]/15 blur-2xl" />
-          <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-[#6B0F2B]/30 blur-3xl" />
+        <header className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-4 py-3.5 text-white shadow-md shadow-[#075A3A]/10">
+          <div className="absolute -right-14 -top-16 h-40 w-40 rounded-full bg-[#D9961A]/15 blur-2xl" />
+          <div className="absolute -bottom-16 left-1/3 h-32 w-32 rounded-full bg-[#6B0F2B]/30 blur-3xl" />
 
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <Link
                 href="/archive"
-                className="inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-[#E5DDCC] transition hover:text-[#F4C25E] focus:outline-none focus:ring-4 focus:ring-white/10"
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#E5DDCC] transition hover:text-[#F4C25E] focus:outline-none focus:ring-4 focus:ring-white/10"
               >
                 <ArrowLeft className="h-4 w-4 shrink-0" />
                 <span>Back to Unfiled Records</span>
               </Link>
 
-              <p className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-[#F4C25E]">
+              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#F4C25E]">
                 Archive Repository
               </p>
 
-              <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h1 className="mt-0.5 text-lg font-extrabold tracking-tight sm:text-xl">
                 Archive Folders
               </h1>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#E5DDCC]">
+              <p className="mt-0.5 max-w-2xl text-[11px] leading-4 text-[#E5DDCC] sm:text-xs">
                 Create and manage folders used to organize archived
                 records.
               </p>
@@ -258,9 +258,9 @@ export default function ArchiveFoldersPage() {
             <button
               type="button"
               onClick={openCreateModal}
-              className="inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-black/15 transition hover:-translate-y-0.5 hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 sm:w-auto"
+              className="inline-flex min-h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#6B0F2B] px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 sm:w-auto"
             >
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D9961A]">
+              <span className="hidden h-6 w-6 items-center justify-center rounded-md bg-[#D9961A] sm:flex">
                 <FolderPlus className="h-4 w-4" />
               </span>
               Create Folder
@@ -271,11 +271,11 @@ export default function ArchiveFoldersPage() {
         {error && <Alert tone="error">{error}</Alert>}
         {success && <Alert tone="success">{success}</Alert>}
 
-        <section className="relative mt-5 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#DED5C5] sm:mt-6">
+        <section className="relative mt-3 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#DED5C5]">
           <div className="absolute inset-x-0 top-0 h-1 bg-[#D9961A]" />
-          <div className="border-b border-[#E3DCCE] bg-[#FCFAF5] p-4 pt-5 sm:p-5 sm:pt-6">
-            <div className="relative w-full sm:max-w-xl">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#A09582]" />
+          <div className="border-b border-[#E3DCCE] bg-[#FCFAF5] p-3 pt-4">
+            <div className="relative w-full sm:max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A09582]" />
 
               <input
                 value={search}
@@ -285,12 +285,12 @@ export default function ArchiveFoldersPage() {
                 autoComplete="off"
                 placeholder="Search folders..."
                 aria-label="Search archive folders"
-                className="min-h-12 w-full rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] py-3 pl-12 pr-4 text-base text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] sm:text-sm"
+                className="min-h-10 w-full rounded-lg border border-[#E3DCCE] bg-[#F8F5EE] py-2 pl-10 pr-3 text-sm text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
               />
             </div>
           </div>
 
-          <div className="p-3 sm:p-5">
+          <div className="p-3">
             {loading ? (
               <LoadingState />
             ) : filteredFolders.length === 0 ? (
@@ -299,7 +299,7 @@ export default function ArchiveFoldersPage() {
                 onCreate={openCreateModal}
               />
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
                 {filteredFolders.map((folder) => {
                   const isDeleting =
                     deletingFolderId === folder.id;
@@ -307,12 +307,12 @@ export default function ArchiveFoldersPage() {
                   return (
                     <article
                       key={folder.id}
-                      className="flex min-w-0 flex-col rounded-2xl border border-[#E3DCCE] bg-white p-4 transition hover:border-[#CFE0D6] hover:shadow-md sm:p-5"
+                      className="relative flex min-w-0 flex-col rounded-xl border border-[#E3DCCE] bg-white p-3.5 transition hover:border-[#CFE0D6] hover:shadow-sm"
                     >
                       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#075A3A] via-[#D9961A] to-[#6B0F2B]" />
                       <div className="flex min-w-0 items-start justify-between gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#075A3A] text-[#F4C25E] shadow-sm">
-                          <FolderOpen className="h-5 w-5" />
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#075A3A] text-[#F4C25E] shadow-sm">
+                          <FolderOpen className="h-4 w-4" />
                         </div>
 
                         <span className="shrink-0 rounded-full bg-[#FFF3D6] px-2.5 py-1 text-[11px] font-bold text-[#A66B00] ring-1 ring-[#EBCF8F] sm:px-3 sm:text-xs">
@@ -325,13 +325,13 @@ export default function ArchiveFoldersPage() {
 
                       <div className="min-w-0 flex-1">
                         <h2
-                          className="mt-4 break-words text-base font-bold leading-6 text-[#252A27] sm:text-lg"
+                          className="mt-3 break-words text-sm font-bold leading-5 text-[#252A27]"
                           title={folder.name}
                         >
                           {folder.name}
                         </h2>
 
-                        <p className="mt-2 line-clamp-3 min-h-[60px] break-words text-sm leading-5 text-[#766F63]">
+                        <p className="mt-1.5 line-clamp-2 min-h-[40px] break-words text-xs leading-5 text-[#766F63]">
                           {folder.description ||
                             "No folder description."}
                         </p>
@@ -339,17 +339,17 @@ export default function ArchiveFoldersPage() {
 
                       <Link
                         href={`/archive/folders/${folder.id}`}
-                        className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#6B0F2B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#DED5C5]"
+                        className="mt-3 inline-flex min-h-9 w-full items-center justify-center rounded-lg bg-[#6B0F2B] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#DED5C5]"
                       >
                         Open Folder
                       </Link>
 
-                      <div className="mt-3 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
+                      <div className="mt-2.5 grid grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() => openEditModal(folder)}
                           disabled={isDeleting}
-                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#E3DCCE] px-3 py-2.5 text-sm font-semibold text-[#514D46] transition hover:bg-[#F8F5EE] focus:outline-none focus:ring-4 focus:ring-[#ECE5D8] disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-[#E3DCCE] px-2.5 py-2 text-xs font-semibold text-[#514D46] transition hover:bg-[#F8F5EE] focus:outline-none focus:ring-4 focus:ring-[#ECE5D8] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Pencil className="h-4 w-4" />
                           Rename
@@ -359,7 +359,7 @@ export default function ArchiveFoldersPage() {
                           type="button"
                           onClick={() => deleteFolder(folder)}
                           disabled={isDeleting}
-                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-4 focus:ring-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-red-200 px-2.5 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-4 focus:ring-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isDeleting ? (
                             <Loader2 className="h-4 w-4 animate-spin" />

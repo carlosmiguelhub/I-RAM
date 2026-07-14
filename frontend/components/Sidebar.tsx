@@ -309,7 +309,7 @@ export default function Sidebar({
         key={item.name}
         href={item.href}
         onClick={onClose}
-        className={`group relative flex min-h-12 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
+        className={`group relative flex min-h-10 items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
           active
             ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
             : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5]"
@@ -320,13 +320,13 @@ export default function Sidebar({
         )}
 
         <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-all duration-200 ${
             active
               ? "bg-white/15 text-[#F4C25E]"
               : "bg-[#EAE5D9] text-[#075A3A] group-hover:bg-[#075A3A] group-hover:text-[#F4C25E]"
           }`}
         >
-          <Icon className="h-[18px] w-[18px]" />
+          <Icon className="h-4 w-4" />
         </span>
 
         <span className="truncate">{item.name}</span>
@@ -349,7 +349,7 @@ export default function Sidebar({
         key={item.name}
         href={item.href}
         onClick={onClose}
-        className={`group flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${
+        className={`group flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-200 ${
           active
             ? "bg-[#FFF3D6] text-[#6B0F2B] ring-1 ring-[#E7C77F]"
             : "text-[#667085] hover:bg-white hover:text-[#075A3A]"
@@ -384,25 +384,25 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-dvh w-[min(18rem,88vw)] flex-col border-r border-[#DED5C5] bg-[#F8F5EE] px-4 py-5 shadow-2xl shadow-black/10 transition-transform duration-300 lg:h-screen lg:w-72 lg:translate-x-0 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-50 flex h-dvh w-[min(16.5rem,86vw)] flex-col border-r border-[#DED5C5] bg-[#F8F5EE] px-3 py-3.5 shadow-2xl shadow-black/10 transition-transform duration-300 lg:h-screen lg:w-64 lg:translate-x-0 lg:shadow-none ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between gap-3">
-          <div className="relative flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[#075A3A] to-[#043D28] p-3.5 shadow-lg shadow-[#075A3A]/20">
+          <div className="relative flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden rounded-xl bg-gradient-to-br from-[#075A3A] to-[#043D28] p-2.5 shadow-md shadow-[#075A3A]/15">
             <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#D9961A]/15" />
             <div className="absolute -bottom-10 right-8 h-20 w-20 rounded-full border border-white/10" />
 
-            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#D9961A] text-white shadow-md shadow-black/15 ring-1 ring-white/20">
-              <Archive className="h-6 w-6" />
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#D9961A] text-white shadow-sm shadow-black/10 ring-1 ring-white/20">
+              <Archive className="h-5 w-5" />
             </div>
 
             <div className="relative min-w-0">
-              <h1 className="truncate text-sm font-extrabold tracking-wide text-white">
+              <h1 className="truncate text-xs font-extrabold tracking-wide text-white">
                 IRAM Archive
               </h1>
 
-              <p className="mt-0.5 truncate text-xs font-medium text-[#E7DDBE]">
+              <p className="mt-0.5 truncate text-[10px] font-medium text-[#E7DDBE]">
                 {roleName || "Records Management"}
               </p>
             </div>
@@ -411,14 +411,14 @@ export default function Sidebar({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#6B0F2B] transition hover:bg-white hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5] lg:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#6B0F2B] transition hover:bg-white hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5] lg:hidden"
             aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mt-6 flex items-center gap-3 px-2">
+        <div className="mt-4 flex items-center gap-2 px-1.5">
           <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#9B8F7C]">
             Main Navigation
           </span>
@@ -426,7 +426,7 @@ export default function Sidebar({
           <span className="h-px flex-1 bg-gradient-to-r from-[#D7CDBB] to-transparent" />
         </div>
 
-        <nav className="mt-3 flex-1 space-y-1 overflow-y-auto overscroll-contain pb-5 pr-1">
+        <nav className="mt-2 flex-1 space-y-0.5 overflow-y-auto overscroll-contain pb-3 pr-0.5">
           {visibleMainItems.map((item, index) => (
             <div key={item.name}>
               {index === 1 && canSeeRecordsGroup && (
@@ -437,7 +437,7 @@ export default function Sidebar({
                       setRecordsOpen((current) => !current)
                     }
                     aria-expanded={recordsOpen}
-                    className={`group relative flex min-h-12 w-full items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                    className={`group relative flex min-h-10 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
                       recordsSectionActive
                         ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
                         : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5]"
@@ -448,13 +448,13 @@ export default function Sidebar({
                     )}
 
                     <span
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-all duration-200 ${
                         recordsSectionActive
                           ? "bg-white/15 text-[#F4C25E]"
                           : "bg-[#EAE5D9] text-[#075A3A] group-hover:bg-[#075A3A] group-hover:text-[#F4C25E]"
                       }`}
                     >
-                      <Files className="h-[18px] w-[18px]" />
+                      <Files className="h-4 w-4" />
                     </span>
 
                     <span className="truncate">Records</span>
@@ -474,7 +474,7 @@ export default function Sidebar({
                     }`}
                   >
                     <div className="overflow-hidden">
-                      <div className="ml-5 space-y-1 border-l border-[#D7CDBB] pl-3">
+                      <div className="ml-4 space-y-0.5 border-l border-[#D7CDBB] pl-2.5">
                         {visibleRecordItems.map((recordItem) =>
                           renderSubmenuItem(
                             recordItem,
@@ -499,7 +499,7 @@ export default function Sidebar({
                   setSettingsOpen((current) => !current)
                 }
                 aria-expanded={settingsOpen}
-                className={`group relative flex min-h-12 w-full items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                className={`group relative flex min-h-10 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
                   settingsSectionActive
                     ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
                     : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5]"
@@ -510,13 +510,13 @@ export default function Sidebar({
                 )}
 
                 <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-all duration-200 ${
                     settingsSectionActive
                       ? "bg-white/15 text-[#F4C25E]"
                       : "bg-[#EAE5D9] text-[#075A3A] group-hover:bg-[#075A3A] group-hover:text-[#F4C25E]"
                   }`}
                 >
-                  <Settings className="h-[18px] w-[18px]" />
+                  <Settings className="h-4 w-4" />
                 </span>
 
                 <span className="truncate">Settings</span>
@@ -536,7 +536,7 @@ export default function Sidebar({
                 }`}
               >
                 <div className="overflow-hidden">
-                  <div className="ml-5 space-y-1 border-l border-[#D7CDBB] pl-3">
+                  <div className="ml-4 space-y-0.5 border-l border-[#D7CDBB] pl-2.5">
                     {visibleSettingsItems.map((settingsItem) =>
                       renderSubmenuItem(
                         settingsItem,
@@ -552,20 +552,20 @@ export default function Sidebar({
           )}
         </nav>
 
-        <div className="border-t border-[#D7CDBB] pt-4">
+        <div className="border-t border-[#D7CDBB] pt-3">
           <Link
             href="/records/create"
             onClick={onClose}
-            className="group flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#6B0F2B] to-[#7C1735] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-[#6B0F2B]/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-[#571023] hover:to-[#6B0F2B] hover:shadow-xl hover:shadow-[#6B0F2B]/25 focus:outline-none focus:ring-4 focus:ring-[#D9961A]/25"
+            className="group flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-[#6B0F2B] to-[#7C1735] px-3 py-2 text-xs font-bold text-white shadow-md shadow-[#6B0F2B]/15 transition-all duration-200 hover:from-[#571023] hover:to-[#6B0F2B] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/25"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D9961A] text-white transition-transform duration-200 group-hover:rotate-6">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#D9961A] text-white transition-transform duration-200 group-hover:rotate-6">
               <FilePlus2 className="h-4 w-4" />
             </span>
 
             {primaryAction}
           </Link>
 
-          <p className="mt-3 text-center text-[10px] font-medium uppercase tracking-[0.14em] text-[#A09582]">
+          <p className="mt-2 text-center text-[9px] font-medium uppercase tracking-[0.12em] text-[#A09582]">
             Record Acquisition & Archiving
           </p>
         </div>

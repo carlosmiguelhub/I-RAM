@@ -168,28 +168,28 @@ export default function ArchiveFolderDetailPage() {
   return (
     <AppShell>
       <div className="mx-auto w-full min-w-0 max-w-7xl overflow-x-hidden pb-8">
-        <header className="relative min-w-0 overflow-hidden rounded-3xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-5 py-6 text-white shadow-xl shadow-[#075A3A]/20 sm:px-7 sm:py-7">
-          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#D9961A]/15 blur-2xl" />
-          <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-[#6B0F2B]/30 blur-3xl" />
+        <header className="relative min-w-0 overflow-hidden rounded-xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-4 py-3.5 text-white shadow-md shadow-[#075A3A]/10">
+          <div className="absolute -right-14 -top-16 h-40 w-40 rounded-full bg-[#D9961A]/15 blur-2xl" />
+          <div className="absolute -bottom-16 left-1/3 h-32 w-32 rounded-full bg-[#6B0F2B]/30 blur-3xl" />
 
           <div className="relative min-w-0">
             <Link
               href="/archive/folders"
-              className="inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-[#E5DDCC] transition hover:text-[#F4C25E] focus:outline-none focus:ring-4 focus:ring-white/10"
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#E5DDCC] transition hover:text-[#F4C25E] focus:outline-none focus:ring-4 focus:ring-white/10"
             >
               <ArrowLeft className="h-4 w-4 shrink-0" />
               <span className="break-words">Back to Archive Folders</span>
             </Link>
 
-            <p className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-[#F4C25E]">
+            <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#F4C25E]">
               Archive Repository
             </p>
 
-            <h1 className="mt-2 break-words text-2xl font-extrabold tracking-tight sm:text-3xl">
+            <h1 className="mt-0.5 break-words text-lg font-extrabold tracking-tight sm:text-xl">
               {folder?.name || "Archive Folder"}
             </h1>
 
-            <p className="mt-2 max-w-2xl break-words text-sm leading-6 text-[#E5DDCC]">
+            <p className="mt-0.5 max-w-2xl break-words text-[11px] leading-4 text-[#E5DDCC] sm:text-xs">
               {folder?.description ||
                 "Browse and manage records stored in this archive folder."}
             </p>
@@ -199,18 +199,18 @@ export default function ArchiveFolderDetailPage() {
         {error && <Alert tone="error">{error}</Alert>}
         {success && <Alert tone="success">{success}</Alert>}
 
-        <section className="relative mt-5 min-w-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#DED5C5] sm:mt-6">
+        <section className="relative mt-3 min-w-0 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#DED5C5]">
           <div className="absolute inset-x-0 top-0 h-1 bg-[#D9961A]" />
-          <div className="border-b border-[#E3DCCE] bg-[#FCFAF5] p-3 pt-5 sm:p-5 sm:pt-6">
+          <div className="border-b border-[#E3DCCE] bg-[#FCFAF5] p-3 pt-4">
             <form
               onSubmit={(event) => {
                 event.preventDefault();
                 loadPage(search);
               }}
-              className="flex min-w-0 flex-col gap-3 sm:flex-row"
+              className="flex min-w-0 flex-col gap-2 sm:flex-row"
             >
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#A09582]" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A09582]" />
 
                 <input
                   value={search}
@@ -219,14 +219,14 @@ export default function ArchiveFolderDetailPage() {
                   inputMode="search"
                   autoComplete="off"
                   placeholder="Search records in this folder..."
-                  className="min-h-12 w-full min-w-0 rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] py-3 pl-12 pr-4 text-base text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] sm:text-sm"
+                  className="min-h-10 w-full min-w-0 rounded-lg border border-[#E3DCCE] bg-[#F8F5EE] py-2 pl-10 pr-3 text-sm text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#075A3A] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#043D28] focus:outline-none focus:ring-4 focus:ring-[#CFE0D6] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#075A3A] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#043D28] focus:outline-none focus:ring-4 focus:ring-[#CFE0D6] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -238,13 +238,13 @@ export default function ArchiveFolderDetailPage() {
             </form>
           </div>
 
-          <div className="min-w-0 p-3 sm:p-5">
+          <div className="min-w-0 p-3">
             {loading ? (
               <LoadingState />
             ) : records.length === 0 ? (
               <EmptyState />
             ) : (
-              <div className="grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              <div className="grid min-w-0 grid-cols-1 gap-2.5 md:grid-cols-2 2xl:grid-cols-3">
                 {records.map((record) => {
                   const isOpening =
                     openingRecordId === record.id;
@@ -253,13 +253,13 @@ export default function ArchiveFolderDetailPage() {
                   return (
                     <article
                       key={record.id}
-                      className="relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E3DCCE] bg-white p-4 transition hover:border-[#CFE0D6] hover:shadow-md sm:p-5"
+                      className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#E3DCCE] bg-white p-3.5 transition hover:border-[#CFE0D6] hover:shadow-sm"
                     >
                       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#075A3A] via-[#D9961A] to-[#6B0F2B]" />
                       <div className="flex min-w-0 flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
                         <div className="min-w-0 flex-1">
                           <h2
-                            className="break-words text-base font-bold leading-6 text-[#252A27] sm:text-lg"
+                            className="break-words text-sm font-bold leading-5 text-[#252A27]"
                             title={record.title}
                           >
                             {record.title}
@@ -285,7 +285,7 @@ export default function ArchiveFolderDetailPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 min-w-0 space-y-3 rounded-xl bg-[#FCFAF5] p-3 text-xs ring-1 ring-[#E8E0D4] sm:p-4">
+                      <div className="mt-3 min-w-0 space-y-2 rounded-lg bg-[#FCFAF5] p-2.5 text-[11px] ring-1 ring-[#E8E0D4]">
                         <InfoLine
                           label="Category"
                           value={record.category?.name || "N/A"}
@@ -304,15 +304,15 @@ export default function ArchiveFolderDetailPage() {
                         />
                       </div>
 
-                      <div className="mt-4 min-w-0">
+                      <div className="mt-3 min-w-0">
                         <label
                           htmlFor={`move-record-${record.id}`}
-                          className="block text-xs font-bold uppercase tracking-[0.14em] text-[#A09582]"
+                          className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#A09582]"
                         >
                           Move record
                         </label>
 
-                        <div className="relative mt-2 min-w-0">
+                        <div className="relative mt-1.5 min-w-0">
                           <select
                             id={`move-record-${record.id}`}
                             value={
@@ -324,7 +324,7 @@ export default function ArchiveFolderDetailPage() {
                             onChange={(event) =>
                               moveRecord(record, event.target.value)
                             }
-                            className="min-h-12 w-full min-w-0 appearance-none rounded-xl border border-[#E3DCCE] bg-white px-3 py-2.5 pr-10 text-base font-medium normal-case tracking-normal text-[#514D46] outline-none transition focus:border-[#075A3A] focus:ring-4 focus:ring-[#E6F2EC] disabled:cursor-not-allowed disabled:bg-[#F0ECE4] disabled:opacity-70 sm:text-sm"
+                            className="min-h-10 w-full min-w-0 appearance-none rounded-lg border border-[#E3DCCE] bg-white px-3 py-2 pr-9 text-sm font-medium normal-case tracking-normal text-[#514D46] outline-none transition focus:border-[#075A3A] focus:ring-4 focus:ring-[#E6F2EC] disabled:cursor-not-allowed disabled:bg-[#F0ECE4] disabled:opacity-70"
                           >
                             <option value="">Unfiled</option>
 
@@ -348,7 +348,7 @@ export default function ArchiveFolderDetailPage() {
                         type="button"
                         onClick={() => openRecord(record.id)}
                         disabled={openingRecordId !== null || isMoving}
-                        className="mt-3 inline-flex min-h-12 w-full min-w-0 items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="mt-2.5 inline-flex min-h-9 w-full min-w-0 items-center justify-center gap-1.5 rounded-lg bg-[#6B0F2B] px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {isOpening ? (
                           <Loader2 className="h-4 w-4 shrink-0 animate-spin" />

@@ -584,15 +584,15 @@
     return (
       <AppShell>
         <div className="mx-auto w-full max-w-7xl">
-          <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-5 py-6 text-white shadow-xl shadow-[#075A3A]/20 sm:px-7 sm:py-7">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-start gap-4">
-                <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 sm:flex">
-                  <Files className="h-6 w-6 text-[#F4C25E]" />
+          <section className="overflow-hidden rounded-xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-3.5 py-3 text-white shadow-md shadow-[#075A3A]/10 sm:px-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
+                <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15 sm:flex">
+                  <Files className="h-4 w-4 text-[#F4C25E]" />
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#F4C25E]">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#F4C25E]">
                     {isMySubmissionsView
                       ? "Submission Tracking"
                       : canManageWorkflow
@@ -600,11 +600,11 @@
                       : "Document Archive"}
                   </p>
 
-                  <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+                  <h1 className="mt-0.5 text-lg font-bold tracking-tight sm:text-xl">
                     {isMySubmissionsView ? "My Submissions" : "All Records"}
                   </h1>
 
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[#E5DDCC]">
+                  <p className="mt-0.5 max-w-2xl text-[11px] leading-4 text-[#E5DDCC] sm:text-xs">
                     {isMySubmissionsView
                       ? "Track records submitted using your account, including items returned for correction."
                       : canManageWorkflow
@@ -614,15 +614,6 @@
                 </div>
               </div>
 
-              <Link
-                href="/records/create"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#252A27] shadow-sm transition hover:bg-[#F0ECE4] sm:w-auto"
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D9961A] text-white">
-                  <FilePlus2 className="h-4 w-4" />
-                </span>
-                {isStaff ? "New Submission" : "Add Record"}
-              </Link>
             </div>
           </section>
 
@@ -630,8 +621,8 @@
             <Alert tone="success">{autoRefreshNotice}</Alert>
           )}
 
-          <section className="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-5">
-            <div className="mb-4 flex flex-col gap-2 rounded-xl border border-[#CFE0D6] bg-[#F0F7F3] px-4 py-3 text-xs text-[#075A3A] sm:flex-row sm:items-center sm:justify-between">
+          <section className="mt-3 rounded-xl bg-white p-3 shadow-sm ring-1 ring-[#DED5C5] sm:p-4">
+            <div className="mb-3 flex flex-col gap-1.5 rounded-lg border border-[#CFE0D6] bg-[#F0F7F3] px-3 py-2 text-[11px] text-[#075A3A] sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2 font-semibold">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-40" />
@@ -662,12 +653,12 @@
             </div>
             <form
               onSubmit={handleSearch}
-              className="flex flex-col gap-3 md:flex-row"
+              className="flex flex-col gap-2 md:flex-row"
             >
               <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#A09582]" />
                 <input
-                  className="w-full rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] py-3 pl-12 pr-4 text-sm text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
+                  className="w-full rounded-lg border border-[#E3DCCE] bg-[#F8F5EE] py-2.5 pl-11 pr-3 text-sm text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
                   placeholder="Search by code, title, description, or source..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -676,14 +667,14 @@
 
               <button
                 type="submit"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#075A3A] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#043D28] focus:outline-none focus:ring-4 focus:ring-[#CFE0D6]"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#075A3A] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#043D28] focus:outline-none focus:ring-4 focus:ring-[#CFE0D6]"
               >
                 <Search className="h-4 w-4" />
                 Search
               </button>
             </form>
 
-            <div className="mt-5 overflow-x-auto">
+            <div className="mt-3 overflow-x-auto">
               <div className="flex min-w-max gap-2">
                 {tabs.map((tab) => {
                   const active = activeStatus === tab.value;
@@ -693,7 +684,7 @@
                       key={tab.label}
                       type="button"
                       onClick={() => handleTabChange(tab.value)}
-                      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                         active
                           ? "bg-[#6B0F2B] text-white shadow-sm"
                           : "bg-[#F0ECE4] text-[#625E56] hover:bg-[#FFF3D6] hover:text-[#6B0F2B]"
@@ -707,7 +698,7 @@
             </div>
           </section>
 
-          <section className="mt-5 space-y-3 md:hidden">
+          <section className="mt-3 space-y-2 md:hidden">
             {loading && <EmptyCard text="Loading records..." />}
 
             {!loading && records.length === 0 && (
@@ -718,7 +709,7 @@
               records.map((record) => (
                 <article
                   key={record.id}
-                  className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] transition hover:shadow-md"
+                  className="rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-[#DED5C5] transition hover:shadow-md"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -736,7 +727,7 @@
                     />
                   </div>
 
-                  <div className="mt-4 grid gap-2 text-sm text-[#625E56]">
+                  <div className="mt-3 grid gap-1.5 text-xs text-[#625E56]">
                     <InfoRow
                       label="Category"
                       value={record.category?.name || "N/A"}
@@ -782,7 +773,7 @@
                     type="button"
                     onClick={() => openPreview(record.id)}
                     disabled={openingRecordId !== null}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[#6B0F2B] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {openingRecordId === record.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -805,7 +796,7 @@
               ))}
           </section>
 
-          <section className="mt-5 hidden overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#DED5C5] md:block">
+          <section className="mt-3 hidden overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#DED5C5] md:block">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-left text-sm">
                 <thead className="bg-[#F8F5EE] text-xs uppercase tracking-wide text-[#766F63]">

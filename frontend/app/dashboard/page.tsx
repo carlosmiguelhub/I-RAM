@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -64,7 +64,12 @@ export default function DashboardPage() {
   const [requestCounts, setRequestCounts] =
     useState<RequestCounts>(initialRequestCounts);
   const [loading, setLoading] = useState(true);
+  const [silentRefreshing, setSilentRefreshing] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [loadError, setLoadError] = useState("");
+
+  const userRef = useRef<any>(null);
+  const refreshRunningRef = useRef(false);
 
   const roleName = user?.role?.name || "";
   const isStaff = roleName === "Staff";
@@ -116,162 +121,246 @@ export default function DashboardPage() {
     return "There are no pending review actions.";
   }, [counts.received, counts.underReview, isStaff]);
 
-  useEffect(() => {
-    async function loadDashboard() {
+  async function loadDashboard(silent = false) {
+    if (refreshRunningRef.current) return;
+
+    refreshRunningRef.current = true;
+
+    if (silent) {
+      setSilentRefreshing(true);
+    } else {
       setLoading(true);
       setLoadError("");
+    }
 
-      try {
+    try {
+      let currentUser = userRef.current;
+
+      if (!currentUser) {
         const meData = await apiRequest("/me");
-        const currentUser = meData.user;
-        const currentRole = currentUser?.role?.name || "";
+        currentUser = meData.user;
 
+        userRef.current = currentUser;
         setUser(currentUser);
 
         localStorage.setItem(
           "iram_user",
           JSON.stringify(currentUser)
         );
+      }
 
-        const canManage =
-          currentRole === "Admin" ||
-          currentRole === "Records Officer";
+      const recordRequests = [
+        apiRequest("/records"),
+        apiRequest("/records?status=received"),
+        apiRequest("/records?status=under_review"),
+        apiRequest("/records?status=archived"),
+      ];
 
-        const recordRequests = [
-          apiRequest("/records"),
-          apiRequest("/records?status=received"),
-          apiRequest("/records?status=under_review"),
-          apiRequest("/records?status=archived"),
-        ];
+      const requestRequests = [
+        apiRequest("/document-requests"),
+        apiRequest("/document-requests?status=pending"),
+        apiRequest("/document-requests?status=under_review"),
+      ];
 
-        const requestRequests = canManage
-          ? [
-              apiRequest("/document-requests"),
-              apiRequest("/document-requests?status=pending"),
-              apiRequest(
-                "/document-requests?status=under_review"
-              ),
-            ]
-          : [];
+      const [
+        recordResults,
+        requestResults,
+      ] = await Promise.all([
+        Promise.all(recordRequests),
+        Promise.all(requestRequests),
+      ]);
 
-        const recordResults = await Promise.all(recordRequests);
+      const [
+        recentData,
+        receivedData,
+        underReviewData,
+        archivedData,
+      ] = recordResults;
 
-        const [
-          recentData,
-          receivedData,
-          underReviewData,
-          archivedData,
-        ] = recordResults;
+      const [
+        allRequestsData,
+        pendingRequestsData,
+        underReviewRequestsData,
+      ] = requestResults;
 
-        setRecentRecords((recentData.data || []).slice(0, 5));
+      setRecentRecords((recentData.data || []).slice(0, 5));
 
-        setCounts({
-          total: getPaginationTotal(recentData),
-          received: getPaginationTotal(receivedData),
-          underReview: getPaginationTotal(underReviewData),
-          archived: getPaginationTotal(archivedData),
-        });
+      setCounts({
+        total: getPaginationTotal(recentData),
+        received: getPaginationTotal(receivedData),
+        underReview: getPaginationTotal(underReviewData),
+        archived: getPaginationTotal(archivedData),
+      });
 
-        if (canManage) {
-          const requestResults = await Promise.all(
-            requestRequests
-          );
+      setRequestCounts({
+        total: getPaginationTotal(allRequestsData),
+        pending: getPaginationTotal(pendingRequestsData),
+        underReview: getPaginationTotal(
+          underReviewRequestsData
+        ),
+      });
 
-          const [
-            allRequestsData,
-            pendingRequestsData,
-            underReviewRequestsData,
-          ] = requestResults;
+      setLastUpdatedAt(new Date());
 
-          setRequestCounts({
-            total: getPaginationTotal(allRequestsData),
-            pending: getPaginationTotal(pendingRequestsData),
-            underReview: getPaginationTotal(
-              underReviewRequestsData
-            ),
-          });
-        } else {
-          setRequestCounts(initialRequestCounts);
-        }
-      } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : "";
+      if (silent) {
+        setLoadError("");
+      }
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "";
 
-        if (message === "Unauthenticated.") {
-          localStorage.removeItem("iram_token");
-          localStorage.removeItem("iram_user");
-          router.replace("/login");
-          return;
-        }
+      if (message === "Unauthenticated.") {
+        localStorage.removeItem("iram_token");
+        localStorage.removeItem("iram_user");
+        router.replace("/login");
+        return;
+      }
 
+      if (!silent) {
         setLoadError(
           message ||
             "Failed to load dashboard information."
         );
-      } finally {
+      }
+    } finally {
+      refreshRunningRef.current = false;
+
+      if (silent) {
+        setSilentRefreshing(false);
+      } else {
         setLoading(false);
       }
     }
+  }
 
-    loadDashboard();
+  useEffect(() => {
+    void loadDashboard(false);
   }, [router]);
+
+  useEffect(() => {
+    function refreshDashboard() {
+      if (
+        document.visibilityState !== "visible" ||
+        refreshRunningRef.current
+      ) {
+        return;
+      }
+
+      void loadDashboard(true);
+    }
+
+    const intervalId = window.setInterval(
+      refreshDashboard,
+      5000
+    );
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        refreshDashboard();
+      }
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+    window.addEventListener("focus", refreshDashboard);
+    window.addEventListener(
+      "iram:records-changed",
+      refreshDashboard
+    );
+    window.addEventListener(
+      "iram:document-requests-changed",
+      refreshDashboard
+    );
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+      window.removeEventListener("focus", refreshDashboard);
+      window.removeEventListener(
+        "iram:records-changed",
+        refreshDashboard
+      );
+      window.removeEventListener(
+        "iram:document-requests-changed",
+        refreshDashboard
+      );
+    };
+  }, []);
 
   return (
     <AppShell>
       <div className="mx-auto w-full max-w-7xl">
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-5 py-6 text-white shadow-xl shadow-[#075A3A]/20 sm:px-7 sm:py-7">
-          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#D9961A]/15 blur-2xl" />
-          <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-[#6B0F2B]/30 blur-3xl" />
-          <div className="absolute right-7 top-7 h-24 w-24 rounded-full border border-white/10" />
+        <section className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-3.5 py-3 text-white shadow-md shadow-[#075A3A]/10 sm:px-4">
+          <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-[#D9961A]/15 blur-2xl" />
+          <div className="absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-[#6B0F2B]/30 blur-3xl" />
+          <div className="absolute right-5 top-5 h-16 w-16 rounded-full border border-white/10" />
 
-          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#D9961A] text-white shadow-lg shadow-black/15 ring-1 ring-white/20 sm:flex">
-                <ShieldCheck className="h-6 w-6" />
+          <div className="relative flex items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#D9961A] text-white shadow-sm shadow-black/10 ring-1 ring-white/20 sm:flex">
+                <ShieldCheck className="h-4 w-4" />
               </div>
 
               <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#F4C25E]">
+                <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#F4C25E]">
                   {isStaff
                     ? "Submission Overview"
                     : "Records Management Overview"}
                 </p>
 
-                <h1 className="mt-2 break-words text-2xl font-extrabold tracking-tight sm:text-3xl">
+                <h1 className="mt-0.5 break-words text-lg font-extrabold tracking-tight sm:text-xl">
                   Welcome, {user?.name || "IRAM User"}
                 </h1>
 
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#E5DDCC]">
+                <p className="mt-0.5 max-w-2xl text-[11px] leading-4 text-[#E5DDCC] sm:text-xs">
                   {isStaff
                     ? "Track your submissions and monitor their progress through review and archiving."
                     : "Monitor incoming submissions, active reviews, archived records, and document requests from one place."}
                 </p>
+
+                <div className="mt-1.5 flex items-center gap-1.5 text-[9px] font-medium text-[#D9E8E0]">
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      silentRefreshing
+                        ? "animate-pulse bg-[#F4C25E]"
+                        : "bg-emerald-300"
+                    }`}
+                  />
+                  <span>
+                    {silentRefreshing
+                      ? "Updating dashboard..."
+                      : lastUpdatedAt
+                        ? `Auto-refresh active · ${lastUpdatedAt.toLocaleTimeString(
+                            "en-PH",
+                            {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            }
+                          )}`
+                        : "Auto-refresh active"}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <Link
-              href={primaryAction.href}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-black/15 ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-[#571023] hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 sm:w-auto"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D9961A]">
-                <FilePlus2 className="h-4 w-4" />
-              </span>
-
-              {primaryAction.label}
-            </Link>
           </div>
         </section>
 
         {loadError && (
           <div
             role="alert"
-            className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700 shadow-sm"
+            className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 shadow-sm"
           >
             {loadError}
           </div>
         )}
 
-        <section className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-4">
           <StatCard
             title={isStaff ? "My Records" : "Total Records"}
             value={counts.total}
@@ -316,37 +405,16 @@ export default function DashboardPage() {
           />
         </section>
 
-        {canManageRecords && (
-          <section className="mt-5">
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#A09582]">
-                  Archive Access
-                </p>
-
-                <h2 className="mt-1 text-base font-extrabold text-[#2D332F]">
-                  Document Request Overview
-                </h2>
-
-                <p className="mt-1 text-xs text-[#766F63]">
-                  Current archive document request activity.
-                </p>
-              </div>
-
-              <Link
-                href="/document-requests"
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#6B0F2B] transition hover:text-[#4B0B1E]"
-              >
-                View requests
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <section className="mt-3">
+            <div className="grid grid-cols-3 gap-2">
               <RequestStatCard
-                title="Total Requests"
+                title={isStaff ? "My Requests" : "Total Requests"}
                 value={requestCounts.total}
-                description="All document requests"
+                description={
+                  isStaff
+                    ? "All requests you submitted"
+                    : "All document requests"
+                }
                 loading={loading}
                 href="/document-requests"
                 variant="green"
@@ -355,14 +423,18 @@ export default function DashboardPage() {
               <RequestStatCard
                 title="Pending Requests"
                 value={requestCounts.pending}
-                description="Waiting for review"
+                description={
+                  isStaff
+                    ? "Waiting for Records Office review"
+                    : "Waiting for review"
+                }
                 loading={loading}
                 href="/document-requests?status=pending"
                 variant="gold"
               />
 
               <RequestStatCard
-                title="Under Review Requests"
+                title="Under Review"
                 value={requestCounts.underReview}
                 description="Currently being processed"
                 loading={loading}
@@ -371,7 +443,6 @@ export default function DashboardPage() {
               />
             </div>
           </section>
-        )}
 
         <section className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,0.8fr)]">
           <div className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#DED5C5]">
@@ -484,7 +555,7 @@ export default function DashboardPage() {
 
               <div className="relative flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#F4C25E]">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#F4C25E]">
                     Current Workflow
                   </p>
 
@@ -631,37 +702,37 @@ function StatCard({
 
   const content = (
     <div
-      className={`group relative h-full overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${styles.ring}`}
+      className={`group relative h-full min-h-[86px] overflow-hidden rounded-xl bg-white p-3 shadow-sm ring-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm ${styles.ring}`}
     >
       <div
         className={`absolute inset-x-0 top-0 h-1 ${styles.topBar}`}
       />
 
       <div
-        className={`absolute -right-7 -top-7 h-20 w-20 rounded-full ${styles.decorative}`}
+        className={`absolute -right-5 -top-5 h-12 w-12 rounded-full ${styles.decorative}`}
       />
 
       <div className="relative flex items-start justify-between gap-3">
-        <p className="text-sm font-semibold text-[#6E685E]">
+        <p className="text-[11px] font-semibold leading-4 text-[#6E685E]">
           {title}
         </p>
 
         <div
-          className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-sm transition-transform duration-200 group-hover:scale-105 ${styles.icon}`}
+          className={`hidden h-7 w-7 items-center justify-center rounded-lg shadow-sm transition-transform duration-200 group-hover:scale-105 sm:flex ${styles.icon}`}
         >
-          <Files className="h-[18px] w-[18px]" />
+          <Files className="h-4 w-4" />
         </div>
       </div>
 
       {loading ? (
-        <div className="mt-4 h-9 w-20 animate-pulse rounded-lg bg-[#E8E1D5]" />
+        <div className="mt-3 h-7 w-16 animate-pulse rounded-lg bg-[#E8E1D5]" />
       ) : (
-        <h2 className="relative mt-2 text-3xl font-extrabold tracking-tight text-[#252A27]">
+        <h2 className="relative mt-0.5 text-xl font-extrabold tracking-tight text-[#252A27]">
           {value}
         </h2>
       )}
 
-      <p className="relative mt-2 text-xs font-medium text-[#8A8173]">
+      <p className="relative mt-0.5 hidden text-[10px] font-medium leading-4 text-[#8A8173] sm:block">
         {description}
       </p>
     </div>
@@ -698,29 +769,29 @@ function RequestStatCard({
   return (
     <Link href={href} className="block">
       <div
-        className={`group h-full rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${styles.container}`}
+        className={`group h-full min-h-[82px] rounded-xl border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm ${styles.container}`}
       >
         <div className="flex items-start justify-between gap-3">
-          <p className="text-sm font-semibold text-[#5F5A52]">
+          <p className="text-[11px] font-semibold leading-4 text-[#5F5A52]">
             {title}
           </p>
 
           <div
-            className={`flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ${styles.icon}`}
+            className={`hidden h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm ring-1 sm:flex ${styles.icon}`}
           >
-            <Files className="h-[18px] w-[18px]" />
+            <Files className="h-4 w-4" />
           </div>
         </div>
 
         {loading ? (
-          <div className="mt-4 h-9 w-20 animate-pulse rounded-lg bg-[#E8E1D5]" />
+          <div className="mt-3 h-7 w-16 animate-pulse rounded-lg bg-[#E8E1D5]" />
         ) : (
-          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-[#252A27]">
+          <h2 className="mt-0.5 text-xl font-extrabold tracking-tight text-[#252A27]">
             {value}
           </h2>
         )}
 
-        <p className="mt-2 text-xs font-medium text-[#81796D]">
+        <p className="mt-0.5 hidden text-[10px] font-medium leading-4 text-[#81796D] sm:block">
           {description}
         </p>
       </div>

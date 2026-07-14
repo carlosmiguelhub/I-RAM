@@ -330,31 +330,31 @@ export default function ArchiveUnfiledPage() {
   return (
     <AppShell>
       <div className="mx-auto w-full max-w-7xl">
-        <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-5 py-6 text-white shadow-xl shadow-[#075A3A]/20 sm:px-7 sm:py-7">
-          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#D9961A]/15 blur-2xl" />
-          <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-[#6B0F2B]/30 blur-3xl" />
+        <header className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-4 py-3.5 text-white shadow-md shadow-[#075A3A]/10">
+          <div className="absolute -right-14 -top-16 h-40 w-40 rounded-full bg-[#D9961A]/15 blur-2xl" />
+          <div className="absolute -bottom-16 left-1/3 h-32 w-32 rounded-full bg-[#6B0F2B]/30 blur-3xl" />
 
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#F4C25E]">
+              <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#F4C25E]">
                 Archive Repository
               </p>
 
-              <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h1 className="mt-0.5 text-lg font-extrabold tracking-tight sm:text-xl">
                 Unfiled Records
               </h1>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#E5DDCC]">
+              <p className="mt-0.5 max-w-2xl text-[11px] leading-4 text-[#E5DDCC] sm:text-xs">
                 Newly archived records appear here until they are
                 organized into an archive folder.
               </p>
             </div>
 
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            <div className="flex w-full gap-2 sm:w-auto">
               <button
                 type="button"
                 onClick={toggleSelectionMode}
-                className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold shadow-lg shadow-black/10 transition focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 sm:w-auto ${
+                className={`inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold shadow-sm transition focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 sm:flex-none ${
                   selectionMode
                     ? "bg-[#D9961A] text-white hover:bg-[#BE7F10]"
                     : "border border-white/20 bg-white/10 text-white hover:bg-white/15"
@@ -368,9 +368,9 @@ export default function ArchiveUnfiledPage() {
 
               <Link
                 href="/archive/folders"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-black/15 transition hover:-translate-y-0.5 hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 sm:w-auto"
+                className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#6B0F2B] px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 sm:flex-none"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D9961A]">
+                <span className="hidden h-6 w-6 items-center justify-center rounded-md bg-[#D9961A] sm:flex">
                   <FolderOpen className="h-4 w-4" />
                 </span>
                 Manage Folders
@@ -379,7 +379,7 @@ export default function ArchiveUnfiledPage() {
           </div>
         </header>
 
-        <section className="mt-5 grid gap-3 sm:grid-cols-3">
+        <section className="mt-3 grid grid-cols-3 gap-2">
           <SummaryCard
             label="Unfiled"
             value={records.length}
@@ -405,38 +405,38 @@ export default function ArchiveUnfiledPage() {
           <Alert tone="success">{success}</Alert>
         )}
 
-        <section className="relative mt-5 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#DED5C5]">
+        <section className="relative mt-3 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#DED5C5]">
           <div className="absolute inset-x-0 top-0 h-1 bg-[#D9961A]" />
-          <div className="border-b border-[#E3DCCE] bg-[#FCFAF5] p-4 pt-5 sm:p-5 sm:pt-6">
+          <div className="border-b border-[#E3DCCE] bg-[#FCFAF5] p-3 pt-4">
             <form
               onSubmit={(event) => {
                 event.preventDefault();
                 loadPage(search);
               }}
-              className="flex flex-col gap-3 sm:flex-row"
+              className="flex flex-col gap-2 sm:flex-row"
             >
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#A09582]" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A09582]" />
                 <input
                   value={search}
                   onChange={(event) =>
                     setSearch(event.target.value)
                   }
                   placeholder="Search title, record code, category..."
-                  className="w-full rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] py-3 pl-12 pr-4 text-sm outline-none transition focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
+                  className="min-h-10 w-full rounded-lg border border-[#E3DCCE] bg-[#F8F5EE] py-2 pl-10 pr-3 text-sm outline-none transition focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
                 />
               </div>
 
-              <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#075A3A] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#043D28] focus:outline-none focus:ring-4 focus:ring-[#CFE0D6]">
+              <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#075A3A] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#043D28] focus:outline-none focus:ring-4 focus:ring-[#CFE0D6]">
                 <Search className="h-4 w-4" />
                 Search
               </button>
             </form>
           </div>
 
-          <div className="p-4 sm:p-5">
+          <div className="p-3">
             {selectionMode && !loading && records.length > 0 && (
-              <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-[#CFE0D6] bg-gradient-to-r from-[#F0F7F3] to-[#FFF9EA] p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mb-3 flex flex-col gap-2 rounded-xl border border-[#CFE0D6] bg-gradient-to-r from-[#F0F7F3] to-[#FFF9EA] p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-bold text-[#252A27]">
                     {selectedRecordIds.length}{" "}
@@ -484,11 +484,11 @@ export default function ArchiveUnfiledPage() {
             ) : records.length === 0 ? (
               <EmptyState />
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              <div className="grid gap-2.5 md:grid-cols-2 2xl:grid-cols-3">
                 {records.map((record) => (
                   <article
                     key={record.id}
-                    className={`relative overflow-hidden rounded-2xl border bg-white p-5 transition hover:shadow-md ${
+                    className={`relative overflow-hidden rounded-xl border bg-white p-3.5 transition hover:shadow-sm ${
                       selectedRecordIds.includes(record.id)
                         ? "border-[#075A3A] ring-2 ring-[#CFE0D6]"
                         : "border-[#E3DCCE] hover:border-[#CFE0D6]"
@@ -544,7 +544,7 @@ export default function ArchiveUnfiledPage() {
 
                     </div>
 
-                    <div className="mt-4 space-y-2 rounded-xl bg-[#F8F5EE] p-3 text-xs">
+                    <div className="mt-3 space-y-1.5 rounded-lg bg-[#F8F5EE] p-2.5 text-[11px]">
                       <InfoLine
                         label="Category"
                         value={record.category?.name || "N/A"}
@@ -565,14 +565,14 @@ export default function ArchiveUnfiledPage() {
                       />
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="mt-3 grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => openRecord(record.id)}
                         disabled={
                           openingRecordId !== null || selectionMode
                         }
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#E3DCCE] px-3 py-2.5 text-sm font-semibold text-[#514D46] transition hover:bg-[#F8F5EE] disabled:opacity-50"
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-[#E3DCCE] px-2.5 py-2 text-xs font-semibold text-[#514D46] transition hover:bg-[#F8F5EE] disabled:opacity-50"
                       >
                         {openingRecordId === record.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -588,7 +588,7 @@ export default function ArchiveUnfiledPage() {
                         type="button"
                         onClick={() => openMoveModal(record)}
                         disabled={selectionMode}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-3 py-2.5 text-sm font-bold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-[#6B0F2B] px-2.5 py-2 text-xs font-bold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <FolderInput className="h-4 w-4" />
                         Organize
@@ -869,19 +869,19 @@ function SummaryCard({
   }[variant];
 
   return (
-    <div className={`relative flex items-center gap-3 overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ${styles.ring}`}>
+    <div className={`relative flex min-h-[76px] items-center gap-2 overflow-hidden rounded-xl bg-white p-2.5 shadow-sm ring-1 ${styles.ring}`}>
       <div className={`absolute inset-y-0 left-0 w-1 ${styles.bar}`} />
 
-      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${styles.icon}`}>
+      <div className={`hidden h-8 w-8 items-center justify-center rounded-lg sm:flex ${styles.icon}`}>
         {icon}
       </div>
 
       <div>
-        <p className="text-xs font-medium text-[#766F63]">
+        <p className="text-[10px] font-medium leading-4 text-[#766F63]">
           {label}
         </p>
 
-        <p className="mt-0.5 text-xl font-extrabold text-[#252A27]">
+        <p className="text-lg font-extrabold text-[#252A27]">
           {value}
         </p>
       </div>
