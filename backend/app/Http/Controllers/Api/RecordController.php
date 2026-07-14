@@ -824,6 +824,11 @@ class RecordController extends Controller
                     $validated['storage_location'],
                 'archived_by' => $request->user()->id,
                 'archived_at' => now(),
+
+                // Freshly archived records are visible in the
+                // Staff Archive Catalog by default.
+                'staff_visible' => true,
+                'access_level' => 'internal',
             ]);
 
             $this->audit(

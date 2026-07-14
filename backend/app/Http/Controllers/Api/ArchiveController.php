@@ -118,7 +118,6 @@ class ArchiveController extends Controller
                 'access_level' => [
                     Rule::in([
                         'internal',
-                        'restricted',
                         'confidential',
                     ]),
                 ],
@@ -351,25 +350,21 @@ class ArchiveController extends Controller
                 'required',
                 Rule::in([
                     'internal',
-                    'restricted',
                     'confidential',
                 ]),
             ],
         ]);
 
-        $staffVisible = (bool) $validated['staff_visible'];
         $accessLevel = $validated['access_level'];
 
         /*
-         * Confidential records must never appear in the normal
-         * Staff Archive Catalog.
+         * Internal records are always visible in the Staff Archive
+         * Catalog. Confidential records are always hidden.
          */
-        if ($accessLevel === 'confidential') {
-            $staffVisible = false;
-        }
+        $staffVisible = $accessLevel === 'internal';
 
         $oldVisible = (bool) $record->staff_visible;
-        $oldAccessLevel = $record->access_level ?? 'restricted';
+        $oldAccessLevel = $record->access_level ?? 'internal';
 
         $record->update([
             'staff_visible' => $staffVisible,

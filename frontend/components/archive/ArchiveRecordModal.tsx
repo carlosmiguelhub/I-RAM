@@ -5,11 +5,9 @@ import {
   Archive,
   CheckCircle2,
   Download,
-  EyeOff,
   FileText,
   FolderOpen,
   Loader2,
-  LockKeyhole,
   Printer,
   Save,
   ShieldCheck,
@@ -31,7 +29,6 @@ export type ArchiveRecordFile = {
 
 export type ArchiveAccessLevel =
   | "internal"
-  | "restricted"
   | "confidential";
 
 export type ArchiveRecord = {
@@ -84,9 +81,7 @@ export type ArchiveRecord = {
 };
 
 type AccessMode =
-  | "hidden"
   | "internal"
-  | "restricted"
   | "confidential";
 
 export default function ArchiveRecordModal({
@@ -110,7 +105,7 @@ export default function ArchiveRecordModal({
 
   const [savingAccess, setSavingAccess] = useState(false);
   const [accessMode, setAccessMode] =
-    useState<AccessMode>("hidden");
+    useState<AccessMode>("internal");
 
   const [actionError, setActionError] = useState("");
   const [accessSuccess, setAccessSuccess] = useState("");
@@ -906,31 +901,17 @@ function StaffAccessPanel({
     icon: React.ReactNode;
   }> = [
     {
-      value: "hidden",
-      title: "Hidden",
-      description:
-        "The record will not appear in the Staff Archive Catalog.",
-      icon: <EyeOff className="h-4 w-4" />,
-    },
-    {
       value: "internal",
       title: "Internal",
       description:
-        "Visible to Staff for normal internal institutional use.",
+        "Visible to Staff in the Archive Catalog for normal institutional use.",
       icon: <Users className="h-4 w-4" />,
-    },
-    {
-      value: "restricted",
-      title: "Restricted",
-      description:
-        "Visible to Staff, but a document request is required.",
-      icon: <LockKeyhole className="h-4 w-4" />,
     },
     {
       value: "confidential",
       title: "Confidential",
       description:
-        "Hidden from the Staff Catalog and restricted to authorized officers.",
+        "Hidden from the Staff Archive Catalog and available only to authorized officers.",
       icon: <ShieldCheck className="h-4 w-4" />,
     },
   ];
@@ -1020,29 +1001,12 @@ function StaffAccessPanel({
 function getAccessMode(
   record: ArchiveRecord
 ): AccessMode {
-  if (record.access_level === "confidential") {
-    return "confidential";
-  }
-
-  if (!record.staff_visible) {
-    return "hidden";
-  }
-
-  if (record.access_level === "internal") {
-    return "internal";
-  }
-
-  return "restricted";
+  return record.access_level === "confidential"
+    ? "confidential"
+    : "internal";
 }
 
 function accessModeToPayload(mode: AccessMode) {
-  if (mode === "hidden") {
-    return {
-      staff_visible: false,
-      access_level: "restricted",
-    };
-  }
-
   if (mode === "confidential") {
     return {
       staff_visible: false,
@@ -1052,7 +1016,7 @@ function accessModeToPayload(mode: AccessMode) {
 
   return {
     staff_visible: true,
-    access_level: mode,
+    access_level: "internal",
   };
 }
 
