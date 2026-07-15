@@ -7,12 +7,12 @@ import {
   Archive,
   ArrowRight,
   CheckCircle2,
-  FilePlus2,
   Files,
   ShieldCheck,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { apiRequest } from "@/lib/api";
+import type { AuthUser } from "@/lib/types";
 
 type RecordItem = {
   id: number;
@@ -57,7 +57,7 @@ const initialRequestCounts: RequestCounts = {
 export default function DashboardPage() {
   const router = useRouter();
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [recentRecords, setRecentRecords] = useState<RecordItem[]>([]);
   const [counts, setCounts] =
     useState<DashboardCounts>(initialCounts);
@@ -68,7 +68,7 @@ export default function DashboardPage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [loadError, setLoadError] = useState("");
 
-  const userRef = useRef<any>(null);
+  const userRef = useRef<AuthUser | null>(null);
   const refreshRunningRef = useRef(false);
 
   const roleName = user?.role?.name || "";
@@ -76,16 +76,6 @@ export default function DashboardPage() {
 
   const canManageRecords =
     roleName === "Admin" || roleName === "Records Officer";
-
-  const primaryAction = isStaff
-    ? {
-        label: "New Submission",
-        href: "/records/create",
-      }
-    : {
-        label: "Add Record",
-        href: "/records/create",
-      };
 
   const recentTitle = isStaff
     ? "Recent Submissions"
@@ -234,7 +224,11 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    void loadDashboard(false);
+    const timeoutId = window.setTimeout(() => {
+      void loadDashboard(false);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [router]);
 
   useEffect(() => {
@@ -1061,13 +1055,22 @@ function getRequestVariant(
   };
 }
 
-function getPaginationTotal(data: any) {
-  if (typeof data?.total === "number") {
-    return data.total;
+function getPaginationTotal(data: unknown) {
+  if (!data || typeof data !== "object") {
+    return 0;
   }
 
-  if (Array.isArray(data?.data)) {
-    return data.data.length;
+  const pagination = data as {
+    total?: unknown;
+    data?: unknown;
+  };
+
+  if (typeof pagination.total === "number") {
+    return pagination.total;
+  }
+
+  if (Array.isArray(pagination.data)) {
+    return pagination.data.length;
   }
 
   return 0;

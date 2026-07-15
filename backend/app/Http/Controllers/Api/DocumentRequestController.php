@@ -6,11 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\DocumentRequest;
 use App\Models\Record;
+use App\Services\InAppNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DocumentRequestController extends Controller
 {
+    public function __construct(
+        private readonly InAppNotificationService $notifications
+    ) {}
+
     private function roleName(Request $request): string
     {
         return $request->user()->role?->name ?? '';
@@ -31,6 +36,7 @@ class DocumentRequestController extends Controller
             'record.category',
             'record.department',
             'record.archiveFolder',
+            'record.files',
             'requester.role',
             'requester.department',
             'assignee.role',
@@ -50,6 +56,31 @@ class DocumentRequestController extends Controller
             'description' => $description,
             'ip_address' => $request->ip(),
         ]);
+    }
+
+    private function requesterHasDocumentAccess(
+        DocumentRequest $documentRequest
+    ): bool {
+        return in_array(
+            $documentRequest->status,
+            ['approved', 'released'],
+            true
+        ) && (
+            $documentRequest->expires_at === null
+            || $documentRequest->expires_at->isFuture()
+        );
+    }
+
+    private function hideFilesWithoutAccess(
+        Request $request,
+        DocumentRequest $documentRequest
+    ): void {
+        if (
+            ! $this->canManageRequests($request)
+            && ! $this->requesterHasDocumentAccess($documentRequest)
+        ) {
+            $documentRequest->record?->unsetRelation('files');
+        }
     }
 
     public function catalog(Request $request)
@@ -116,7 +147,7 @@ class DocumentRequestController extends Controller
                 'restricted',
             ];
 
-            if (!in_array(
+            if (! in_array(
                 $request->access_level,
                 $allowedLevels,
                 true
@@ -193,9 +224,16 @@ class DocumentRequestController extends Controller
             );
         }
 
-        return response()->json(
-            $query->latest()->paginate(10)
+        $requests = $query->latest()->paginate(10);
+
+        $requests->getCollection()->each(
+            fn (DocumentRequest $documentRequest) => $this->hideFilesWithoutAccess(
+                $request,
+                $documentRequest
+            )
         );
+
+        return response()->json($requests);
     }
 
     public function store(Request $request)
@@ -231,18 +269,16 @@ class DocumentRequestController extends Controller
 
         if ($record->status !== 'archived') {
             return response()->json([
-                'message' =>
-                    'Only archived records may be requested.',
+                'message' => 'Only archived records may be requested.',
             ], 422);
         }
 
         if (
-            !$record->staff_visible
+            ! $record->staff_visible
             || $record->access_level === 'confidential'
         ) {
             return response()->json([
-                'message' =>
-                    'This record is not available for staff requests.',
+                'message' => 'This record is not available for staff requests.',
             ], 403);
         }
 
@@ -261,8 +297,7 @@ class DocumentRequestController extends Controller
 
         if ($existingRequest) {
             return response()->json([
-                'message' =>
-                    'You already have an active request for this record.',
+                'message' => 'You already have an active request for this record.',
             ], 422);
         }
 
@@ -275,16 +310,11 @@ class DocumentRequestController extends Controller
                 $documentRequest =
                     DocumentRequest::create([
                         'record_id' => $record->id,
-                        'requested_by' =>
-                            $request->user()->id,
-                        'purpose' =>
-                            $validated['purpose'],
-                        'urgency' =>
-                            $validated['urgency'],
-                        'preferred_format' =>
-                            $validated['preferred_format'],
-                        'request_notes' =>
-                            $validated['request_notes']
+                        'requested_by' => $request->user()->id,
+                        'purpose' => $validated['purpose'],
+                        'urgency' => $validated['urgency'],
+                        'preferred_format' => $validated['preferred_format'],
+                        'request_notes' => $validated['request_notes']
                             ?? null,
                         'status' => 'pending',
                     ]);
@@ -300,9 +330,20 @@ class DocumentRequestController extends Controller
             }
         );
 
+        $this->notifications->notifyManagers(
+            $request->user(),
+            'New document request',
+            "{$request->user()->name} requested {$record->record_code}: {$record->title}.",
+            'document_request.submitted',
+            '/document-requests?status=pending',
+            [
+                'record_id' => $record->id,
+                'document_request_id' => $documentRequest->id,
+            ]
+        );
+
         return response()->json([
-            'message' =>
-                'Document request submitted successfully.',
+            'message' => 'Document request submitted successfully.',
             'request' => $documentRequest->load(
                 $this->requestRelations()
             ),
@@ -314,20 +355,20 @@ class DocumentRequestController extends Controller
         DocumentRequest $documentRequest
     ) {
         if (
-            !$this->canManageRequests($request)
+            ! $this->canManageRequests($request)
             && (int) $documentRequest->requested_by
                 !== (int) $request->user()->id
         ) {
             return response()->json([
-                'message' =>
-                    'You are not allowed to view this request.',
+                'message' => 'You are not allowed to view this request.',
             ], 403);
         }
 
+        $documentRequest->load($this->requestRelations());
+        $this->hideFilesWithoutAccess($request, $documentRequest);
+
         return response()->json([
-            'request' => $documentRequest->load(
-                $this->requestRelations()
-            ),
+            'request' => $documentRequest,
         ]);
     }
 
@@ -335,24 +376,21 @@ class DocumentRequestController extends Controller
         Request $request,
         DocumentRequest $documentRequest
     ) {
-        if (!$this->canManageRequests($request)) {
+        if (! $this->canManageRequests($request)) {
             return response()->json([
-                'message' =>
-                    'Only an Administrator or Records Officer may review requests.',
+                'message' => 'Only an Administrator or Records Officer may review requests.',
             ], 403);
         }
 
         if ($documentRequest->status !== 'pending') {
             return response()->json([
-                'message' =>
-                    'Only pending requests can be placed under review.',
+                'message' => 'Only pending requests can be placed under review.',
             ], 422);
         }
 
         $documentRequest->update([
             'status' => 'under_review',
-            'assigned_to' =>
-                $request->user()->id,
+            'assigned_to' => $request->user()->id,
             'reviewed_at' => now(),
         ]);
 
@@ -363,9 +401,21 @@ class DocumentRequestController extends Controller
             "Started reviewing request for record: {$documentRequest->record->record_code}"
         );
 
+        $this->notifications->notifyUser(
+            $documentRequest->requester,
+            $request->user(),
+            'Document request under review',
+            "Your request for {$documentRequest->record->record_code} is being reviewed.",
+            'document_request.review_started',
+            '/document-requests?status=under_review',
+            [
+                'record_id' => $documentRequest->record_id,
+                'document_request_id' => $documentRequest->id,
+            ]
+        );
+
         return response()->json([
-            'message' =>
-                'Document request is now under review.',
+            'message' => 'Document request is now under review.',
             'request' => $documentRequest
                 ->fresh()
                 ->load($this->requestRelations()),
@@ -376,21 +426,19 @@ class DocumentRequestController extends Controller
         Request $request,
         DocumentRequest $documentRequest
     ) {
-        if (!$this->canManageRequests($request)) {
+        if (! $this->canManageRequests($request)) {
             return response()->json([
-                'message' =>
-                    'Only an Administrator or Records Officer may approve requests.',
+                'message' => 'Only an Administrator or Records Officer may approve requests.',
             ], 403);
         }
 
-        if (!in_array(
+        if (! in_array(
             $documentRequest->status,
             ['pending', 'under_review'],
             true
         )) {
             return response()->json([
-                'message' =>
-                    'This request cannot be approved in its current status.',
+                'message' => 'This request cannot be approved in its current status.',
             ], 422);
         }
 
@@ -409,15 +457,12 @@ class DocumentRequestController extends Controller
 
         $documentRequest->update([
             'status' => 'approved',
-            'assigned_to' =>
-                $request->user()->id,
-            'review_notes' =>
-                $validated['review_notes'] ?? null,
+            'assigned_to' => $request->user()->id,
+            'review_notes' => $validated['review_notes'] ?? null,
             'reviewed_at' => now(),
             'approved_at' => now(),
             'rejected_at' => null,
-            'expires_at' =>
-                $validated['expires_at'] ?? null,
+            'expires_at' => $validated['expires_at'] ?? null,
         ]);
 
         $this->audit(
@@ -427,9 +472,21 @@ class DocumentRequestController extends Controller
             "Approved request for record: {$documentRequest->record->record_code}"
         );
 
+        $this->notifications->notifyUser(
+            $documentRequest->requester,
+            $request->user(),
+            'Document request approved',
+            "Your request for {$documentRequest->record->record_code} was approved.",
+            'document_request.approved',
+            '/document-requests?status=approved',
+            [
+                'record_id' => $documentRequest->record_id,
+                'document_request_id' => $documentRequest->id,
+            ]
+        );
+
         return response()->json([
-            'message' =>
-                'Document request approved successfully.',
+            'message' => 'Document request approved successfully.',
             'request' => $documentRequest
                 ->fresh()
                 ->load($this->requestRelations()),
@@ -440,21 +497,19 @@ class DocumentRequestController extends Controller
         Request $request,
         DocumentRequest $documentRequest
     ) {
-        if (!$this->canManageRequests($request)) {
+        if (! $this->canManageRequests($request)) {
             return response()->json([
-                'message' =>
-                    'Only an Administrator or Records Officer may reject requests.',
+                'message' => 'Only an Administrator or Records Officer may reject requests.',
             ], 403);
         }
 
-        if (!in_array(
+        if (! in_array(
             $documentRequest->status,
             ['pending', 'under_review'],
             true
         )) {
             return response()->json([
-                'message' =>
-                    'This request cannot be rejected in its current status.',
+                'message' => 'This request cannot be rejected in its current status.',
             ], 422);
         }
 
@@ -468,10 +523,8 @@ class DocumentRequestController extends Controller
 
         $documentRequest->update([
             'status' => 'rejected',
-            'assigned_to' =>
-                $request->user()->id,
-            'review_notes' =>
-                $validated['review_notes'],
+            'assigned_to' => $request->user()->id,
+            'review_notes' => $validated['review_notes'],
             'reviewed_at' => now(),
             'rejected_at' => now(),
             'approved_at' => null,
@@ -483,6 +536,19 @@ class DocumentRequestController extends Controller
             $documentRequest->record,
             'rejected_document_request',
             "Rejected request for record: {$documentRequest->record->record_code}"
+        );
+
+        $this->notifications->notifyUser(
+            $documentRequest->requester,
+            $request->user(),
+            'Document request rejected',
+            "Your request for {$documentRequest->record->record_code} was rejected.",
+            'document_request.rejected',
+            '/document-requests?status=rejected',
+            [
+                'record_id' => $documentRequest->record_id,
+                'document_request_id' => $documentRequest->id,
+            ]
         );
 
         return response()->json([
@@ -497,17 +563,15 @@ class DocumentRequestController extends Controller
         Request $request,
         DocumentRequest $documentRequest
     ) {
-        if (!$this->canManageRequests($request)) {
+        if (! $this->canManageRequests($request)) {
             return response()->json([
-                'message' =>
-                    'Only an Administrator or Records Officer may release documents.',
+                'message' => 'Only an Administrator or Records Officer may release documents.',
             ], 403);
         }
 
         if ($documentRequest->status !== 'approved') {
             return response()->json([
-                'message' =>
-                    'Only approved requests can be released.',
+                'message' => 'Only approved requests can be released.',
             ], 422);
         }
 
@@ -521,10 +585,8 @@ class DocumentRequestController extends Controller
 
         $documentRequest->update([
             'status' => 'released',
-            'assigned_to' =>
-                $request->user()->id,
-            'review_notes' =>
-                $validated['review_notes']
+            'assigned_to' => $request->user()->id,
+            'review_notes' => $validated['review_notes']
                 ?? $documentRequest->review_notes,
             'released_at' => now(),
         ]);
@@ -536,9 +598,21 @@ class DocumentRequestController extends Controller
             "Released requested record: {$documentRequest->record->record_code}"
         );
 
+        $this->notifications->notifyUser(
+            $documentRequest->requester,
+            $request->user(),
+            'Requested document released',
+            "The requested document {$documentRequest->record->record_code} is ready.",
+            'document_request.released',
+            '/document-requests?status=released',
+            [
+                'record_id' => $documentRequest->record_id,
+                'document_request_id' => $documentRequest->id,
+            ]
+        );
+
         return response()->json([
-            'message' =>
-                'Requested document marked as released.',
+            'message' => 'Requested document marked as released.',
             'request' => $documentRequest
                 ->fresh()
                 ->load($this->requestRelations()),
@@ -554,19 +628,17 @@ class DocumentRequestController extends Controller
                 !== (int) $request->user()->id
         ) {
             return response()->json([
-                'message' =>
-                    'You may only cancel your own request.',
+                'message' => 'You may only cancel your own request.',
             ], 403);
         }
 
-        if (!in_array(
+        if (! in_array(
             $documentRequest->status,
             ['pending', 'under_review'],
             true
         )) {
             return response()->json([
-                'message' =>
-                    'This request can no longer be cancelled.',
+                'message' => 'This request can no longer be cancelled.',
             ], 422);
         }
 
@@ -582,9 +654,20 @@ class DocumentRequestController extends Controller
             "Cancelled request for record: {$documentRequest->record->record_code}"
         );
 
+        $this->notifications->notifyManagers(
+            $request->user(),
+            'Document request cancelled',
+            "{$request->user()->name} cancelled the request for {$documentRequest->record->record_code}.",
+            'document_request.cancelled',
+            '/document-requests?status=cancelled',
+            [
+                'record_id' => $documentRequest->record_id,
+                'document_request_id' => $documentRequest->id,
+            ]
+        );
+
         return response()->json([
-            'message' =>
-                'Document request cancelled.',
+            'message' => 'Document request cancelled.',
             'request' => $documentRequest
                 ->fresh()
                 ->load($this->requestRelations()),

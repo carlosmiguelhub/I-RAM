@@ -132,7 +132,11 @@ export default function ArchiveUnfiledPage() {
   }
 
   useEffect(() => {
-    loadPage("");
+    const timeoutId = window.setTimeout(() => {
+      void loadPage("");
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   function toggleSelectionMode() {

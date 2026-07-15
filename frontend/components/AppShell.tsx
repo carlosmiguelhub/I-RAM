@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 
@@ -9,7 +9,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-slate-50">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Suspense fallback={null}>
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      </Suspense>
 
       <div className="min-h-screen w-full lg:pl-72">
         <Topbar onMenuClick={() => setSidebarOpen(true)} />

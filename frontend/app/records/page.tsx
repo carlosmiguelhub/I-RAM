@@ -1,27 +1,20 @@
 "use client";
 
-  import { useEffect, useMemo, useRef, useState } from "react";
+  import { Suspense, useEffect, useMemo, useRef, useState } from "react";
   import Link from "next/link";
   import { useRouter, useSearchParams } from "next/navigation";
   import {
-    Archive,
-    ArrowRight,
-    CheckCircle2,
-    ClipboardCheck,
     Download,
     Eye,
-    FilePlus2,
     Files,
-    FolderArchive,
     Loader2,
     RefreshCcw,
-    RotateCcw,
     Search,
-    ShieldCheck,
     X,
   } from "lucide-react";
   import AppShell from "@/components/AppShell";
   import { apiRequest } from "@/lib/api";
+  import type { AuthUser } from "@/lib/types";
 
   const API_URL =
     process.env.NEXT_PUBLIC_API_URL ||
@@ -82,6 +75,14 @@
   };
 
   export default function RecordsPage() {
+    return (
+      <Suspense fallback={null}>
+        <RecordsPageContent />
+      </Suspense>
+    );
+  }
+
+  function RecordsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -92,7 +93,7 @@
     const [silentRefreshing, setSilentRefreshing] = useState(false);
     const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
     const [autoRefreshNotice, setAutoRefreshNotice] = useState("");
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<AuthUser | null>(null);
 
     const [selectedRecord, setSelectedRecord] =
       useState<RecordItem | null>(null);
@@ -912,7 +913,6 @@
             error={previewError}
             downloadError={downloadError}
             downloadingFileId={downloadingFileId}
-            isStaff={isStaff}
             canManageWorkflow={canManageWorkflow}
             reviewRemarks={reviewRemarks}
             correctionNotes={correctionNotes}
@@ -942,7 +942,6 @@
     error,
     downloadError,
     downloadingFileId,
-    isStaff,
     canManageWorkflow,
     reviewRemarks,
     correctionNotes,
@@ -966,7 +965,6 @@
     error: string;
     downloadError: string;
     downloadingFileId: number | null;
-    isStaff: boolean;
     canManageWorkflow: boolean;
     reviewRemarks: string;
     correctionNotes: string;

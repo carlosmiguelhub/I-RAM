@@ -160,11 +160,7 @@ class SystemSettingController extends Controller
             ],
             'security.default_registered_role' => [
                 'required',
-                Rule::in([
-                    'Staff',
-                    'Records Officer',
-                    'Admin',
-                ]),
+                Rule::in(['Staff']),
             ],
             'security.session_timeout_minutes' => [
                 'required',
@@ -223,7 +219,7 @@ class SystemSettingController extends Controller
             }
         });
 
-        if (!empty($changes)) {
+        if (! empty($changes)) {
             AuditLog::create([
                 'user_id' => $request->user()->id,
                 'action' => 'settings.updated',
@@ -242,14 +238,13 @@ class SystemSettingController extends Controller
         ]);
     }
 
-
     /**
      * Temporary local-development endpoint.
      * Remove this method and its route before production deployment.
      */
     public function practiceDataSummary(): JsonResponse
     {
-        if (!$this->developmentToolsEnabled()) {
+        if (! $this->developmentToolsEnabled()) {
             return response()->json([
                 'message' => 'Development tools are disabled in this environment.',
             ], 403);
@@ -262,6 +257,7 @@ class SystemSettingController extends Controller
                 'record_files' => DB::table('record_files')->count(),
                 'document_requests' => DB::table('document_requests')->count(),
                 'archive_folders' => DB::table('archive_folders')->count(),
+                'notifications' => DB::table('notifications')->count(),
                 'related_audit_logs' => DB::table('audit_logs')
                     ->whereIn('action', $this->practiceAuditActions())
                     ->count(),
@@ -276,7 +272,7 @@ class SystemSettingController extends Controller
      */
     public function clearPracticeData(Request $request): JsonResponse
     {
-        if (!$this->developmentToolsEnabled()) {
+        if (! $this->developmentToolsEnabled()) {
             return response()->json([
                 'message' => 'Development tools are disabled in this environment.',
             ], 403);
@@ -294,7 +290,7 @@ class SystemSettingController extends Controller
 
         $user = $request->user();
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
             return response()->json([
                 'message' => 'The administrator password is incorrect.',
                 'errors' => [
@@ -321,6 +317,7 @@ class SystemSettingController extends Controller
             'record_files' => 0,
             'document_requests' => 0,
             'archive_folders' => 0,
+            'notifications' => 0,
             'related_audit_logs' => 0,
             'physical_files' => 0,
             'physical_file_failures' => 0,
@@ -330,6 +327,10 @@ class SystemSettingController extends Controller
             $clearArchiveFolders,
             &$deleted
         ) {
+            $deleted['notifications'] = DB::table(
+                'notifications'
+            )->delete();
+
             $deleted['document_requests'] = DB::table(
                 'document_requests'
             )->delete();

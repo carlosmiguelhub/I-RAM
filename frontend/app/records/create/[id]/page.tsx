@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import { apiRequest } from "@/lib/api";
+import type { AuthUser } from "@/lib/types";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -60,7 +61,7 @@ export default function RecordDetailsPage() {
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
 
   const [record, setRecord] = useState<RecordDetails | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [silentRefreshing, setSilentRefreshing] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
@@ -156,7 +157,11 @@ export default function RecordDetailsPage() {
   }
 
   useEffect(() => {
-    loadRecord();
+    const timeoutId = window.setTimeout(() => {
+      void loadRecord();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [id]);
 
   useEffect(() => {

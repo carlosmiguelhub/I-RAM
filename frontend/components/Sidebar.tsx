@@ -165,19 +165,23 @@ export default function Sidebar({
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("iram_user");
+    const timeoutId = window.setTimeout(() => {
+      const storedUser = localStorage.getItem("iram_user");
 
-    if (!storedUser) {
-      setRoleName("");
-      return;
-    }
+      if (!storedUser) {
+        setRoleName("");
+        return;
+      }
 
-    try {
-      const user = JSON.parse(storedUser);
-      setRoleName(user?.role?.name || "");
-    } catch {
-      setRoleName("");
-    }
+      try {
+        const user = JSON.parse(storedUser);
+        setRoleName(user?.role?.name || "");
+      } catch {
+        setRoleName("");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   const visibleMainItems = useMemo(() => {
@@ -223,15 +227,23 @@ export default function Sidebar({
       pathname === "/profile");
 
   useEffect(() => {
-    if (recordsSectionActive) {
-      setRecordsOpen(true);
-    }
+    const timeoutId = window.setTimeout(() => {
+      if (recordsSectionActive) {
+        setRecordsOpen(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [recordsSectionActive]);
 
   useEffect(() => {
-    if (settingsSectionActive) {
-      setSettingsOpen(true);
-    }
+    const timeoutId = window.setTimeout(() => {
+      if (settingsSectionActive) {
+        setSettingsOpen(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [settingsSectionActive]);
 
   const primaryAction =

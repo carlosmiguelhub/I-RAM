@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
+use App\Models\SystemSetting;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
-use App\Models\Role;
-use App\Models\Department;
 
 class AuthController extends Controller
 {
@@ -20,11 +21,35 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
+        $rateLimitKey = Str::lower($validated['email'])
+            .'|'.$request->ip();
+        $attemptLimit = max(
+            1,
+            (int) SystemSetting::getValue(
+                'login_attempt_limit',
+                5
+            )
+        );
+
+        if (RateLimiter::tooManyAttempts(
+            $rateLimitKey,
+            $attemptLimit
+        )) {
+            return response()->json([
+                'message' => 'Too many login attempts. Please try again later.',
+                'retry_after' => RateLimiter::availableIn(
+                    $rateLimitKey
+                ),
+            ], 429);
+        }
+
         $user = User::with(['role', 'department'])
             ->where('email', $validated['email'])
             ->first();
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+            RateLimiter::hit($rateLimitKey, 60);
+
             return response()->json([
                 'message' => 'Invalid email or password.',
             ], 401);
@@ -36,7 +61,9 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $token = $user->createToken('iram_api_token')->plainTextToken;
+        RateLimiter::clear($rateLimitKey);
+
+        $token = $this->createAccessToken($user);
 
         return response()->json([
             'message' => 'Login successful.',
@@ -45,41 +72,46 @@ class AuthController extends Controller
         ]);
     }
 
-    
-
     public function register(Request $request)
-{
-    $validated = $request->validate([
-        'name' => ['required', 'string', 'max:255'],
-        'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-        'password' => [
-            'required',
-            'confirmed',
-            Password::min(8)->letters()->numbers(),
-        ],
-        'department_id' => ['required', 'exists:departments,id'],
-    ]);
+    {
+        if (! SystemSetting::getValue('allow_registration', true)) {
+            return response()->json([
+                'message' => 'Public registration is currently disabled.',
+            ], 403);
+        }
 
-    $staffRole = Role::where('name', 'Staff')->first();
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8)->letters()->numbers(),
+            ],
+            'department_id' => ['required', 'exists:departments,id'],
+        ]);
 
-    $user = User::create([
-        'role_id' => $staffRole?->id,
-        'department_id' => $validated['department_id'],
-        'name' => $validated['name'],
-        'email' => $validated['email'],
-        'password' => Hash::make($validated['password']),
-        'status' => 'active',
-    ]);
+        // Public registration must never grant a privileged role,
+        // regardless of legacy setting values.
+        $staffRole = Role::where('name', 'Staff')->firstOrFail();
 
-    $token = $user->createToken('iram_api_token')->plainTextToken;
+        $user = User::create([
+            'role_id' => $staffRole->id,
+            'department_id' => $validated['department_id'],
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'status' => 'active',
+        ]);
 
-    return response()->json([
-        'message' => 'Registration successful.',
-        'token' => $token,
-        'user' => $user->load(['role', 'department']),
-    ], 201);
-}
+        $token = $this->createAccessToken($user);
 
+        return response()->json([
+            'message' => 'Registration successful.',
+            'token' => $token,
+            'user' => $user->load(['role', 'department']),
+        ], 201);
+    }
 
     public function me(Request $request)
     {
@@ -95,5 +127,25 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Logout successful.',
         ]);
+    }
+
+    private function createAccessToken(User $user): string
+    {
+        $timeoutMinutes = max(
+            15,
+            min(
+                1440,
+                (int) SystemSetting::getValue(
+                    'session_timeout_minutes',
+                    120
+                )
+            )
+        );
+
+        return $user->createToken(
+            'iram_api_token',
+            ['*'],
+            now()->addMinutes($timeoutMinutes)
+        )->plainTextToken;
     }
 }

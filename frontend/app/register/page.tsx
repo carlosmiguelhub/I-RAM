@@ -4,11 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiRequest } from "@/lib/api";
+import { getErrorMessage } from "@/lib/types";
+
+type Department = {
+  id: number;
+  name: string;
+};
 
 export default function RegisterPage() {
   const router = useRouter();
 
-  const [departments, setDepartments] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -102,8 +108,8 @@ export default function RegisterPage() {
       localStorage.setItem("iram_user", JSON.stringify(data.user));
 
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Registration failed.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Registration failed."));
     } finally {
       setLoading(false);
     }

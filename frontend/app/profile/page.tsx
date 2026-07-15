@@ -10,12 +10,13 @@ import {
   UserRound,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, clearStoredAuth } from "@/lib/api";
+import type { AuthUser } from "@/lib/types";
 
 export default function ProfilePage() {
   const router = useRouter();
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,10 +24,8 @@ export default function ProfilePage() {
       try {
         const data = await apiRequest("/me");
         setUser(data.user);
-      } catch (error) {
-        console.error(error);
-        localStorage.removeItem("iram_token");
-        localStorage.removeItem("iram_user");
+      } catch {
+        clearStoredAuth();
         router.replace("/login");
       } finally {
         setLoading(false);
@@ -40,12 +39,13 @@ export default function ProfilePage() {
     try {
       await apiRequest("/logout", {
         method: "POST",
+        acceptedStatuses: [401],
       });
-    } catch (error) {
-      console.error(error);
+    } catch {
+      // Local credentials are cleared even if the API is unreachable.
     } finally {
-      localStorage.removeItem("iram_token");
-      localStorage.removeItem("iram_user");
+      clearStoredAuth();
+      setUser(null);
       router.replace("/login");
     }
   }
@@ -167,7 +167,7 @@ export default function ProfilePage() {
               </p>
 
               <p className="mt-1 text-sm leading-6 text-[#625E56]">
-                {getRoleDescription(user?.role?.name)}
+                {getRoleDescription(user?.role?.name ?? "")}
               </p>
             </div>
           </div>

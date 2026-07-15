@@ -72,6 +72,7 @@ type PracticeDataSummary = {
     record_files: number;
     document_requests: number;
     archive_folders: number;
+    notifications: number;
     related_audit_logs: number;
   };
 };
@@ -768,11 +769,12 @@ function DevelopmentTools({
           </div>
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
               <PracticeCount label="Records" value={counts?.records ?? 0} />
               <PracticeCount label="Files" value={counts?.record_files ?? 0} />
               <PracticeCount label="Requests" value={counts?.document_requests ?? 0} />
               <PracticeCount label="Folders" value={counts?.archive_folders ?? 0} />
+              <PracticeCount label="Notifications" value={counts?.notifications ?? 0} />
               <PracticeCount label="Audit logs" value={counts?.related_audit_logs ?? 0} />
             </div>
 
@@ -891,10 +893,11 @@ function ClearPracticeDataModal({
         </header>
 
         <div className="space-y-5 p-5 sm:p-6">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <PracticeCount label="Records" value={summary?.counts.records ?? 0} />
             <PracticeCount label="Files" value={summary?.counts.record_files ?? 0} />
             <PracticeCount label="Requests" value={summary?.counts.document_requests ?? 0} />
+            <PracticeCount label="Notifications" value={summary?.counts.notifications ?? 0} />
           </div>
 
           <label className="block">
@@ -1329,7 +1332,7 @@ function SecuritySettings({
           <div className="max-w-md">
             <Field
               label="Default registered role"
-              hint="Applied to newly registered accounts."
+              hint="Public registration is restricted to non-privileged Staff accounts."
             >
               <select
                 value={values.default_registered_role}
@@ -1343,10 +1346,6 @@ function SecuritySettings({
                 className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
               >
                 <option value="Staff">Staff</option>
-                <option value="Records Officer">
-                  Records Officer
-                </option>
-                <option value="Admin">Admin</option>
               </select>
             </Field>
           </div>

@@ -102,7 +102,11 @@ export default function ArchiveFolderDetailPage() {
   }
 
   useEffect(() => {
-    loadPage("");
+    const timeoutId = window.setTimeout(() => {
+      void loadPage("");
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [folderId]);
 
   async function openRecord(recordId: number) {

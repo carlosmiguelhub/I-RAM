@@ -73,7 +73,11 @@ export default function ArchiveFoldersPage() {
   }
 
   useEffect(() => {
-    loadFolders();
+    const timeoutId = window.setTimeout(() => {
+      void loadFolders();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   useEffect(() => {

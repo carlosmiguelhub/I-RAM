@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\DocumentRequest;
 use App\Models\Record;
 use App\Models\RecordFile;
+use App\Models\SystemSetting;
+use App\Services\InAppNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +17,10 @@ use Throwable;
 
 class RecordController extends Controller
 {
+    public function __construct(
+        private readonly InAppNotificationService $notifications
+    ) {}
+
     private function roleName(Request $request): string
     {
         return $request->user()->role?->name ?? '';
@@ -49,7 +56,47 @@ class RecordController extends Controller
             (int) $request->user()->id;
     }
 
+    private function canViewRecord(
+        Request $request,
+        Record $record
+    ): bool {
+        if ($this->canManageRecords($request)) {
+            return true;
+        }
 
+        if ($this->roleName($request) !== 'Staff') {
+            return false;
+        }
+
+        if ($record->status !== 'archived') {
+            return $this->staffCanAccessRecord($request, $record);
+        }
+
+        return $this->hasActiveDocumentAccess($request, $record);
+    }
+
+    private function hasActiveDocumentAccess(
+        Request $request,
+        Record $record
+    ): bool {
+        if (
+            ! $record->staff_visible
+            || $record->access_level === 'confidential'
+        ) {
+            return false;
+        }
+
+        return DocumentRequest::query()
+            ->where('record_id', $record->id)
+            ->where('requested_by', $request->user()->id)
+            ->whereIn('status', ['approved', 'released'])
+            ->where(function ($query) {
+                $query
+                    ->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
+            ->exists();
+    }
 
     private function recordRelations(): array
     {
@@ -67,7 +114,7 @@ class RecordController extends Controller
 
     private function denyRecordManagement(Request $request)
     {
-        if (!$this->canManageRecords($request)) {
+        if (! $this->canManageRecords($request)) {
             return response()->json([
                 'message' => 'Only an Administrator or Records Officer may perform this action.',
             ], 403);
@@ -106,11 +153,11 @@ class RecordController extends Controller
             $storedFileName = Str::uuid()->toString();
 
             if ($extension !== '') {
-                $storedFileName .= '.' . $extension;
+                $storedFileName .= '.'.$extension;
             }
 
             $filePath = $uploadedFile->storeAs(
-                'records/' . $record->id,
+                'records/'.$record->id,
                 $storedFileName,
                 'local'
             );
@@ -125,9 +172,10 @@ class RecordController extends Controller
 
             RecordFile::create([
                 'record_id' => $record->id,
-                'file_name' => $uploadedFile->getClientOriginalName(),
+                'original_name' => $uploadedFile->getClientOriginalName(),
+                'stored_name' => $storedFileName,
                 'file_path' => $filePath,
-                'file_type' => $uploadedFile->getMimeType(),
+                'mime_type' => $uploadedFile->getMimeType(),
                 'file_size' => $uploadedFile->getSize(),
                 'uploaded_by' => $request->user()->id,
             ]);
@@ -138,16 +186,60 @@ class RecordController extends Controller
         return $count;
     }
 
+    private function uploadedFileRules(): array
+    {
+        $maxUploadKilobytes = max(
+            1,
+            min(
+                102400,
+                (int) SystemSetting::getValue(
+                    'max_upload_size_mb',
+                    10
+                ) * 1024
+            )
+        );
+        $allowedExtensions = array_values(array_filter(
+            (array) SystemSetting::getValue(
+                'allowed_extensions',
+                [
+                    'pdf', 'doc', 'docx', 'xls', 'xlsx',
+                    'ppt', 'pptx', 'jpg', 'jpeg', 'png',
+                    'txt', 'csv',
+                ]
+            ),
+            fn ($extension) => is_string($extension)
+                && preg_match('/^[a-z0-9]+$/i', $extension)
+        ));
+
+        if ($allowedExtensions === []) {
+            $allowedExtensions = ['pdf'];
+        }
+
+        return [
+            'file',
+            'max:'.$maxUploadKilobytes,
+            'mimes:'.implode(',', $allowedExtensions),
+        ];
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
+        $role = $this->roleName($request);
+
+        if (! in_array($role, ['Admin', 'Records Officer', 'Staff'], true)) {
+            return response()->json([
+                'message' => 'Your account is not assigned a valid role.',
+            ], 403);
+        }
+
         $query = Record::with($this->recordRelations());
 
         $scope = (string) $request->query('scope', '');
 
         if ($scope === 'mine') {
             $query->where('created_by', $user->id);
-        } elseif ($this->roleName($request) === 'Staff') {
+        } elseif ($role === 'Staff') {
             $query->where(function ($query) use ($user) {
                 $query->where('created_by', $user->id);
 
@@ -158,7 +250,7 @@ class RecordController extends Controller
                     );
                 }
             });
-        } elseif (!$request->filled('status')) {
+        } elseif (! $request->filled('status')) {
             // Keep the active Records page focused on submissions and review work.
             // Archived records are managed from the dedicated Archive repository.
             $query->where('status', '!=', 'archived');
@@ -185,7 +277,7 @@ class RecordController extends Controller
                     'archived',
                 ];
 
-                if (!in_array(
+                if (! in_array(
                     $request->status,
                     $allowedStaffStatuses,
                     true
@@ -229,6 +321,12 @@ class RecordController extends Controller
         $user = $request->user();
         $role = $this->roleName($request);
 
+        if (! in_array($role, ['Admin', 'Records Officer', 'Staff'], true)) {
+            return response()->json([
+                'message' => 'Your account is not assigned a valid role.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'record_code' => [
                 'required',
@@ -255,11 +353,7 @@ class RecordController extends Controller
             ],
             'remarks' => ['nullable', 'string'],
             'files' => ['nullable', 'array', 'max:5'],
-            'files.*' => [
-                'file',
-                'max:10240',
-                'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,txt,csv',
-            ],
+            'files.*' => $this->uploadedFileRules(),
         ]);
 
         if ($role === 'Staff') {
@@ -294,7 +388,7 @@ class RecordController extends Controller
                     $request,
                     $record,
                     'created_record',
-                    'Created record: ' . $record->record_code
+                    'Created record: '.$record->record_code
                 );
 
                 if ($uploadedCount > 0) {
@@ -308,6 +402,15 @@ class RecordController extends Controller
 
                 return $record;
             });
+
+            $this->notifications->notifyManagers(
+                $request->user(),
+                'New record submitted',
+                "{$request->user()->name} submitted {$record->record_code}: {$record->title}.",
+                'record.submitted',
+                '/records?status=received',
+                ['record_id' => $record->id]
+            );
 
             return response()->json([
                 'message' => 'Record submitted successfully.',
@@ -330,10 +433,7 @@ class RecordController extends Controller
 
     public function show(Request $request, Record $record)
     {
-        if (
-            $this->roleName($request) === 'Staff'
-            && !$this->staffCanAccessRecord($request, $record)
-        ) {
+        if (! $this->canViewRecord($request, $record)) {
             return response()->json([
                 'message' => 'You are not allowed to view this record.',
             ], 403);
@@ -354,22 +454,19 @@ class RecordController extends Controller
         $recordFile->load('record');
         $record = $recordFile->record;
 
-        if (!$record) {
+        if (! $record) {
             return response()->json([
                 'message' => 'The associated record no longer exists.',
             ], 404);
         }
 
-        if (
-            $this->roleName($request) === 'Staff'
-            && !$this->staffCanAccessRecord($request, $record)
-        ) {
+        if (! $this->canViewRecord($request, $record)) {
             return response()->json([
                 'message' => 'You are not allowed to download this file.',
             ], 403);
         }
 
-        if (!Storage::disk('local')->exists(
+        if (! Storage::disk('local')->exists(
             $recordFile->file_path
         )) {
             return response()->json([
@@ -381,7 +478,7 @@ class RecordController extends Controller
             $request,
             $record,
             'downloaded_record_file',
-            'Downloaded file: ' . $recordFile->file_name
+            'Downloaded file: '.$recordFile->file_name
         );
 
         return Storage::disk('local')->download(
@@ -401,19 +498,19 @@ class RecordController extends Controller
         $recordFile->load('record');
         $record = $recordFile->record;
 
-        if (!$record) {
+        if (! $record) {
             return response()->json([
                 'message' => 'The associated record no longer exists.',
             ], 404);
         }
 
-        if (!$this->userOwnsRecord($request, $record)) {
+        if (! $this->userOwnsRecord($request, $record)) {
             return response()->json([
                 'message' => 'You may only remove files from your own submission.',
             ], 403);
         }
 
-        if (!in_array(
+        if (! in_array(
             $record->status,
             ['received', 'returned_for_correction'],
             true
@@ -460,8 +557,6 @@ class RecordController extends Controller
             return $response;
         }
 
-
-
         if ($record->status !== 'received') {
             return response()->json([
                 'message' => 'Only received records can be moved to under review.',
@@ -479,8 +574,7 @@ class RecordController extends Controller
         ) {
             $record->update([
                 'status' => 'under_review',
-                'review_remarks' =>
-                    $validated['review_remarks'] ?? null,
+                'review_remarks' => $validated['review_remarks'] ?? null,
                 'reviewed_by' => $request->user()->id,
                 'reviewed_at' => now(),
             ]);
@@ -492,6 +586,16 @@ class RecordController extends Controller
                 "Started review for record: {$record->record_code}"
             );
         });
+
+        $this->notifications->notifyUser(
+            $record->creator,
+            $request->user(),
+            'Record review started',
+            "Your record {$record->record_code} is now under review.",
+            'record.review_started',
+            '/records?scope=mine&status=under_review',
+            ['record_id' => $record->id]
+        );
 
         return response()->json([
             'message' => 'Record review started successfully.',
@@ -508,8 +612,6 @@ class RecordController extends Controller
         if ($response = $this->denyRecordManagement($request)) {
             return $response;
         }
-
-
 
         if ($record->status !== 'under_review') {
             return response()->json([
@@ -536,11 +638,9 @@ class RecordController extends Controller
             $validated
         ) {
             $record->update([
-                'review_remarks' =>
-                    $validated['review_remarks']
+                'review_remarks' => $validated['review_remarks']
                     ?? $record->review_remarks,
-                'storage_location' =>
-                    $validated['storage_location']
+                'storage_location' => $validated['storage_location']
                     ?? $record->storage_location,
                 'reviewed_by' => $request->user()->id,
                 'reviewed_at' => now(),
@@ -553,6 +653,19 @@ class RecordController extends Controller
                 "Updated review details for record: {$record->record_code}"
             );
         });
+
+        $this->notifications->notifyUser(
+            $record->creator,
+            $request->user(),
+            'Record needs correction',
+            "Your record {$record->record_code} was returned for correction.",
+            'record.returned_for_correction',
+            '/records?scope=mine&status=returned_for_correction',
+            [
+                'record_id' => $record->id,
+                'correction_notes' => $validated['correction_notes'],
+            ]
+        );
 
         return response()->json([
             'message' => 'Review details saved successfully.',
@@ -570,8 +683,6 @@ class RecordController extends Controller
             return $response;
         }
 
-
-
         if ($record->status !== 'under_review') {
             return response()->json([
                 'message' => 'Only records under review can be returned for correction.',
@@ -585,8 +696,7 @@ class RecordController extends Controller
                 'max:5000',
             ],
         ], [
-            'correction_notes.required' =>
-                'Correction notes are required before returning the submission.',
+            'correction_notes.required' => 'Correction notes are required before returning the submission.',
         ]);
 
         DB::transaction(function () use (
@@ -596,8 +706,7 @@ class RecordController extends Controller
         ) {
             $record->update([
                 'status' => 'returned_for_correction',
-                'correction_notes' =>
-                    $validated['correction_notes'],
+                'correction_notes' => $validated['correction_notes'],
                 'returned_by' => $request->user()->id,
                 'returned_at' => now(),
                 'resubmitted_at' => null,
@@ -624,7 +733,7 @@ class RecordController extends Controller
         Request $request,
         Record $record
     ) {
-        if (!$this->userOwnsRecord($request, $record)) {
+        if (! $this->userOwnsRecord($request, $record)) {
             return response()->json([
                 'message' => 'You may only correct your own returned submission.',
             ], 403);
@@ -641,7 +750,7 @@ class RecordController extends Controller
                 'required',
                 'string',
                 'max:255',
-                'unique:records,record_code,' . $record->id,
+                'unique:records,record_code,'.$record->id,
             ],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -653,11 +762,7 @@ class RecordController extends Controller
             'source' => ['nullable', 'string', 'max:255'],
             'remarks' => ['nullable', 'string'],
             'files' => ['nullable', 'array', 'max:5'],
-            'files.*' => [
-                'file',
-                'max:10240',
-                'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,txt,csv',
-            ],
+            'files.*' => $this->uploadedFileRules(),
         ]);
 
         $existingCount = $record->files()->count();
@@ -681,8 +786,7 @@ class RecordController extends Controller
                 $record->update([
                     'record_code' => $validated['record_code'],
                     'title' => $validated['title'],
-                    'description' =>
-                        $validated['description'] ?? null,
+                    'description' => $validated['description'] ?? null,
                     'category_id' => $validated['category_id'],
                     'department_id' => $record->department_id,
                     'date_received' => $validated['date_received'],
@@ -736,7 +840,7 @@ class RecordController extends Controller
         Request $request,
         Record $record
     ) {
-        if (!$this->userOwnsRecord($request, $record)) {
+        if (! $this->userOwnsRecord($request, $record)) {
             return response()->json([
                 'message' => 'You may only resubmit your own returned submission.',
             ], 403);
@@ -774,6 +878,15 @@ class RecordController extends Controller
             );
         });
 
+        $this->notifications->notifyManagers(
+            $request->user(),
+            'Record resubmitted',
+            "{$request->user()->name} resubmitted corrected record {$record->record_code}.",
+            'record.resubmitted',
+            '/records?status=received',
+            ['record_id' => $record->id]
+        );
+
         return response()->json([
             'message' => 'Corrected submission sent back for review.',
             'record' => $record->fresh()->load(
@@ -789,8 +902,6 @@ class RecordController extends Controller
         if ($response = $this->denyRecordManagement($request)) {
             return $response;
         }
-
-
 
         if ($record->status !== 'under_review') {
             return response()->json([
@@ -818,10 +929,8 @@ class RecordController extends Controller
         ) {
             $record->update([
                 'status' => 'archived',
-                'review_remarks' =>
-                    $validated['review_remarks'],
-                'storage_location' =>
-                    $validated['storage_location'],
+                'review_remarks' => $validated['review_remarks'],
+                'storage_location' => $validated['storage_location'],
                 'archived_by' => $request->user()->id,
                 'archived_at' => now(),
 
@@ -839,6 +948,16 @@ class RecordController extends Controller
             );
         });
 
+        $this->notifications->notifyUser(
+            $record->creator,
+            $request->user(),
+            'Record archived',
+            "Your record {$record->record_code} was approved and archived.",
+            'record.archived',
+            '/records?scope=mine&status=archived',
+            ['record_id' => $record->id]
+        );
+
         return response()->json([
             'message' => 'Record archived successfully.',
             'record' => $record->fresh()->load(
@@ -849,13 +968,13 @@ class RecordController extends Controller
 
     public function update(Request $request, Record $record)
     {
-        if (!$this->userOwnsRecord($request, $record)) {
+        if (! $this->userOwnsRecord($request, $record)) {
             return response()->json([
                 'message' => 'You may only update records submitted by your account.',
             ], 403);
         }
 
-        if (!in_array(
+        if (! in_array(
             $record->status,
             ['received', 'returned_for_correction'],
             true
@@ -870,7 +989,7 @@ class RecordController extends Controller
                 'required',
                 'string',
                 'max:255',
-                'unique:records,record_code,' . $record->id,
+                'unique:records,record_code,'.$record->id,
             ],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -911,7 +1030,7 @@ class RecordController extends Controller
 
     public function destroy(Request $request, Record $record)
     {
-        if (!$this->canManageRecords($request)) {
+        if (! $this->canManageRecords($request)) {
             return response()->json([
                 'message' => 'You are not allowed to delete records.',
             ], 403);
@@ -930,14 +1049,14 @@ class RecordController extends Controller
                     $request,
                     $record,
                     'deleted_record',
-                    'Deleted record: ' . $recordCode
+                    'Deleted record: '.$recordCode
                 );
 
                 $record->delete();
             });
 
             Storage::disk('local')->deleteDirectory(
-                'records/' . $recordId
+                'records/'.$recordId
             );
 
             return response()->json([

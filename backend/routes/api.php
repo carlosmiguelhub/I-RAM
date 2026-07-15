@@ -1,13 +1,14 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\RecordController;
-use App\Http\Controllers\Api\OptionController;
-use App\Http\Controllers\Api\UserManagementController;
 use App\Http\Controllers\Api\ArchiveController;
-use App\Http\Controllers\Api\SystemSettingController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DocumentRequestController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\OptionController;
+use App\Http\Controllers\Api\RecordController;
+use App\Http\Controllers\Api\SystemSettingController;
+use App\Http\Controllers\Api\UserManagementController;
+use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -17,6 +18,10 @@ Route::get('/public-settings', [SystemSettingController::class, 'publicSettings'
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
 
     Route::get('/staff/archive-catalog', [DocumentRequestController::class, 'catalog']);
     Route::get('/document-requests', [DocumentRequestController::class, 'index']);

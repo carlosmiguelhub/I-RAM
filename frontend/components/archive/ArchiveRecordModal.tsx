@@ -121,9 +121,13 @@ export default function ArchiveRecordModal({
   useEffect(() => {
     if (!record) return;
 
-    setAccessMode(getAccessMode(record));
-    setAccessSuccess("");
-    setActionError("");
+    const timeoutId = window.setTimeout(() => {
+      setAccessMode(getAccessMode(record));
+      setAccessSuccess("");
+      setActionError("");
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [record]);
 
   useEffect(() => {

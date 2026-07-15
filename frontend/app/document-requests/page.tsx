@@ -6,6 +6,7 @@ import {
   Archive,
   CheckCircle2,
   Clock3,
+  Download,
   Eye,
   FileCheck2,
   FileClock,
@@ -19,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, downloadApiFile } from "@/lib/api";
 
 type Role = {
   id: number;
@@ -53,6 +54,12 @@ type RequestRecord = {
     id: number;
     name: string;
   } | null;
+  files?: Array<{
+    id: number;
+    file_name: string;
+    file_type?: string | null;
+    file_size?: number | null;
+  }>;
 };
 
 type DocumentRequest = {
@@ -930,6 +937,36 @@ function RequestModal({
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 }) {
   const isActionMode = mode !== "view";
+  const [downloadingFileId, setDownloadingFileId] = useState<
+    number | null
+  >(null);
+  const [downloadError, setDownloadError] = useState("");
+  const accessIsActive =
+    (request.status === "approved" || request.status === "released") &&
+    (!request.expires_at || new Date(request.expires_at) > new Date());
+
+  async function downloadFile(file: {
+    id: number;
+    file_name: string;
+  }) {
+    setDownloadingFileId(file.id);
+    setDownloadError("");
+
+    try {
+      await downloadApiFile(
+        `/record-files/${file.id}/download`,
+        file.file_name
+      );
+    } catch (error: unknown) {
+      setDownloadError(
+        error instanceof Error
+          ? error.message
+          : "The file could not be downloaded."
+      );
+    } finally {
+      setDownloadingFileId(null);
+    }
+  }
 
   const modalTitle = {
     view: "Request Details",
@@ -1050,6 +1087,42 @@ function RequestModal({
             />
           )}
         </div>
+
+        {accessIsActive &&
+          request.preferred_format === "digital" &&
+          request.record?.files &&
+          request.record.files.length > 0 && (
+            <div className="mt-5 rounded-2xl bg-[#F0F7F3] p-4 ring-1 ring-[#CFE0D6]">
+              <p className="text-sm font-bold text-[#2D332F]">
+                Approved digital files
+              </p>
+              <div className="mt-3 space-y-2">
+                {request.record.files.map((file) => (
+                  <button
+                    key={file.id}
+                    type="button"
+                    disabled={downloadingFileId !== null}
+                    onClick={() => void downloadFile(file)}
+                    className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-left text-sm font-semibold text-[#075A3A] ring-1 ring-[#CFE0D6] transition hover:bg-[#E6F2EC] disabled:opacity-60"
+                  >
+                    <span className="min-w-0 truncate">
+                      {file.file_name}
+                    </span>
+                    {downloadingFileId === file.id ? (
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+              {downloadError && (
+                <p className="mt-3 text-sm font-medium text-red-700">
+                  {downloadError}
+                </p>
+              )}
+            </div>
+          )}
 
         <div className="mt-5">
           <p className="text-sm font-semibold text-[#514D46]">

@@ -8,16 +8,38 @@ class RecordFile extends Model
 {
     protected $fillable = [
         'record_id',
-        'file_name',
+        'original_name',
+        'stored_name',
         'file_path',
-        'file_type',
+        'mime_type',
         'file_size',
         'uploaded_by',
+    ];
+
+    protected $appends = [
+        'file_name',
+        'file_type',
+    ];
+
+    protected $hidden = [
+        'original_name',
+        'stored_name',
+        'mime_type',
     ];
 
     protected $casts = [
         'file_size' => 'integer',
     ];
+
+    public function getFileNameAttribute(): string
+    {
+        return $this->original_name;
+    }
+
+    public function getFileTypeAttribute(): ?string
+    {
+        return $this->mime_type;
+    }
 
     public function record()
     {

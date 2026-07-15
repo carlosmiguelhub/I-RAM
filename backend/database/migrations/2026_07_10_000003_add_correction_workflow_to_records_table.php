@@ -9,17 +9,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("
-            ALTER TABLE records
-            MODIFY status ENUM(
-                'received',
-                'under_review',
-                'returned_for_correction',
-                'archived',
-                'for_disposal',
-                'disposed'
-            ) NOT NULL DEFAULT 'received'
-        ");
+        if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+            DB::statement("
+                ALTER TABLE records
+                MODIFY status ENUM(
+                    'received',
+                    'under_review',
+                    'returned_for_correction',
+                    'archived',
+                    'for_disposal',
+                    'disposed'
+                ) NOT NULL DEFAULT 'received'
+            ");
+        }
 
         Schema::table('records', function (Blueprint $table) {
             $table->text('correction_notes')
@@ -55,15 +57,17 @@ return new class extends Migration
             ]);
         });
 
-        DB::statement("
-            ALTER TABLE records
-            MODIFY status ENUM(
-                'received',
-                'under_review',
-                'archived',
-                'for_disposal',
-                'disposed'
-            ) NOT NULL DEFAULT 'received'
-        ");
+        if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+            DB::statement("
+                ALTER TABLE records
+                MODIFY status ENUM(
+                    'received',
+                    'under_review',
+                    'archived',
+                    'for_disposal',
+                    'disposed'
+                ) NOT NULL DEFAULT 'received'
+            ");
+        }
     }
 };

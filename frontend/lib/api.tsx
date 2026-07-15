@@ -1,9 +1,16 @@
-console.log("CURRENT API URL:", process.env.NEXT_PUBLIC_API_URL);
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 type ApiOptions = RequestInit & {
   token?: string | null;
+  acceptedStatuses?: number[];
 };
+
+export function clearStoredAuth(): void {
+  if (typeof window === "undefined") return;
+
+  localStorage.removeItem("iram_token");
+  localStorage.removeItem("iram_user");
+}
 
 export async function apiRequest(
   endpoint: string,
@@ -19,18 +26,23 @@ export async function apiRequest(
     ? endpoint
     : `/${endpoint}`;
 
+  const {
+    token: explicitToken,
+    acceptedStatuses,
+    ...fetchOptions
+  } = options;
   const savedToken =
     typeof window !== "undefined"
       ? localStorage.getItem("iram_token")
       : null;
 
-  const token = options.token ?? savedToken;
+  const token = explicitToken ?? savedToken;
 
-  const headers = new Headers(options.headers);
+  const headers = new Headers(fetchOptions.headers);
 
   headers.set("Accept", "application/json");
 
-  if (!(options.body instanceof FormData)) {
+  if (!(fetchOptions.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -40,16 +52,11 @@ export async function apiRequest(
 
   const requestUrl = `${API_URL}${normalizedEndpoint}`;
 
-  console.log("API REQUEST:", {
-    method: options.method ?? "GET",
-    url: requestUrl,
-  });
-
   let response: Response;
 
   try {
     response = await fetch(requestUrl, {
-      ...options,
+      ...fetchOptions,
       headers,
     });
   } catch (error) {
@@ -69,15 +76,14 @@ export async function apiRequest(
     ? await response.json()
     : await response.text();
 
-  if (!response.ok) {
-    console.error("API ERROR:", {
-      status: response.status,
-      endpoint: normalizedEndpoint,
-      url: requestUrl,
-      hasToken: Boolean(token),
-      data,
-    });
+  if (response.status === 401 && token) {
+    clearStoredAuth();
+  }
 
+  if (
+    !response.ok &&
+    !acceptedStatuses?.includes(response.status)
+  ) {
     let message =
       typeof data === "string"
         ? data
@@ -102,4 +108,55 @@ export async function apiRequest(
   }
 
   return data;
+}
+
+export async function downloadApiFile(
+  endpoint: string,
+  fallbackFileName: string
+): Promise<void> {
+  if (!API_URL) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is missing. Check frontend/.env.local and restart Next.js."
+    );
+  }
+
+  const token = localStorage.getItem("iram_token");
+  const normalizedEndpoint = endpoint.startsWith("/")
+    ? endpoint
+    : `/${endpoint}`;
+  const response = await fetch(`${API_URL}${normalizedEndpoint}`, {
+    headers: {
+      Accept: "application/octet-stream",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+
+    if (response.status === 401 && token) {
+      clearStoredAuth();
+    }
+
+    throw new Error(
+      data?.message || `Download failed with status ${response.status}.`
+    );
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const disposition = response.headers.get("content-disposition") || "";
+  const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const quotedName = disposition.match(/filename="([^"]+)"/i)?.[1];
+  const fileName = encodedName
+    ? decodeURIComponent(encodedName)
+    : quotedName || fallbackFileName;
+  const anchor = document.createElement("a");
+
+  anchor.href = objectUrl;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
 }
