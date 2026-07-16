@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ArchiveController;
 use App\Http\Controllers\Api\AuditTrailController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ClassificationManagementController;
 use App\Http\Controllers\Api\DocumentRequestController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OptionController;
@@ -64,6 +65,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/users/{user}', [UserManagementController::class, 'update']);
         Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus']);
         Route::patch('/users/{user}/password', [UserManagementController::class, 'resetPassword']);
+
+        Route::get('/categories', [ClassificationManagementController::class, 'categories']);
+        Route::post('/categories', [ClassificationManagementController::class, 'storeCategory']);
+        Route::patch('/categories/{recordCategory}', [ClassificationManagementController::class, 'updateCategory']);
+        Route::delete('/categories/{recordCategory}', [ClassificationManagementController::class, 'destroyCategory']);
+
+        Route::get('/departments', [ClassificationManagementController::class, 'departments']);
+        Route::patch('/departments/{department}', [ClassificationManagementController::class, 'updateDepartment']);
 
         Route::get('/settings', [SystemSettingController::class, 'index']);
         Route::put('/settings', [SystemSettingController::class, 'update']);
