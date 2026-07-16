@@ -48,10 +48,20 @@ class CriticalWorkflowTest extends TestCase
 
         $response
             ->assertCreated()
+            ->assertJsonPath('record.source', 'College of Technology (COT)')
             ->assertJsonPath(
                 'record.files.0.file_name',
                 'evidence.pdf'
             );
+
+        $this->assertMatchesRegularExpression(
+            '/^IRAM-'.now()->format('Y').'-R\d{6}$/',
+            $response->json('record.record_code')
+        );
+        $this->assertNotSame(
+            'REC-001',
+            $response->json('record.record_code')
+        );
 
         $file = RecordFile::firstOrFail();
 
@@ -221,7 +231,7 @@ class CriticalWorkflowTest extends TestCase
     {
         $role = Role::firstOrCreate(['name' => 'Staff']);
         $department = Department::firstOrCreate([
-            'name' => 'Records Office',
+            'name' => 'College of Technology (COT)',
         ]);
         $category = RecordCategory::firstOrCreate([
             'name' => 'General',

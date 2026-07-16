@@ -3,6 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  ArrowLeft,
+  CalendarDays,
+  FileCheck2,
+  Hash,
+  LockKeyhole,
+  Send,
+  UploadCloud,
+  UserRound,
+} from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { apiRequest } from "@/lib/api";
 
@@ -71,7 +81,6 @@ export default function CreateRecordPage() {
   const [user, setUser] = useState<User | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [statuses, setStatuses] = useState<string[]>([]);
 
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [fileError, setFileError] = useState("");
@@ -79,14 +88,12 @@ export default function CreateRecordPage() {
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
-    record_code: "",
     title: "",
     description: "",
     category_id: "",
     department_id: "",
     date_received: "",
     source: "",
-    status: "received",
     storage_location: "",
     remarks: "",
   });
@@ -101,31 +108,41 @@ export default function CreateRecordPage() {
   useEffect(() => {
     async function loadPageData() {
       try {
-        const savedUser = localStorage.getItem("iram_user");
+        const [meData, data] = await Promise.all([
+          apiRequest("/me"),
+          apiRequest("/options"),
+        ]);
+        const currentUser: User = meData.user;
 
-        if (savedUser) {
-          const parsedUser: User = JSON.parse(savedUser);
-
-          setUser(parsedUser);
-
-          if (
-            parsedUser.role?.name === "Staff" &&
-            parsedUser.department_id
-          ) {
-            setForm((current) => ({
-              ...current,
-              department_id: String(parsedUser.department_id),
-              status: "received",
-              storage_location: "",
-            }));
-          }
-        }
-
-        const data = await apiRequest("/options");
+        setUser(currentUser);
+        setForm((current) => ({
+          ...current,
+          department_id:
+            currentUser.role?.name === "Staff" && currentUser.department_id
+              ? String(currentUser.department_id)
+              : current.department_id,
+          source: currentUser.department?.name || "",
+          date_received: current.date_received || localDateToday(),
+          storage_location:
+            currentUser.role?.name === "Staff"
+              ? ""
+              : current.storage_location,
+        }));
 
         setDepartments(data.departments || []);
         setCategories(data.categories || []);
-        setStatuses(data.statuses || []);
+
+        if (
+          currentUser.role?.name === "Staff" &&
+          !data.departments?.some(
+            (department: Department) =>
+              department.id === currentUser.department_id
+          )
+        ) {
+          setSubmitError(
+            "Your account is not assigned to one of the four current colleges. Ask an Administrator to update your account before submitting."
+          );
+        }
       } catch (error) {
         console.error(error);
         setSubmitError("Failed to load form options.");
@@ -254,7 +271,6 @@ export default function CreateRecordPage() {
 
       const payload = new FormData();
 
-      payload.append("record_code", form.record_code.trim());
       payload.append("title", form.title.trim());
       payload.append("description", form.description);
       payload.append("category_id", form.category_id);
@@ -267,8 +283,6 @@ export default function CreateRecordPage() {
       );
 
       payload.append("date_received", form.date_received);
-      payload.append("source", form.source);
-      payload.append("status", isStaff ? "received" : form.status);
 
       payload.append(
         "storage_location",
@@ -310,17 +324,19 @@ export default function CreateRecordPage() {
   return (
     <AppShell>
       <div className="mx-auto w-full max-w-5xl">
-        <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] p-5 text-white shadow-lg shadow-[#075A3A]/10 sm:p-6">
+          <div className="absolute -right-14 -top-20 h-52 w-52 rounded-full bg-[#D9961A]/15 blur-2xl" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-[#075A3A]">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#F4C25E]">
               {isStaff ? "Staff Submission" : "Record Encoder"}
             </p>
 
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#252A27] sm:text-3xl">
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
               {isStaff ? "New Submission" : "Add New Record"}
             </h1>
 
-            <p className="mt-1 max-w-xl text-sm leading-6 text-[#766F63]">
+            <p className="mt-1 max-w-xl text-sm leading-6 text-[#E5DDCC]">
               {isStaff
                 ? "Submit a digital or physical record for review by the Records Office."
                 : "Encode a newly acquired physical or digital document into the IRAM archive."}
@@ -329,10 +345,12 @@ export default function CreateRecordPage() {
 
           <Link
             href="/records"
-            className="flex w-full items-center justify-center rounded-xl border border-[#E3DCCE] bg-white px-5 py-3 text-sm font-semibold text-[#514D46] shadow-sm transition hover:bg-[#F8F5EE] sm:w-auto"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20 sm:w-auto"
           >
+            <ArrowLeft className="h-4 w-4" />
             Back to Records
           </Link>
+          </div>
         </section>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
@@ -347,32 +365,12 @@ export default function CreateRecordPage() {
 
           <section className="relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-6">
             <div className="absolute inset-x-0 top-0 h-1 bg-[#075A3A]" />
-            <h2 className="text-lg font-extrabold text-[#2D332F]">
-              Basic Information
-            </h2>
-
-            <p className="mt-1 text-sm text-[#766F63]">
-              Required details for identifying and classifying the record.
-            </p>
+            <SectionTitle number="1" title="Basic Information" subtitle="Required details for identifying and classifying the record." />
 
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormInput
-                label="Record Code"
-                name="record_code"
-                value={form.record_code}
-                onChange={handleChange}
-                placeholder="IRAM-2026-0001"
-                required
-              />
+              <ReadOnlyField icon={<Hash className="h-5 w-5" />} label="Record Code" value="Generated after saving" helper="A collision-safe code such as IRAM-2026-R000123 will be assigned automatically." />
 
-              <FormInput
-                label="Date Received"
-                name="date_received"
-                type="date"
-                value={form.date_received}
-                onChange={handleChange}
-                required
-              />
+              <div className="relative"><CalendarDays className="pointer-events-none absolute right-4 top-[46px] h-4 w-4 text-[#766F63]" /><FormInput label="Date Received" name="date_received" type="date" value={form.date_received} onChange={handleChange} required /></div>
 
               <div className="md:col-span-2">
                 <FormInput
@@ -402,7 +400,7 @@ export default function CreateRecordPage() {
               </FormSelect>
 
               <FormSelect
-                label="Department"
+                label={isStaff ? "Account College" : "Record College"}
                 name="department_id"
                 value={form.department_id}
                 onChange={handleChange}
@@ -420,7 +418,7 @@ export default function CreateRecordPage() {
 
               {isStaff && (
                 <p className="-mt-1 text-xs text-[#766F63] md:col-start-2">
-                  Your department is assigned automatically from your
+                  The record college is assigned automatically from your
                   account.
                 </p>
               )}
@@ -431,14 +429,7 @@ export default function CreateRecordPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="absolute inset-x-0 top-0 h-1 bg-[#D9961A]" />
-                <h2 className="text-lg font-extrabold text-[#2D332F]">
-                  Record Files
-                </h2>
-
-                <p className="mt-1 text-sm leading-6 text-[#766F63]">
-                  Attach supporting documents. You may upload up to 5
-                  files, with a maximum size of 10 MB per file.
-                </p>
+                <SectionTitle number="2" title="Record Files" subtitle="Attach up to 5 supporting documents, with a maximum size of 10 MB per file." />
               </div>
 
               <span className="w-fit rounded-full bg-[#FFF3D6] px-3 py-1 text-xs font-extrabold text-[#A66B00] ring-1 ring-[#EBCF8F]">
@@ -455,8 +446,8 @@ export default function CreateRecordPage() {
                     : "cursor-pointer border-[#D7CDBB] bg-[#F8F5EE] hover:border-[#91BAA3] hover:bg-[#F0F7F3]/50"
                 }`}
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#D9961A] text-2xl font-extrabold text-white shadow-md shadow-[#D9961A]/20">
-                  ↑
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#D9961A] text-white shadow-md shadow-[#D9961A]/20">
+                  <UploadCloud className="h-6 w-6" />
                 </span>
 
                 <span className="mt-3 text-sm font-semibold text-[#2D332F]">
@@ -533,50 +524,12 @@ export default function CreateRecordPage() {
 
           <section className="relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DED5C5] sm:p-6">
             <div className="absolute inset-x-0 top-0 h-1 bg-[#6B0F2B]" />
-            <h2 className="text-lg font-extrabold text-[#2D332F]">
-              {isStaff ? "Submission Details" : "Archive Details"}
-            </h2>
-
-            <p className="mt-1 text-sm text-[#766F63]">
-              {isStaff
-                ? "Add the source, description, and optional notes for review."
-                : "Add source, status, location, and notes for archive tracking."}
-            </p>
+            <SectionTitle number="3" title={isStaff ? "Submission Details" : "Archive Details"} subtitle={isStaff ? "Add a description and optional notes for review." : "Add status, location, and notes for archive tracking."} />
 
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormInput
-                label="Source / Sender"
-                name="source"
-                value={form.source}
-                onChange={handleChange}
-                placeholder="Registrar Office"
-              />
+              <ReadOnlyField icon={<UserRound className="h-5 w-5" />} label="Sender" value={form.source || "No account department assigned"} helper="Automatically taken from your signed-in account." />
 
-              {isStaff ? (
-                <div className="rounded-xl border border-[#CFE0D6] bg-gradient-to-br from-[#F0F7F3] to-[#FFF9EA] px-4 py-3">
-                  <p className="text-sm font-semibold text-[#064D33]">
-                    Initial Status: Received
-                  </p>
-
-                  <p className="mt-1 text-xs leading-5 text-[#075A3A]">
-                    A Records Officer will review the submission and
-                    assign its archive status and storage location.
-                  </p>
-                </div>
-              ) : (
-                <FormSelect
-                  label="Status"
-                  name="status"
-                  value={form.status}
-                  onChange={handleChange}
-                >
-                  {statuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status.replaceAll("_", " ")}
-                    </option>
-                  ))}
-                </FormSelect>
-              )}
+              <ReadOnlyField icon={<FileCheck2 className="h-5 w-5" />} label="Initial Status" value="Received" helper="Every new record enters the review workflow with Received status." />
 
               {!isStaff && (
                 <div className="md:col-span-2">
@@ -626,6 +579,7 @@ export default function CreateRecordPage() {
                 disabled={loading}
                 className="flex w-full items-center justify-center rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#6B0F2B]/20 transition hover:-translate-y-0.5 hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
+                {!loading && <Send className="mr-2 h-4 w-4" />}
                 {loading
                   ? "Submitting..."
                   : isStaff
@@ -638,6 +592,62 @@ export default function CreateRecordPage() {
       </div>
     </AppShell>
   );
+}
+
+function SectionTitle({
+  number,
+  title,
+  subtitle,
+}: {
+  number: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#075A3A] text-xs font-extrabold text-[#F4C25E] shadow-sm">
+        {number}
+      </span>
+      <div>
+        <h2 className="text-lg font-extrabold text-[#2D332F]">{title}</h2>
+        <p className="mt-0.5 text-sm leading-5 text-[#766F63]">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function ReadOnlyField({
+  icon,
+  label,
+  value,
+  helper,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  helper: string;
+}) {
+  return (
+    <div className="rounded-xl border border-[#CFE0D6] bg-gradient-to-br from-[#F0F7F3] to-[#FCFAF5] px-4 py-3 ring-1 ring-[#E6F2EC]">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-[#514D46]">{label}</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#075A3A] ring-1 ring-[#CFE0D6]">
+          <LockKeyhole className="h-3 w-3" /> Auto
+        </span>
+      </div>
+      <div className="mt-2 flex items-center gap-2 text-[#075A3A]">
+        {icon}
+        <strong className="min-w-0 truncate text-sm">{value}</strong>
+      </div>
+      <p className="mt-1.5 text-[11px] leading-4 text-[#766F63]">{helper}</p>
+    </div>
+  );
+}
+
+function localDateToday() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
 function FormInput({

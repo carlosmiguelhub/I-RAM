@@ -12,23 +12,23 @@ class DepartmentSeeder extends Seeder
         $departments = [
             [
                 'name' => 'Records Office',
-                'description' => 'Main office responsible for records management.',
+                'description' => 'Central office responsible for institutional records management.',
             ],
             [
-                'name' => 'Registrar',
-                'description' => 'Handles student records and academic documents.',
+                'name' => 'College of Technology (COT)',
+                'description' => 'Technology programs and academic units.',
             ],
             [
-                'name' => 'Accounting',
-                'description' => 'Handles financial and payment-related records.',
+                'name' => 'College of Engineering (COE)',
+                'description' => 'Engineering programs and academic units.',
             ],
             [
-                'name' => 'Human Resources',
-                'description' => 'Handles employee and personnel records.',
+                'name' => 'College of Education Arts and Sciences (CEAS)',
+                'description' => 'Education, arts, and sciences programs and academic units.',
             ],
             [
-                'name' => 'IT Department',
-                'description' => 'Handles technical and system-related records.',
+                'name' => 'College of Management and Entrepreneurship (CME)',
+                'description' => 'Management and entrepreneurship programs and academic units.',
             ],
         ];
 

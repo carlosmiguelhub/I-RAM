@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\Department;
 use App\Models\DocumentRequest;
 use App\Models\Record;
 use App\Models\RecordFile;
@@ -136,6 +137,32 @@ class RecordController extends Controller
             'description' => $description,
             'ip_address' => $request->ip(),
         ]);
+    }
+
+    private function generatedRecordCode(Record $record): string
+    {
+        $prefix = strtoupper((string) SystemSetting::getValue(
+            'record_code_prefix',
+            'IRAM'
+        ));
+        $prefix = preg_replace('/[^A-Z0-9]+/', '', $prefix) ?: 'IRAM';
+        $baseCode = sprintf(
+            '%s-%s-R%06d',
+            $prefix,
+            now()->format('Y'),
+            $record->id
+        );
+        $code = $baseCode;
+        $suffix = 1;
+
+        while (Record::where('record_code', $code)
+            ->whereKeyNot($record->id)
+            ->exists()) {
+            $code = $baseCode.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $code;
     }
 
     private function storeFiles(
@@ -328,12 +355,6 @@ class RecordController extends Controller
         }
 
         $validated = $request->validate([
-            'record_code' => [
-                'required',
-                'string',
-                'max:255',
-                'unique:records,record_code',
-            ],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'category_id' => [
@@ -345,7 +366,6 @@ class RecordController extends Controller
                 'exists:departments,id',
             ],
             'date_received' => ['required', 'date'],
-            'source' => ['nullable', 'string', 'max:255'],
             'storage_location' => [
                 'nullable',
                 'string',
@@ -356,17 +376,36 @@ class RecordController extends Controller
             'files.*' => $this->uploadedFileRules(),
         ]);
 
+        if ($user->department_id === null || ! $user->department) {
+            return response()->json([
+                'message' => 'Your account is not assigned to a department. Ask an Administrator to update your account.',
+            ], 422);
+        }
+
         if ($role === 'Staff') {
-            if ($user->department_id === null) {
+            if (! in_array(
+                $user->department->name,
+                Department::INSTITUTIONAL_COLLEGES,
+                true
+            )) {
                 return response()->json([
-                    'message' => 'Your account is not assigned to a department.',
+                    'message' => 'Your account uses a previous department. Ask an Administrator to assign one of the four current colleges.',
                 ], 422);
             }
 
             $validated['department_id'] = $user->department_id;
             $validated['storage_location'] = null;
+        } elseif (! Department::query()
+            ->whereKey($validated['department_id'])
+            ->whereIn('name', Department::INSTITUTIONAL_COLLEGES)
+            ->exists()) {
+            return response()->json([
+                'message' => 'Please select one of the four current colleges for this record.',
+            ], 422);
         }
 
+        $validated['record_code'] = 'PENDING-'.Str::uuid();
+        $validated['source'] = $user->department->name;
         $validated['status'] = 'received';
         $validated['created_by'] = $user->id;
         $storedFilePaths = [];
@@ -378,6 +417,9 @@ class RecordController extends Controller
                 &$storedFilePaths
             ) {
                 $record = Record::create($validated);
+                $record->update([
+                    'record_code' => $this->generatedRecordCode($record),
+                ]);
                 $uploadedCount = $this->storeFiles(
                     $request,
                     $record,
@@ -746,12 +788,6 @@ class RecordController extends Controller
         }
 
         $validated = $request->validate([
-            'record_code' => [
-                'required',
-                'string',
-                'max:255',
-                'unique:records,record_code,'.$record->id,
-            ],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'category_id' => [
@@ -759,7 +795,6 @@ class RecordController extends Controller
                 'exists:record_categories,id',
             ],
             'date_received' => ['required', 'date'],
-            'source' => ['nullable', 'string', 'max:255'],
             'remarks' => ['nullable', 'string'],
             'files' => ['nullable', 'array', 'max:5'],
             'files.*' => $this->uploadedFileRules(),
@@ -784,13 +819,11 @@ class RecordController extends Controller
                 &$storedFilePaths
             ) {
                 $record->update([
-                    'record_code' => $validated['record_code'],
                     'title' => $validated['title'],
                     'description' => $validated['description'] ?? null,
                     'category_id' => $validated['category_id'],
                     'department_id' => $record->department_id,
                     'date_received' => $validated['date_received'],
-                    'source' => $validated['source'] ?? null,
                     'remarks' => $validated['remarks'] ?? null,
                 ]);
 
@@ -985,12 +1018,6 @@ class RecordController extends Controller
         }
 
         $validated = $request->validate([
-            'record_code' => [
-                'required',
-                'string',
-                'max:255',
-                'unique:records,record_code,'.$record->id,
-            ],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'category_id' => [
@@ -1002,7 +1029,6 @@ class RecordController extends Controller
                 'exists:departments,id',
             ],
             'date_received' => ['required', 'date'],
-            'source' => ['nullable', 'string', 'max:255'],
             'remarks' => ['nullable', 'string'],
         ]);
 

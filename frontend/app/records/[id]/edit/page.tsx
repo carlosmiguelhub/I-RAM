@@ -292,10 +292,6 @@ export default function CorrectRecordPage() {
       throw new Error("Record is not available.");
     }
 
-    if (!form.record_code.trim()) {
-      throw new Error("Record code is required.");
-    }
-
     if (!form.title.trim()) {
       throw new Error("Title is required.");
     }
@@ -310,12 +306,10 @@ export default function CorrectRecordPage() {
 
     const payload = new FormData();
 
-    payload.append("record_code", form.record_code.trim());
     payload.append("title", form.title.trim());
     payload.append("description", form.description);
     payload.append("category_id", form.category_id);
     payload.append("date_received", form.date_received);
-    payload.append("source", form.source);
     payload.append("remarks", form.remarks);
 
     selectedFiles.forEach(({ file }) => {
@@ -498,12 +492,13 @@ export default function CorrectRecordPage() {
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Record Code">
                 <input
-                  required
                   name="record_code"
                   value={form.record_code}
-                  onChange={handleChange}
-                  className={inputClass}
+                  readOnly
+                  aria-readonly="true"
+                  className={`${inputClass} cursor-not-allowed border-[#CFE0D6] bg-[#F0F7F3] font-semibold text-[#075A3A]`}
                 />
+                <p className="mt-1.5 text-xs font-normal text-[#766F63]">System-generated codes cannot be changed.</p>
               </Field>
 
               <Field label="Date Submitted">
@@ -554,9 +549,11 @@ export default function CorrectRecordPage() {
                 <input
                   name="source"
                   value={form.source}
-                  onChange={handleChange}
-                  className={inputClass}
+                  readOnly
+                  aria-readonly="true"
+                  className={`${inputClass} cursor-not-allowed border-[#CFE0D6] bg-[#F0F7F3] font-semibold text-[#075A3A]`}
                 />
+                <p className="mt-1.5 text-xs font-normal text-[#766F63]">Locked to the sender department captured at submission.</p>
               </Field>
 
               <div className="md:col-span-2">

@@ -151,8 +151,8 @@ class NotificationWorkflowTest extends TestCase
 
     private function workflowUsers(): array
     {
-        $department = Department::create([
-            'name' => 'Records Office',
+        $department = Department::firstOrCreate([
+            'name' => 'College of Technology (COT)',
         ]);
         $category = RecordCategory::create([
             'name' => 'General Records',

@@ -20,6 +20,7 @@ class OptionController extends Controller
 
             'departments' => Department::query()
                 ->select('id', 'name')
+                ->whereIn('name', Department::INSTITUTIONAL_COLLEGES)
                 ->orderBy('name')
                 ->get(),
 
