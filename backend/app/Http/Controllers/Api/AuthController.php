@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -65,6 +66,13 @@ class AuthController extends Controller
 
         $token = $this->createAccessToken($user);
 
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'authenticated_session_started',
+            'description' => "Signed in to IRAM: {$user->email}",
+            'ip_address' => $request->ip(),
+        ]);
+
         return response()->json([
             'message' => 'Login successful.',
             'token' => $token,
@@ -106,6 +114,14 @@ class AuthController extends Controller
 
         $token = $this->createAccessToken($user);
 
+        AuditLog::create([
+            'user_id' => $user->id,
+            'target_user_id' => $user->id,
+            'action' => 'public_user_registered',
+            'description' => "Registered a new Staff account: {$user->email}",
+            'ip_address' => $request->ip(),
+        ]);
+
         return response()->json([
             'message' => 'Registration successful.',
             'token' => $token,
@@ -122,6 +138,15 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $user = $request->user();
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'authenticated_session_ended',
+            'description' => "Signed out of IRAM: {$user->email}",
+            'ip_address' => $request->ip(),
+        ]);
+
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ArchiveFolder extends Model
 {
     protected $fillable = [
+        'parent_id',
         'name',
         'description',
         'created_by',
@@ -20,5 +21,15 @@ class ArchiveFolder extends Model
     public function records()
     {
         return $this->hasMany(Record::class, 'archive_folder_id');
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(self::class, 'parent_id');
     }
 }

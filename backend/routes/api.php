@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ArchiveController;
+use App\Http\Controllers\Api\AuditTrailController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DocumentRequestController;
 use App\Http\Controllers\Api\NotificationController;
@@ -22,6 +23,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+
+    Route::get('/audit-trail', [AuditTrailController::class, 'index']);
 
     Route::get('/staff/archive-catalog', [DocumentRequestController::class, 'catalog']);
     Route::get('/document-requests', [DocumentRequestController::class, 'index']);

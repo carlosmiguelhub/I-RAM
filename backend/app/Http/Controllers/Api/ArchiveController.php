@@ -19,7 +19,7 @@ class ArchiveController extends Controller
 
     private function denyArchiveAccess(Request $request)
     {
-        if (!in_array(
+        if (! in_array(
             $this->roleName($request),
             ['Admin', 'Records Officer'],
             true
@@ -143,12 +143,34 @@ class ArchiveController extends Controller
         $folders = ArchiveFolder::query()
             ->with('creator:id,name')
             ->withCount([
+                'children as children_count',
                 'records as records_count' => function ($query) {
                     $query->where('status', 'archived');
                 },
             ])
             ->orderBy('name')
             ->get();
+
+        $foldersById = $folders->keyBy('id');
+
+        $folders->each(function (ArchiveFolder $folder) use ($foldersById) {
+            $segments = [$folder->name];
+            $parentId = $folder->parent_id;
+            $visited = [$folder->id => true];
+
+            while ($parentId && isset($foldersById[$parentId])) {
+                if (isset($visited[$parentId])) {
+                    break;
+                }
+
+                $parent = $foldersById[$parentId];
+                array_unshift($segments, $parent->name);
+                $visited[$parentId] = true;
+                $parentId = $parent->parent_id;
+            }
+
+            $folder->setAttribute('path', implode(' / ', $segments));
+        });
 
         $unfiledCount = Record::query()
             ->where('status', 'archived')
@@ -168,11 +190,19 @@ class ArchiveController extends Controller
         }
 
         $validated = $request->validate([
+            'parent_id' => [
+                'nullable',
+                'integer',
+                'exists:archive_folders,id',
+            ],
             'name' => [
                 'required',
                 'string',
                 'max:100',
-                'unique:archive_folders,name',
+                Rule::unique('archive_folders', 'name')
+                    ->where(fn ($query) => $request->filled('parent_id')
+                        ? $query->where('parent_id', $request->integer('parent_id'))
+                        : $query->whereNull('parent_id')),
             ],
             'description' => [
                 'nullable',
@@ -189,7 +219,7 @@ class ArchiveController extends Controller
         $this->logFolderAction(
             $request,
             'created_archive_folder',
-            'Created archive folder: ' . $folder->name
+            'Created archive folder: '.$folder->name
         );
 
         return response()->json([
@@ -214,6 +244,9 @@ class ArchiveController extends Controller
                 'string',
                 'max:100',
                 Rule::unique('archive_folders', 'name')
+                    ->where(fn ($query) => $archiveFolder->parent_id
+                        ? $query->where('parent_id', $archiveFolder->parent_id)
+                        : $query->whereNull('parent_id'))
                     ->ignore($archiveFolder->id),
             ],
             'description' => [
@@ -251,6 +284,12 @@ class ArchiveController extends Controller
         }
 
         $folderName = $archiveFolder->name;
+
+        if ($archiveFolder->children()->exists()) {
+            return response()->json([
+                'message' => 'This folder contains subfolders. Delete or move those subfolders first.',
+            ], 422);
+        }
 
         $recordsCount = $archiveFolder
             ->records()

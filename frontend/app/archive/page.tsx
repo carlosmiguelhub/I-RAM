@@ -27,6 +27,7 @@ import { apiRequest } from "@/lib/api";
 type FolderItem = {
   id: number;
   name: string;
+  path?: string;
   records_count: number;
 };
 
@@ -700,7 +701,7 @@ export default function ArchiveUnfiledPage() {
                 <option value="">Choose a folder</option>
                 {folders.map((folder) => (
                   <option key={folder.id} value={folder.id}>
-                    {folder.name}
+                    {folder.path || folder.name}
                   </option>
                 ))}
               </select>
@@ -801,7 +802,7 @@ export default function ArchiveUnfiledPage() {
                     key={folder.id}
                     value={folder.id}
                   >
-                    {folder.name}
+                    {folder.path || folder.name}
                   </option>
                 ))}
               </select>
