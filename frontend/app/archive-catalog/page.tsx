@@ -19,6 +19,9 @@ import {
   X,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import ViewModeToggle, {
+  usePersistentViewMode,
+} from "@/components/archive/ViewModeToggle";
 import { apiRequest } from "@/lib/api";
 
 type Option = {
@@ -74,6 +77,10 @@ export default function ArchiveCatalogPage() {
   const [categoryId, setCategoryId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [accessLevel, setAccessLevel] = useState("");
+  const [viewMode, changeView] = usePersistentViewMode(
+    "archive-catalog-view",
+    "grid"
+  );
 
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -554,11 +561,17 @@ export default function ArchiveCatalogPage() {
           </div>
 
           <div className="min-w-0 p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-xs font-medium text-[#766F63]">
+                Showing {records.length} of {total} available {total === 1 ? "record" : "records"}
+              </p>
+              <ViewModeToggle value={viewMode} onChange={changeView} />
+            </div>
             {loading ? (
               <LoadingState />
             ) : records.length === 0 ? (
               <EmptyState hasFilters={hasFilters} />
-            ) : (
+            ) : viewMode === "grid" ? (
               <div className="grid min-w-0 grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
                 {records.map((record) => (
                   <RecordCard
@@ -567,6 +580,23 @@ export default function ArchiveCatalogPage() {
                     onRequest={() =>
                       openRequestModal(record)
                     }
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-[#E3DCCE]">
+                <div className="grid min-w-[980px] grid-cols-[minmax(280px,1.5fr)_160px_180px_150px_170px] gap-3 border-b border-[#E3DCCE] bg-[#F8F5EE] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#766F63]">
+                  <span>Record</span>
+                  <span>Category</span>
+                  <span>Department</span>
+                  <span>Archived</span>
+                  <span className="text-right">Access</span>
+                </div>
+                {records.map((record) => (
+                  <CatalogListEntry
+                    key={record.id}
+                    record={record}
+                    onRequest={() => openRequestModal(record)}
                   />
                 ))}
               </div>
@@ -784,6 +814,43 @@ export default function ArchiveCatalogPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+function CatalogListEntry({
+  record,
+  onRequest,
+}: {
+  record: ArchiveRecord;
+  onRequest: () => void;
+}) {
+  return (
+    <article className="grid min-w-[980px] grid-cols-[minmax(280px,1.5fr)_160px_180px_150px_170px] items-center gap-3 border-b border-[#EEE8DD] px-3 py-3 text-xs last:border-0 hover:bg-[#FCFAF5]">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#075A3A] text-[#F4C25E]">
+          <FolderArchive className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate font-bold text-[#252A27]">{record.title}</p>
+          <p className="mt-0.5 truncate text-[11px] text-[#766F63]">{record.record_code}</p>
+          <p className="mt-1 truncate text-[11px] text-[#A09582]">{record.archive_folder?.name || "Unfiled"}</p>
+        </div>
+      </div>
+      <span className="truncate text-[#514D46]">{record.category?.name || "N/A"}</span>
+      <span className="truncate text-[#514D46]">{record.department?.name || "N/A"}</span>
+      <span className="text-[#514D46]">{formatDate(record.archived_at)}</span>
+      <div className="flex items-center justify-end gap-2">
+        <AccessBadge accessLevel={record.access_level} />
+        <button
+          type="button"
+          onClick={onRequest}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#6B0F2B] px-3 font-bold text-white shadow-sm hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30"
+        >
+          <FileKey2 className="h-4 w-4" />
+          Request
+        </button>
+      </div>
+    </article>
   );
 }
 

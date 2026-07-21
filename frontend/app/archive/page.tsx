@@ -22,10 +22,15 @@ import AppShell from "@/components/AppShell";
 import ArchiveRecordModal, {
   type ArchiveRecord,
 } from "@/components/archive/ArchiveRecordModal";
+import FolderDestinationPicker from "@/components/archive/FolderDestinationPicker";
+import ViewModeToggle, {
+  usePersistentViewMode,
+} from "@/components/archive/ViewModeToggle";
 import { apiRequest } from "@/lib/api";
 
 type FolderItem = {
   id: number;
+  parent_id?: number | null;
   name: string;
   path?: string;
   records_count: number;
@@ -40,6 +45,10 @@ export default function ArchiveUnfiledPage() {
   const [records, setRecords] = useState<RecordCard[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [viewMode, changeView] = usePersistentViewMode(
+    "archive-record-view",
+    "grid"
+  );
 
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedRecordIds, setSelectedRecordIds] = useState<number[]>([]);
@@ -412,13 +421,13 @@ export default function ArchiveUnfiledPage() {
 
         <section className="relative mt-3 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#DED5C5]">
           <div className="absolute inset-x-0 top-0 h-1 bg-[#D9961A]" />
-          <div className="border-b border-[#E3DCCE] bg-[#FCFAF5] p-3 pt-4">
+          <div className="flex flex-col gap-2 border-b border-[#E3DCCE] bg-[#FCFAF5] p-3 pt-4 sm:flex-row sm:items-center">
             <form
               onSubmit={(event) => {
                 event.preventDefault();
                 loadPage(search);
               }}
-              className="flex flex-col gap-2 sm:flex-row"
+              className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row"
             >
               <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A09582]" />
@@ -437,6 +446,7 @@ export default function ArchiveUnfiledPage() {
                 Search
               </button>
             </form>
+            <ViewModeToggle value={viewMode} onChange={changeView} />
           </div>
 
           <div className="p-3">
@@ -488,7 +498,7 @@ export default function ArchiveUnfiledPage() {
               <LoadingState />
             ) : records.length === 0 ? (
               <EmptyState />
-            ) : (
+            ) : viewMode === "grid" ? (
               <div className="grid gap-2.5 md:grid-cols-2 2xl:grid-cols-3">
                 {records.map((record) => (
                   <article
@@ -602,6 +612,30 @@ export default function ArchiveUnfiledPage() {
                   </article>
                 ))}
               </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-[#E3DCCE]">
+                <div className="grid min-w-[1040px] grid-cols-[minmax(260px,1.4fr)_150px_170px_150px_190px_190px] gap-3 border-b border-[#E3DCCE] bg-[#F8F5EE] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#766F63]">
+                  <span>Record</span>
+                  <span>Category</span>
+                  <span>Department</span>
+                  <span>Archived / Files</span>
+                  <span>Access</span>
+                  <span className="text-right">Actions</span>
+                </div>
+                {records.map((record) => (
+                  <ArchiveListEntry
+                    key={record.id}
+                    record={record}
+                    selectionMode={selectionMode}
+                    selected={selectedRecordIds.includes(record.id)}
+                    opening={openingRecordId === record.id}
+                    busy={openingRecordId !== null}
+                    onSelect={() => toggleRecordSelection(record.id)}
+                    onOpen={() => openRecord(record.id)}
+                    onMove={() => openMoveModal(record)}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </section>
@@ -688,24 +722,15 @@ export default function ArchiveUnfiledPage() {
               </div>
             </div>
 
-            <label className="mt-5 block text-sm font-semibold text-[#514D46]">
-              Destination folder
-              <select
+            <div className="mt-5 text-sm font-semibold text-[#514D46]">
+              <p>Destination folder</p>
+              <FolderDestinationPicker
+                folders={folders}
                 value={bulkTargetFolderId}
-                onChange={(event) =>
-                  setBulkTargetFolderId(event.target.value)
-                }
+                onChange={setBulkTargetFolderId}
                 disabled={bulkMoving}
-                className="mt-2 w-full rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-4 py-3 text-sm outline-none transition focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] disabled:opacity-60"
-              >
-                <option value="">Choose a folder</option>
-                {folders.map((folder) => (
-                  <option key={folder.id} value={folder.id}>
-                    {folder.path || folder.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              />
+            </div>
 
             {folders.length === 0 && (
               <p className="mt-3 text-sm text-amber-700">
@@ -787,26 +812,15 @@ export default function ArchiveUnfiledPage() {
               </p>
             </div>
 
-            <label className="mt-5 block text-sm font-semibold text-[#514D46]">
-              Archive folder
-              <select
+            <div className="mt-5 text-sm font-semibold text-[#514D46]">
+              <p>Archive folder</p>
+              <FolderDestinationPicker
+                folders={folders}
                 value={targetFolderId}
-                onChange={(event) =>
-                  setTargetFolderId(event.target.value)
-                }
-                className="mt-2 w-full rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-4 py-3 text-sm outline-none focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
-              >
-                <option value="">Choose a folder</option>
-                {folders.map((folder) => (
-                  <option
-                    key={folder.id}
-                    value={folder.id}
-                  >
-                    {folder.path || folder.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={setTargetFolderId}
+                disabled={moving}
+              />
+            </div>
 
             {folders.length === 0 && (
               <p className="mt-3 text-sm text-amber-700">
@@ -841,6 +855,89 @@ export default function ArchiveUnfiledPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+function ArchiveListEntry({
+  record,
+  selectionMode,
+  selected,
+  opening,
+  busy,
+  onSelect,
+  onOpen,
+  onMove,
+}: {
+  record: RecordCard;
+  selectionMode: boolean;
+  selected: boolean;
+  opening: boolean;
+  busy: boolean;
+  onSelect: () => void;
+  onOpen: () => void;
+  onMove: () => void;
+}) {
+  return (
+    <article
+      className={`grid min-w-[1040px] grid-cols-[minmax(260px,1.4fr)_150px_170px_150px_190px_190px] items-center gap-3 border-b border-[#EEE8DD] px-3 py-3 text-xs last:border-0 hover:bg-[#FCFAF5] ${
+        selected ? "bg-[#F0F7F3] ring-1 ring-inset ring-[#CFE0D6]" : ""
+      }`}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        {selectionMode && (
+          <button
+            type="button"
+            onClick={onSelect}
+            aria-label={`Select ${record.title}`}
+            aria-pressed={selected}
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition ${
+              selected
+                ? "border-[#075A3A] bg-[#075A3A] text-white"
+                : "border-[#D7CDBB] bg-white text-transparent hover:border-[#075A3A]"
+            }`}
+          >
+            <Check className="h-4 w-4" />
+          </button>
+        )}
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F8E9EE] text-[#6B0F2B]">
+          <Archive className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate font-bold text-[#252A27]">{record.title}</p>
+          <p className="mt-0.5 truncate text-[11px] text-[#766F63]">{record.record_code}</p>
+        </div>
+      </div>
+      <span className="truncate text-[#514D46]">{record.category?.name || "N/A"}</span>
+      <span className="truncate text-[#514D46]">{record.department?.name || "N/A"}</span>
+      <span className="text-[#514D46]">
+        {formatDate(record.archived_at)}
+        <span className="mt-0.5 block text-[11px] text-[#A09582]">{record.files?.length || 0} files</span>
+      </span>
+      <div className="flex flex-wrap gap-1.5">
+        <AccessLevelBadge accessLevel={record.access_level} />
+        <StaffVisibilityBadge staffVisible={Boolean(record.staff_visible)} />
+      </div>
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onOpen}
+          disabled={busy || selectionMode}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#E3DCCE] bg-white px-3 font-semibold text-[#514D46] hover:bg-[#F8F5EE] disabled:opacity-50"
+        >
+          {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+          View
+        </button>
+        <button
+          type="button"
+          onClick={onMove}
+          disabled={selectionMode}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#6B0F2B] px-3 font-bold text-white hover:bg-[#571023] disabled:opacity-50"
+        >
+          <FolderInput className="h-4 w-4" />
+          Organize
+        </button>
+      </div>
+    </article>
   );
 }
 

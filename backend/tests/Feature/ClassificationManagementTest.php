@@ -22,17 +22,14 @@ class ClassificationManagementTest extends TestCase
         $response = $this->postJson('/api/admin/categories', [
             'name' => 'Research Records',
             'description' => 'Studies, proposals, and research outputs.',
-            'retention_years' => 12,
         ])->assertCreated()
-            ->assertJsonPath('data.name', 'Research Records')
-            ->assertJsonPath('data.retention_years', 12);
+            ->assertJsonPath('data.name', 'Research Records');
 
         $categoryId = $response->json('data.id');
 
         $this->patchJson("/api/admin/categories/{$categoryId}", [
             'name' => 'Research and Extension Records',
             'description' => 'Research and extension program documents.',
-            'retention_years' => 15,
         ])->assertOk()
             ->assertJsonPath(
                 'data.name',
@@ -60,7 +57,6 @@ class ClassificationManagementTest extends TestCase
         ]);
         $category = RecordCategory::create([
             'name' => 'Protected Category',
-            'retention_years' => 5,
         ]);
         Record::create([
             'record_code' => 'IRAM-TEST-001',
@@ -85,26 +81,33 @@ class ClassificationManagementTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_update_department_purpose_but_not_its_name(): void
+    public function test_admin_can_create_update_and_delete_a_department(): void
     {
-        $department = Department::firstOrCreate([
-            'name' => 'College of Engineering (COE)',
-        ]);
-        $department->update(['description' => 'Old purpose.']);
         Sanctum::actingAs($this->userWithRole('Admin'));
 
-        $this->patchJson("/api/admin/departments/{$department->id}", [
-            'name' => 'Renamed College',
-            'description' => 'Engineering programs and their records.',
-        ])->assertOk();
+        $response = $this->postJson('/api/admin/departments', [
+            'name' => 'Research and Extension Office',
+            'description' => 'Coordinates institutional research.',
+            'accepts_submissions' => true,
+        ])->assertCreated()
+            ->assertJsonPath('data.accepts_submissions', true);
 
-        $department->refresh();
+        $departmentId = $response->json('data.id');
 
-        $this->assertSame('College of Engineering (COE)', $department->name);
-        $this->assertSame(
-            'Engineering programs and their records.',
-            $department->description
-        );
+        $this->patchJson("/api/admin/departments/{$departmentId}", [
+            'name' => 'Research Office',
+            'description' => 'Coordinates research records.',
+            'accepts_submissions' => false,
+        ])->assertOk()
+            ->assertJsonPath('data.name', 'Research Office')
+            ->assertJsonPath('data.accepts_submissions', false);
+
+        $this->deleteJson("/api/admin/departments/{$departmentId}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('departments', [
+            'id' => $departmentId,
+        ]);
     }
 
     public function test_non_admin_cannot_manage_classifications(): void

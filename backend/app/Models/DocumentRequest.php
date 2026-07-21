@@ -18,6 +18,7 @@ class DocumentRequest extends Model
         'review_notes',
         'reviewed_at',
         'approved_at',
+        'ready_for_pickup_at',
         'rejected_at',
         'released_at',
         'cancelled_at',
@@ -27,6 +28,7 @@ class DocumentRequest extends Model
     protected $casts = [
         'reviewed_at' => 'datetime',
         'approved_at' => 'datetime',
+        'ready_for_pickup_at' => 'datetime',
         'rejected_at' => 'datetime',
         'released_at' => 'datetime',
         'cancelled_at' => 'datetime',

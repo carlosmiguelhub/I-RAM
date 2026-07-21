@@ -90,7 +90,11 @@ class RecordController extends Controller
         return DocumentRequest::query()
             ->where('record_id', $record->id)
             ->where('requested_by', $request->user()->id)
-            ->whereIn('status', ['approved', 'released'])
+            ->whereIn('status', [
+                'approved',
+                'ready_for_pickup',
+                'released',
+            ])
             ->where(function ($query) {
                 $query
                     ->whereNull('expires_at')
@@ -383,13 +387,9 @@ class RecordController extends Controller
         }
 
         if ($role === 'Staff') {
-            if (! in_array(
-                $user->department->name,
-                Department::INSTITUTIONAL_COLLEGES,
-                true
-            )) {
+            if (! $user->department->accepts_submissions) {
                 return response()->json([
-                    'message' => 'Your account uses a previous department. Ask an Administrator to assign one of the four current colleges.',
+                    'message' => 'Your department is not enabled for record submissions. Ask an Administrator to update your assignment.',
                 ], 422);
             }
 
@@ -397,10 +397,10 @@ class RecordController extends Controller
             $validated['storage_location'] = null;
         } elseif (! Department::query()
             ->whereKey($validated['department_id'])
-            ->whereIn('name', Department::INSTITUTIONAL_COLLEGES)
+            ->where('accepts_submissions', true)
             ->exists()) {
             return response()->json([
-                'message' => 'Please select one of the four current colleges for this record.',
+                'message' => 'Please select a department that accepts record submissions.',
             ], 422);
         }
 

@@ -121,19 +121,7 @@ class ClassificationManagementController extends Controller
                 "CASE WHEN name = 'Records Office' THEN 0 ELSE 1 END"
             )
             ->orderBy('name')
-            ->get()
-            ->map(function (Department $department) {
-                $department->setAttribute(
-                    'accepts_submissions',
-                    in_array(
-                        $department->name,
-                        Department::INSTITUTIONAL_COLLEGES,
-                        true
-                    )
-                );
-
-                return $department;
-            });
+            ->get();
 
         return response()->json([
             'data' => $departments,
@@ -151,25 +139,70 @@ class ClassificationManagementController extends Controller
         ]);
     }
 
+    public function storeDepartment(Request $request): JsonResponse
+    {
+        $validated = $request->validate($this->departmentRules());
+        $department = Department::create($validated);
+
+        $this->audit(
+            $request,
+            'department.created',
+            "Created department {$department->name}."
+        );
+
+        return response()->json([
+            'message' => 'Department created successfully.',
+            'data' => $department->loadCount(['users', 'records']),
+        ], 201);
+    }
+
     public function updateDepartment(
         Request $request,
         Department $department
     ): JsonResponse {
-        $validated = $request->validate([
-            'description' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $oldName = $department->name;
+        $validated = $request->validate(
+            $this->departmentRules($department)
+        );
 
         $department->update($validated);
 
         $this->audit(
             $request,
             'department.updated',
-            "Updated the purpose of {$department->name}."
+            "Updated department {$oldName}."
         );
 
         return response()->json([
-            'message' => 'Department purpose updated successfully.',
+            'message' => 'Department updated successfully.',
             'data' => $department->fresh()->loadCount(['users', 'records']),
+        ]);
+    }
+
+    public function destroyDepartment(
+        Request $request,
+        Department $department
+    ): JsonResponse {
+        $usersCount = $department->users()->count();
+        $recordsCount = $department->records()->count();
+
+        if ($usersCount > 0 || $recordsCount > 0) {
+            return response()->json([
+                'message' => "This department has {$usersCount} user(s) and {$recordsCount} record(s). Reassign them before deleting it.",
+            ], 409);
+        }
+
+        $name = $department->name;
+        $department->delete();
+
+        $this->audit(
+            $request,
+            'department.deleted',
+            "Deleted department {$name}."
+        );
+
+        return response()->json([
+            'message' => 'Department deleted successfully.',
         ]);
     }
 
@@ -185,12 +218,22 @@ class ClassificationManagementController extends Controller
                     ->ignore($recordCategory?->id),
             ],
             'description' => ['nullable', 'string', 'max:1000'],
-            'retention_years' => [
+        ];
+    }
+
+    private function departmentRules(
+        ?Department $department = null
+    ): array {
+        return [
+            'name' => [
                 'required',
-                'integer',
-                'min:1',
-                'max:100',
+                'string',
+                'max:120',
+                Rule::unique('departments', 'name')
+                    ->ignore($department?->id),
             ],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'accepts_submissions' => ['required', 'boolean'],
         ];
     }
 

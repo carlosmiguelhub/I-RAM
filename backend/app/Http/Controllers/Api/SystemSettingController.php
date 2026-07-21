@@ -282,10 +282,9 @@ class SystemSettingController extends Controller
             'confirmation' => [
                 'required',
                 'string',
-                Rule::in(['CLEAR PRACTICE DATA']),
+                Rule::in(['RESET PRACTICE WORKSPACE']),
             ],
             'password' => ['required', 'string'],
-            'clear_archive_folders' => ['sometimes', 'boolean'],
         ]);
 
         $user = $request->user();
@@ -301,9 +300,7 @@ class SystemSettingController extends Controller
             ], 422);
         }
 
-        $clearArchiveFolders = (bool) (
-            $validated['clear_archive_folders'] ?? false
-        );
+        $clearArchiveFolders = true;
 
         $filePaths = DB::table('record_files')
             ->whereNotNull('file_path')
@@ -344,6 +341,13 @@ class SystemSettingController extends Controller
             )->delete();
 
             if ($clearArchiveFolders) {
+                // Detach the self-referencing hierarchy first. MySQL
+                // otherwise blocks a bulk delete while child folders still
+                // reference their parents.
+                DB::table('archive_folders')
+                    ->whereNotNull('parent_id')
+                    ->update(['parent_id' => null]);
+
                 $deleted['archive_folders'] = DB::table(
                     'archive_folders'
                 )->delete();
@@ -423,6 +427,7 @@ class SystemSettingController extends Controller
             'document_request_created',
             'document_request_started_review',
             'document_request_approved',
+            'prepared_requested_document_for_pickup',
             'document_request_rejected',
             'document_request_released',
             'document_request_cancelled',
@@ -441,6 +446,7 @@ class SystemSettingController extends Controller
             'document_request.created',
             'document_request.review_started',
             'document_request.approved',
+            'document_request.ready_for_pickup',
             'document_request.rejected',
             'document_request.released',
             'document_request.cancelled',
@@ -450,6 +456,14 @@ class SystemSettingController extends Controller
     private function resetPracticeAutoIncrement(
         bool $clearArchiveFolders
     ): void {
+        if (! in_array(
+            DB::connection()->getDriverName(),
+            ['mysql', 'mariadb'],
+            true
+        )) {
+            return;
+        }
+
         DB::statement(
             'ALTER TABLE document_requests AUTO_INCREMENT = 1'
         );

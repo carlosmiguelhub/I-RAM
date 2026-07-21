@@ -199,8 +199,6 @@ export default function AdminSettingsPage() {
     useState(false);
   const [clearConfirmation, setClearConfirmation] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
-  const [clearArchiveFolders, setClearArchiveFolders] =
-    useState(false);
 
   const hasChanges = useMemo(
     () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
@@ -406,7 +404,6 @@ export default function AdminSettingsPage() {
   function openClearPracticeModal() {
     setClearConfirmation("");
     setAdminPassword("");
-    setClearArchiveFolders(false);
     setShowClearModal(true);
   }
 
@@ -416,12 +413,11 @@ export default function AdminSettingsPage() {
     setShowClearModal(false);
     setClearConfirmation("");
     setAdminPassword("");
-    setClearArchiveFolders(false);
   }
 
   async function clearPracticeData() {
-    if (clearConfirmation !== "CLEAR PRACTICE DATA") {
-      setError('Type "CLEAR PRACTICE DATA" exactly.');
+    if (clearConfirmation !== "RESET PRACTICE WORKSPACE") {
+      setError('Type "RESET PRACTICE WORKSPACE" exactly.');
       return;
     }
 
@@ -440,7 +436,6 @@ export default function AdminSettingsPage() {
         body: JSON.stringify({
           confirmation: clearConfirmation,
           password: adminPassword,
-          clear_archive_folders: clearArchiveFolders,
         }),
       });
 
@@ -450,7 +445,6 @@ export default function AdminSettingsPage() {
       setShowClearModal(false);
       setClearConfirmation("");
       setAdminPassword("");
-      setClearArchiveFolders(false);
       await loadPracticeSummary();
     } catch (err: unknown) {
       setError(
@@ -716,11 +710,9 @@ export default function AdminSettingsPage() {
           summary={practiceSummary}
           confirmation={clearConfirmation}
           password={adminPassword}
-          clearArchiveFolders={clearArchiveFolders}
           clearing={clearingPracticeData}
           onConfirmationChange={setClearConfirmation}
           onPasswordChange={setAdminPassword}
-          onClearArchiveFoldersChange={setClearArchiveFolders}
           onClose={closeClearPracticeModal}
           onConfirm={clearPracticeData}
         />
@@ -797,10 +789,10 @@ function DevelopmentTools({
           </div>
           <div>
             <h3 className="font-bold text-red-900">
-              Clear practice submissions
+              Reset practice workspace
             </h3>
             <p className="mt-1 text-sm leading-5 text-red-700">
-              Deletes test records, files, requests, and related audit logs.
+              Deletes test records, uploaded files, requests, folders, notifications, and related audit logs.
             </p>
           </div>
         </header>
@@ -808,7 +800,7 @@ function DevelopmentTools({
         <div className="p-5">
           <p className="text-sm leading-6 text-[#625E56]">
             Users, roles, departments, categories, and system settings stay
-            untouched. Archive folders are optional.
+            untouched so you can immediately begin another practice run.
           </p>
 
           <button
@@ -817,7 +809,7 @@ function DevelopmentTools({
             className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-red-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-800"
           >
             <Trash2 className="h-4 w-4" />
-            Clear practice data
+            Reset practice workspace
           </button>
         </div>
       </section>
@@ -846,27 +838,23 @@ function ClearPracticeDataModal({
   summary,
   confirmation,
   password,
-  clearArchiveFolders,
   clearing,
   onConfirmationChange,
   onPasswordChange,
-  onClearArchiveFoldersChange,
   onClose,
   onConfirm,
 }: {
   summary: PracticeDataSummary | null;
   confirmation: string;
   password: string;
-  clearArchiveFolders: boolean;
   clearing: boolean;
   onConfirmationChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
-  onClearArchiveFoldersChange: (value: boolean) => void;
   onClose: () => void;
   onConfirm: () => void;
 }) {
   const ready =
-    confirmation === "CLEAR PRACTICE DATA" &&
+    confirmation === "RESET PRACTICE WORKSPACE" &&
     password.length > 0 &&
     !clearing;
 
@@ -876,7 +864,7 @@ function ClearPracticeDataModal({
         <header className="flex items-start justify-between gap-4 border-b border-red-100 bg-red-50 px-5 py-5 sm:px-6">
           <div>
             <h2 className="text-xl font-bold text-red-900">
-              Clear practice data?
+              Reset practice workspace?
             </h2>
             <p className="mt-1 text-sm text-red-700">
               This action cannot be undone.
@@ -893,21 +881,22 @@ function ClearPracticeDataModal({
         </header>
 
         <div className="space-y-5 p-5 sm:p-6">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <PracticeCount label="Records" value={summary?.counts.records ?? 0} />
             <PracticeCount label="Files" value={summary?.counts.record_files ?? 0} />
             <PracticeCount label="Requests" value={summary?.counts.document_requests ?? 0} />
+            <PracticeCount label="Folders" value={summary?.counts.archive_folders ?? 0} />
             <PracticeCount label="Notifications" value={summary?.counts.notifications ?? 0} />
           </div>
 
           <label className="block">
             <span className="text-sm font-semibold text-[#514D46]">
-              Type CLEAR PRACTICE DATA
+              Type RESET PRACTICE WORKSPACE
             </span>
             <input
               value={confirmation}
               onChange={(event) => onConfirmationChange(event.target.value)}
-              placeholder="CLEAR PRACTICE DATA"
+              placeholder="RESET PRACTICE WORKSPACE"
               className={`${inputClass} mt-2 pr-4`}
             />
           </label>
@@ -924,24 +913,9 @@ function ClearPracticeDataModal({
             />
           </label>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#E3DCCE] bg-[#FCFAF5] p-4">
-            <input
-              type="checkbox"
-              checked={clearArchiveFolders}
-              onChange={(event) =>
-                onClearArchiveFoldersChange(event.target.checked)
-              }
-              className="mt-1 h-4 w-4"
-            />
-            <span>
-              <span className="block text-sm font-semibold text-[#2D332F]">
-                Also delete all archive folders
-              </span>
-              <span className="mt-1 block text-xs text-[#766F63]">
-                Leave unchecked to keep your folder structure.
-              </span>
-            </span>
-          </label>
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
+            All records, uploaded document files, document requests, archive folders, notifications, and related practice activity will be permanently removed. Accounts and master lists are preserved.
+          </div>
         </div>
 
         <footer className="flex flex-col-reverse gap-3 border-t border-[#E3DCCE] bg-[#F8F5EE] px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
@@ -964,7 +938,7 @@ function ClearPracticeDataModal({
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
-            {clearing ? "Clearing..." : "Permanently clear data"}
+            {clearing ? "Resetting..." : "Permanently reset workspace"}
           </button>
         </footer>
       </div>

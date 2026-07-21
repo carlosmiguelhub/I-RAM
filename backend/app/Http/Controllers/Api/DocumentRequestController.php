@@ -63,7 +63,7 @@ class DocumentRequestController extends Controller
     ): bool {
         return in_array(
             $documentRequest->status,
-            ['approved', 'released'],
+            ['approved', 'ready_for_pickup', 'released'],
             true
         ) && (
             $documentRequest->expires_at === null
@@ -292,6 +292,7 @@ class DocumentRequestController extends Controller
                 'pending',
                 'under_review',
                 'approved',
+                'ready_for_pickup',
             ])
             ->exists();
 
@@ -569,9 +570,15 @@ class DocumentRequestController extends Controller
             ], 403);
         }
 
-        if ($documentRequest->status !== 'approved') {
+        $requiredStatus = $documentRequest->preferred_format === 'printed'
+            ? 'ready_for_pickup'
+            : 'approved';
+
+        if ($documentRequest->status !== $requiredStatus) {
             return response()->json([
-                'message' => 'Only approved requests can be released.',
+                'message' => $documentRequest->preferred_format === 'printed'
+                    ? 'A printed document must be marked ready for pickup before it can be released.'
+                    : 'Only approved requests can be released.',
             ], 422);
         }
 
@@ -601,8 +608,8 @@ class DocumentRequestController extends Controller
         $this->notifications->notifyUser(
             $documentRequest->requester,
             $request->user(),
-            'Requested document released',
-            "The requested document {$documentRequest->record->record_code} is ready.",
+            'Document request completed',
+            "The requested document {$documentRequest->record->record_code} was released to you.",
             'document_request.released',
             '/document-requests?status=released',
             [
@@ -613,6 +620,69 @@ class DocumentRequestController extends Controller
 
         return response()->json([
             'message' => 'Requested document marked as released.',
+            'request' => $documentRequest
+                ->fresh()
+                ->load($this->requestRelations()),
+        ]);
+    }
+
+    public function readyForPickup(
+        Request $request,
+        DocumentRequest $documentRequest
+    ) {
+        if (! $this->canManageRequests($request)) {
+            return response()->json([
+                'message' => 'Only an Administrator or Records Officer may prepare documents for pickup.',
+            ], 403);
+        }
+
+        if (
+            $documentRequest->preferred_format !== 'printed'
+            || $documentRequest->status !== 'approved'
+        ) {
+            return response()->json([
+                'message' => 'Only approved printed requests can be marked ready for pickup.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'review_notes' => [
+                'nullable',
+                'string',
+                'max:5000',
+            ],
+        ]);
+
+        $documentRequest->update([
+            'status' => 'ready_for_pickup',
+            'assigned_to' => $request->user()->id,
+            'review_notes' => $validated['review_notes']
+                ?? $documentRequest->review_notes,
+            'ready_for_pickup_at' => now(),
+        ]);
+
+        $this->audit(
+            $request,
+            $documentRequest->record,
+            'prepared_requested_document_for_pickup',
+            "Prepared requested record for pickup: {$documentRequest->record->record_code}"
+        );
+
+        $this->notifications->notifyUser(
+            $documentRequest->requester,
+            $request->user(),
+            'Document ready for pickup',
+            "Your printed copy of {$documentRequest->record->record_code} is ready for pickup.",
+            'document_request.ready_for_pickup',
+            '/document-requests?status=ready_for_pickup',
+            [
+                'record_id' => $documentRequest->record_id,
+                'document_request_id' => $documentRequest->id,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Printed document marked ready for pickup.',
             'request' => $documentRequest
                 ->fresh()
                 ->load($this->requestRelations()),

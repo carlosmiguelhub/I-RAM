@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/document-requests/{documentRequest}/start-review', [DocumentRequestController::class, 'startReview']);
     Route::post('/document-requests/{documentRequest}/approve', [DocumentRequestController::class, 'approve']);
     Route::post('/document-requests/{documentRequest}/reject', [DocumentRequestController::class, 'reject']);
+    Route::post('/document-requests/{documentRequest}/ready-for-pickup', [DocumentRequestController::class, 'readyForPickup']);
     Route::post('/document-requests/{documentRequest}/release', [DocumentRequestController::class, 'release']);
     Route::post('/document-requests/{documentRequest}/cancel', [DocumentRequestController::class, 'cancel']);
 
@@ -72,7 +73,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/categories/{recordCategory}', [ClassificationManagementController::class, 'destroyCategory']);
 
         Route::get('/departments', [ClassificationManagementController::class, 'departments']);
+        Route::post('/departments', [ClassificationManagementController::class, 'storeDepartment']);
         Route::patch('/departments/{department}', [ClassificationManagementController::class, 'updateDepartment']);
+        Route::delete('/departments/{department}', [ClassificationManagementController::class, 'destroyDepartment']);
 
         Route::get('/settings', [SystemSettingController::class, 'index']);
         Route::put('/settings', [SystemSettingController::class, 'update']);

@@ -6,16 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Department extends Model
 {
-    public const INSTITUTIONAL_COLLEGES = [
-        'College of Technology (COT)',
-        'College of Engineering (COE)',
-        'College of Education Arts and Sciences (CEAS)',
-        'College of Management and Entrepreneurship (CME)',
-    ];
-
     protected $fillable = [
         'name',
         'description',
+        'accepts_submissions',
+    ];
+
+    protected $casts = [
+        'accepts_submissions' => 'boolean',
     ];
 
     public function users()

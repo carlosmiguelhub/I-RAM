@@ -20,6 +20,9 @@ import {
   X,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import ViewModeToggle, {
+  usePersistentViewMode,
+} from "@/components/archive/ViewModeToggle";
 import { apiRequest, downloadApiFile } from "@/lib/api";
 
 type Role = {
@@ -74,6 +77,7 @@ type DocumentRequest = {
     | "pending"
     | "under_review"
     | "approved"
+    | "ready_for_pickup"
     | "rejected"
     | "released"
     | "cancelled";
@@ -81,6 +85,7 @@ type DocumentRequest = {
   review_notes?: string | null;
   reviewed_at?: string | null;
   approved_at?: string | null;
+  ready_for_pickup_at?: string | null;
   rejected_at?: string | null;
   released_at?: string | null;
   cancelled_at?: string | null;
@@ -104,6 +109,7 @@ type ActionMode =
   | "review"
   | "approve"
   | "reject"
+  | "ready"
   | "release";
 
 export default function DocumentRequestsPage() {
@@ -114,6 +120,10 @@ export default function DocumentRequestsPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [viewMode, changeView] = usePersistentViewMode(
+    "document-request-view",
+    "grid"
+  );
 
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -493,6 +503,13 @@ export default function DocumentRequestsPage() {
       return;
     }
 
+    if (actionMode === "ready") {
+      await runAction("ready-for-pickup", {
+        review_notes: reviewNotes.trim() || null,
+      });
+      return;
+    }
+
     if (actionMode === "release") {
       await runAction("release", {
         review_notes: reviewNotes.trim() || null,
@@ -521,7 +538,7 @@ export default function DocumentRequestsPage() {
 
               <p className="mt-0.5 max-w-2xl text-[11px] leading-4 text-[#E5DDCC] sm:text-xs">
                 {canManage
-                  ? "Review, approve, reject, and release requested archive documents."
+                  ? "Review requests, prepare printed copies for pickup, and record their release."
                   : "Track requests you submitted for archived documents."}
               </p>
             </div>
@@ -607,6 +624,9 @@ export default function DocumentRequestsPage() {
                   Under Review
                 </option>
                 <option value="approved">Approved</option>
+                <option value="ready_for_pickup">
+                  Ready for Pickup
+                </option>
                 <option value="released">Released</option>
                 <option value="rejected">Rejected</option>
                 <option value="cancelled">Cancelled</option>
@@ -642,6 +662,12 @@ export default function DocumentRequestsPage() {
           </div>
 
           <div className="min-w-0 p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-xs font-medium text-[#766F63]">
+                Showing {requests.length} of {total} {total === 1 ? "request" : "requests"}
+              </p>
+              <ViewModeToggle value={viewMode} onChange={changeView} />
+            </div>
             {loading ? (
               <LoadingState />
             ) : requests.length === 0 ? (
@@ -649,7 +675,7 @@ export default function DocumentRequestsPage() {
                 canManage={canManage}
                 hasFilters={hasFilters}
               />
-            ) : (
+            ) : viewMode === "grid" ? (
               <div className="grid min-w-0 grid-cols-1 gap-2.5 lg:grid-cols-2 xl:grid-cols-3">
                 {requests.map((request) => (
                   <RequestCard
@@ -668,12 +694,40 @@ export default function DocumentRequestsPage() {
                     onReject={() =>
                       openModal(request, "reject")
                     }
+                    onReady={() =>
+                      openModal(request, "ready")
+                    }
                     onRelease={() =>
                       openModal(request, "release")
                     }
                     onCancel={() =>
                       handleCancel(request)
                     }
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-[#E3DCCE]">
+                <div className="grid min-w-[1100px] grid-cols-[minmax(280px,1.4fr)_170px_130px_160px_150px_240px] gap-3 border-b border-[#E3DCCE] bg-[#F8F5EE] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#766F63]">
+                  <span>Document</span>
+                  <span>{canManage ? "Requested by" : "Assigned to"}</span>
+                  <span>Format</span>
+                  <span>Requested</span>
+                  <span>Status</span>
+                  <span className="text-right">Actions</span>
+                </div>
+                {requests.map((request) => (
+                  <RequestListEntry
+                    key={request.id}
+                    request={request}
+                    canManage={canManage}
+                    onView={() => openModal(request, "view")}
+                    onReview={() => openModal(request, "review")}
+                    onApprove={() => openModal(request, "approve")}
+                    onReject={() => openModal(request, "reject")}
+                    onReady={() => openModal(request, "ready")}
+                    onRelease={() => openModal(request, "release")}
+                    onCancel={() => handleCancel(request)}
                   />
                 ))}
               </div>
@@ -743,13 +797,14 @@ export default function DocumentRequestsPage() {
   );
 }
 
-function RequestCard({
+function RequestListEntry({
   request,
   canManage,
   onView,
   onReview,
   onApprove,
   onReject,
+  onReady,
   onRelease,
   onCancel,
 }: {
@@ -759,6 +814,65 @@ function RequestCard({
   onReview: () => void;
   onApprove: () => void;
   onReject: () => void;
+  onReady: () => void;
+  onRelease: () => void;
+  onCancel: () => void;
+}) {
+  const canReview = canManage && request.status === "pending";
+  const canDecide = canManage && ["pending", "under_review"].includes(request.status);
+  const canMarkReady = canManage && request.preferred_format === "printed" && request.status === "approved";
+  const canRelease = canManage && (request.status === "ready_for_pickup" || (request.preferred_format !== "printed" && request.status === "approved"));
+  const canCancel = !canManage && ["pending", "under_review"].includes(request.status);
+
+  const actionClass = "inline-flex min-h-8 items-center gap-1 rounded-lg border px-2.5 text-[11px] font-semibold transition";
+
+  return (
+    <article className="grid min-w-[1100px] grid-cols-[minmax(280px,1.4fr)_170px_130px_160px_150px_240px] items-center gap-3 border-b border-[#EEE8DD] px-3 py-3 text-xs last:border-0 hover:bg-[#FCFAF5]">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#075A3A] text-[#F4C25E]">
+          <Archive className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate font-bold text-[#252A27]">{request.record?.title || "Archived Document"}</p>
+          <p className="mt-0.5 truncate text-[11px] text-[#766F63]">{request.record?.record_code || "No record code"}</p>
+          <p className="mt-1 truncate text-[11px] text-[#A09582]">{request.purpose}</p>
+        </div>
+      </div>
+      <span className="truncate text-[#514D46]">{canManage ? request.requester?.name || "Unknown" : request.assignee?.name || "Not assigned"}</span>
+      <span className="text-[#514D46]">{formatLabel(request.preferred_format)}</span>
+      <span className="text-[#514D46]">{formatDateTime(request.created_at)}</span>
+      <StatusBadge status={request.status} />
+      <div className="flex flex-wrap justify-end gap-1.5">
+        <button type="button" onClick={onView} className={`${actionClass} border-[#E3DCCE] bg-white text-[#514D46] hover:bg-[#F8F5EE]`}><Eye className="h-3.5 w-3.5" />Details</button>
+        {canReview && <button type="button" onClick={onReview} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}>Review</button>}
+        {canDecide && <button type="button" onClick={onApprove} className={`${actionClass} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}>Approve</button>}
+        {canDecide && <button type="button" onClick={onReject} className={`${actionClass} border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}>Reject</button>}
+        {canMarkReady && <button type="button" onClick={onReady} className={`${actionClass} border-[#CFE0D6] bg-[#E6F2EC] text-[#075A3A] hover:bg-[#D7EBE0]`}>Ready for Pickup</button>}
+        {canRelease && <button type="button" onClick={onRelease} className={`${actionClass} border-[#E4CBD4] bg-[#F8E9EE] text-[#6B0F2B] hover:bg-[#F1DDE4]`}>Confirm Release</button>}
+        {canCancel && <button type="button" onClick={onCancel} className={`${actionClass} border-red-200 bg-white text-red-700 hover:bg-red-50`}>Cancel</button>}
+      </div>
+    </article>
+  );
+}
+
+function RequestCard({
+  request,
+  canManage,
+  onView,
+  onReview,
+  onApprove,
+  onReject,
+  onReady,
+  onRelease,
+  onCancel,
+}: {
+  request: DocumentRequest;
+  canManage: boolean;
+  onView: () => void;
+  onReview: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+  onReady: () => void;
   onRelease: () => void;
   onCancel: () => void;
 }) {
@@ -769,8 +883,15 @@ function RequestCard({
     canManage &&
     ["pending", "under_review"].includes(request.status);
 
+  const canMarkReady =
+    canManage &&
+    request.preferred_format === "printed" &&
+    request.status === "approved";
+
   const canRelease =
-    canManage && request.status === "approved";
+    canManage &&
+    (request.status === "ready_for_pickup" ||
+      (request.preferred_format !== "printed" && request.status === "approved"));
 
   const canCancel =
     !canManage &&
@@ -848,6 +969,7 @@ function RequestCard({
 
       {(canStartReview ||
         canApproveOrReject ||
+        canMarkReady ||
         canRelease ||
         canCancel) && (
         <div className="mt-2.5 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
@@ -884,6 +1006,17 @@ function RequestCard({
             </>
           )}
 
+          {canMarkReady && (
+            <button
+              type="button"
+              onClick={onReady}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#075A3A] px-3 py-2.5 text-sm font-bold text-white transition hover:bg-[#043D28] min-[420px]:col-span-2"
+            >
+              <FileCheck2 className="h-4 w-4" />
+              Mark Ready for Pickup
+            </button>
+          )}
+
           {canRelease && (
             <button
               type="button"
@@ -891,7 +1024,9 @@ function RequestCard({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-3 py-2.5 text-sm font-bold text-white transition hover:bg-[#571023] min-[420px]:col-span-2"
             >
               <Send className="h-4 w-4" />
-              Mark Released
+              {request.preferred_format === "printed"
+                ? "Confirm Released to Staff"
+                : "Mark Released"}
             </button>
           )}
 
@@ -942,7 +1077,7 @@ function RequestModal({
   >(null);
   const [downloadError, setDownloadError] = useState("");
   const accessIsActive =
-    (request.status === "approved" || request.status === "released") &&
+    (["approved", "ready_for_pickup", "released"] as DocumentRequest["status"][]).includes(request.status) &&
     (!request.expires_at || new Date(request.expires_at) > new Date());
 
   async function downloadFile(file: {
@@ -973,6 +1108,7 @@ function RequestModal({
     review: "Start Request Review",
     approve: "Approve Request",
     reject: "Reject Request",
+    ready: "Prepare for Pickup",
     release: "Release Document",
   }[mode];
 
@@ -981,7 +1117,8 @@ function RequestModal({
     review: "Start Review",
     approve: "Approve Request",
     reject: "Reject Request",
-    release: "Mark as Released",
+    ready: "Mark Ready for Pickup",
+    release: "Confirm Release",
   }[mode];
 
   return (
@@ -1124,6 +1261,13 @@ function RequestModal({
             </div>
           )}
 
+          {request.ready_for_pickup_at && (
+            <DetailBox
+              label="Ready for pickup"
+              value={formatDateTime(request.ready_for_pickup_at)}
+            />
+          )}
+
         <div className="mt-5">
           <p className="text-sm font-semibold text-[#514D46]">
             Purpose
@@ -1176,7 +1320,9 @@ function RequestModal({
               placeholder={
                 mode === "reject"
                   ? "Explain why this request is being rejected..."
-                  : "Add optional notes or release instructions..."
+                  : mode === "ready"
+                    ? "Add pickup location, office hours, or other instructions..."
+                    : "Add optional notes or release instructions..."
               }
               className="mt-2 w-full resize-none rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-4 py-3 text-base text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] sm:text-sm"
             />
@@ -1211,6 +1357,18 @@ function RequestModal({
           </div>
         )}
 
+        {mode === "ready" && (
+          <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800">
+            This notifies the requester that the printed copy is ready. The request will remain open until the document is actually claimed.
+          </div>
+        )}
+
+        {mode === "release" && request.preferred_format === "printed" && (
+          <div className="mt-5 rounded-xl border border-[#E4CBD4] bg-[#F8E9EE] px-4 py-3 text-sm leading-6 text-[#6B0F2B]">
+            Confirm this only after the requester has received the printed document.
+          </div>
+        )}
+
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
@@ -1231,7 +1389,7 @@ function RequestModal({
               className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
                 mode === "reject"
                   ? "bg-red-600 hover:bg-red-700"
-                  : mode === "approve"
+                  : mode === "approve" || mode === "ready"
                     ? "bg-emerald-600 hover:bg-emerald-700"
                     : "bg-[#6B0F2B] hover:bg-[#571023]"
               }`}
@@ -1258,6 +1416,7 @@ function StatusBadge({
     pending: "bg-[#FFF3D6] text-[#A66B00] ring-1 ring-[#EBCF8F]",
     under_review: "bg-[#FFF3D6] text-[#A66B00] ring-1 ring-[#EBCF8F]",
     approved: "bg-[#E6F2EC] text-[#075A3A] ring-1 ring-[#CFE0D6]",
+    ready_for_pickup: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
     released: "bg-[#F8E9EE] text-[#6B0F2B] ring-1 ring-[#E4CBD4]",
     rejected: "bg-red-50 text-red-700",
     cancelled: "bg-[#F0ECE4] text-[#625E56]",
@@ -1267,7 +1426,7 @@ function StatusBadge({
     <span
       className={`inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${styles[status]}`}
     >
-      {status === "approved" || status === "released" ? (
+      {status === "approved" || status === "ready_for_pickup" || status === "released" ? (
         <CheckCircle2 className="h-3.5 w-3.5" />
       ) : status === "rejected" ||
         status === "cancelled" ? (

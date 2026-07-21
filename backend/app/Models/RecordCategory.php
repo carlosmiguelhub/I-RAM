@@ -9,7 +9,6 @@ class RecordCategory extends Model
     protected $fillable = [
         'name',
         'description',
-        'retention_years',
     ];
 
     public function records()

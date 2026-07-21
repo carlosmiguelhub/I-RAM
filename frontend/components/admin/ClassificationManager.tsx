@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Building2,
-  Clock3,
   FileText,
   Layers3,
   Pencil,
@@ -24,7 +23,6 @@ type Category = {
   id: number;
   name: string;
   description: string | null;
-  retention_years: number;
   records_count: number;
 };
 
@@ -49,13 +47,13 @@ type Summary = {
 type FormState = {
   name: string;
   description: string;
-  retention_years: string;
+  accepts_submissions: boolean;
 };
 
 const emptyForm: FormState = {
   name: "",
   description: "",
-  retention_years: "5",
+  accepts_submissions: true,
 };
 
 export default function ClassificationManager({
@@ -123,14 +121,10 @@ export default function ClassificationManager({
     initialize();
   }, [loadEntries, router]);
 
-  const averageRetention = useMemo(() => {
-    if (!isCategories || entries.length === 0) return 0;
-    const total = (entries as Category[]).reduce(
-      (sum, category) => sum + category.retention_years,
-      0
-    );
-    return Math.round(total / entries.length);
-  }, [entries, isCategories]);
+  const documentedEntries = useMemo(
+    () => entries.filter((entry) => Boolean(entry.description?.trim())).length,
+    [entries]
+  );
 
   function openCreate() {
     setSelected(null);
@@ -144,9 +138,9 @@ export default function ClassificationManager({
     setForm({
       name: entry.name,
       description: entry.description || "",
-      retention_years: isCategory(entry)
-        ? String(entry.retention_years)
-        : "5",
+      accepts_submissions: isDepartment(entry)
+        ? entry.accepts_submissions
+        : true,
     });
     setModalError("");
     setModal("form");
@@ -176,13 +170,13 @@ export default function ClassificationManager({
       const requestEndpoint = isEditing
         ? `${endpoint}/${selected.id}`
         : endpoint;
-      const body = isCategories
-        ? {
-            name: form.name.trim(),
-            description: form.description.trim() || null,
-            retention_years: Number(form.retention_years),
-          }
-        : { description: form.description.trim() || null };
+      const body = {
+        name: form.name.trim(),
+        description: form.description.trim() || null,
+        ...(!isCategories
+          ? { accepts_submissions: form.accepts_submissions }
+          : {}),
+      };
       const data = await apiRequest(requestEndpoint, {
         method: isEditing ? "PATCH" : "POST",
         body: JSON.stringify(body),
@@ -201,7 +195,7 @@ export default function ClassificationManager({
   }
 
   async function confirmDelete() {
-    if (!selected || !isCategories) return;
+    if (!selected) return;
     setSubmitting(true);
     setModalError("");
 
@@ -214,7 +208,9 @@ export default function ClassificationManager({
       await loadEntries(search);
     } catch (error: unknown) {
       setModalError(
-        error instanceof Error ? error.message : "Unable to delete category."
+        error instanceof Error
+          ? error.message
+          : `Unable to delete ${isCategories ? "category" : "department"}.`
       );
     } finally {
       setSubmitting(false);
@@ -238,53 +234,51 @@ export default function ClassificationManager({
         eyebrow: "Records configuration",
         title: "Record Categories",
         description:
-          "Define how records are classified and how long each type should be retained.",
+          "Create clear classifications that make records easier to file, find, and manage.",
         purposeTitle: "Why categories matter",
         purpose:
-          "Categories keep the archive consistent, improve searching, and apply a clear retention period to every record type.",
+          "Categories keep naming consistent and help staff choose the correct classification when submitting records.",
         empty: "No categories match your search.",
       }
     : {
         eyebrow: "Institution structure",
         title: "Departments",
         description:
-          "Maintain the official purpose of each college and understand where users and records belong.",
+          "Add and maintain the offices, colleges, and units used for account assignments and record ownership.",
         purposeTitle: "Why departments matter",
         purpose:
-          "Departments establish record ownership and staff access. Official names are protected so existing accounts and submissions remain correctly assigned.",
+          "Departments establish record ownership and staff access. Choose whether each department can submit and own records.",
         empty: "No departments match your search.",
       };
 
   return (
     <AppShell>
       <main className="w-full pb-8">
-        <section className="relative overflow-hidden rounded-3xl bg-[#064D33] px-5 py-7 text-white shadow-xl shadow-[#075A3A]/15 sm:px-8 sm:py-9">
+        <section className="relative overflow-hidden rounded-2xl bg-[#064D33] px-5 py-5 text-white shadow-lg shadow-[#075A3A]/15 sm:px-6 sm:py-6">
           <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-[#D9961A]/20 blur-3xl" />
           <div className="absolute -bottom-28 left-1/3 h-56 w-56 rounded-full bg-[#6B0F2B]/40 blur-3xl" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">
                 {isCategories ? <Tags size={22} /> : <Building2 size={22} />}
               </div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#F4C25E]">
                 {content.eyebrow}
               </p>
-              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+              <h1 className="mt-1.5 text-2xl font-black tracking-tight sm:text-3xl">
                 {content.title}
               </h1>
               <p className="mt-3 text-sm leading-6 text-[#E7E0D3] sm:text-base">
                 {content.description}
               </p>
             </div>
-            {isCategories && (
-              <button
+            <button
                 type="button"
                 onClick={openCreate}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F4C25E] px-5 py-3 text-sm font-extrabold text-[#3F2A05] shadow-lg transition hover:-translate-y-0.5 hover:bg-[#FFD273] focus:outline-none focus:ring-4 focus:ring-white/20"
               >
-                <Plus size={18} /> Add category
+                <Plus size={18} /> Add {isCategories ? "category" : "department"}
               </button>
-            )}
           </div>
         </section>
 
@@ -309,16 +303,16 @@ export default function ClassificationManager({
             helper="Records currently classified"
           />
           <MetricCard
-            icon={isCategories ? <Clock3 size={20} /> : <Users size={20} />}
-            label={isCategories ? "Average retention" : "Assigned users"}
+            icon={isCategories ? <Tags size={20} /> : <Users size={20} />}
+            label={isCategories ? "Documented" : "Assigned users"}
             value={
               isCategories
-                ? `${averageRetention} yr${averageRetention === 1 ? "" : "s"}`
+                ? documentedEntries
                 : summary.assigned_users || 0
             }
             helper={
               isCategories
-                ? "Across visible categories"
+                ? "Categories with descriptions"
                 : "Accounts linked to departments"
             }
           />
@@ -381,7 +375,7 @@ export default function ClassificationManager({
             <div className="mt-5 border-t border-[#E9D9AF] pt-4 text-xs leading-5 text-[#817766]">
               {isCategories
                 ? "A category in use cannot be deleted until its records are reassigned. This protects archive data."
-                : "Edit a department’s purpose when its responsibilities change. Official department names remain locked."}
+                : "Departments with linked users or records cannot be deleted until those items are reassigned."}
             </div>
           </aside>
         </section>
@@ -391,12 +385,12 @@ export default function ClassificationManager({
         <ModalShell
           title={
             modal === "delete"
-              ? "Delete category?"
+              ? `Delete ${isCategories ? "category" : "department"}?`
               : selected
                 ? isCategories
                   ? "Edit category"
-                  : "Edit department purpose"
-                : "Create category"
+                  : "Edit department"
+                : `Create ${isCategories ? "category" : "department"}`
           }
           eyebrow={modal === "delete" ? "Confirm action" : "Administration"}
           onClose={closeModal}
@@ -415,12 +409,11 @@ export default function ClassificationManager({
                 helper={
                   isCategories
                     ? "Use a clear name staff will recognize when submitting records."
-                    : "Official names are locked to preserve assignments."
+                    : "Use the official office, college, or unit name."
                 }
               >
                 <input
                   required
-                  disabled={!isCategories}
                   value={form.name}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -451,26 +444,28 @@ export default function ClassificationManager({
                 />
               </FormField>
 
-              {isCategories && (
-                <FormField
-                  label="Retention period (years)"
-                  helper="How long records in this category should normally be kept."
-                >
+              {!isCategories && (
+                <label className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-[#D9E6DE] bg-[#F4F8F5] p-4">
+                  <span>
+                    <span className="block text-sm font-bold text-[#2D332F]">
+                      Accept record submissions
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-[#766F63]">
+                      Enable this for offices and colleges that should appear in record forms.
+                    </span>
+                  </span>
                   <input
-                    required
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={form.retention_years}
+                    type="checkbox"
+                    checked={form.accepts_submissions}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
-                        retention_years: event.target.value,
+                        accepts_submissions: event.target.checked,
                       }))
                     }
-                    className={inputClass}
+                    className="mt-1 h-5 w-5 accent-[#075A3A]"
                   />
-                </FormField>
+                </label>
               )}
 
               <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
@@ -501,11 +496,14 @@ export default function ClassificationManager({
                   This action cannot be undone.
                 </p>
               </div>
-              {isCategory(selected) && selected.records_count > 0 && (
+              {(selected.records_count > 0 ||
+                (isDepartment(selected) && selected.users_count > 0)) && (
                 <p className="mt-4 text-sm leading-6 text-[#766F63]">
-                  This category has {selected.records_count} linked record(s),
-                  so the system will protect it from deletion until those records
-                  are reassigned.
+                  This {isCategories ? "category" : "department"} has{" "}
+                  {selected.records_count} linked record(s)
+                  {isDepartment(selected)
+                    ? ` and ${selected.users_count} assigned user(s)`
+                    : ""}. Reassign them before deleting it.
                 </p>
               )}
               <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -515,15 +513,21 @@ export default function ClassificationManager({
                   disabled={submitting}
                   className="rounded-xl border border-[#DED5C5] px-5 py-3 text-sm font-bold text-[#625E56]"
                 >
-                  Keep category
+                  Keep {isCategories ? "category" : "department"}
                 </button>
                 <button
                   type="button"
                   onClick={confirmDelete}
-                  disabled={submitting || (isCategory(selected) && selected.records_count > 0)}
+                  disabled={
+                    submitting ||
+                    selected.records_count > 0 ||
+                    (isDepartment(selected) && selected.users_count > 0)
+                  }
                   className="rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {submitting ? "Deleting..." : "Delete category"}
+                  {submitting
+                    ? "Deleting..."
+                    : `Delete ${isCategories ? "category" : "department"}`}
                 </button>
               </div>
             </div>
@@ -534,8 +538,8 @@ export default function ClassificationManager({
   );
 }
 
-function isCategory(entry: Entry): entry is Category {
-  return "retention_years" in entry;
+function isDepartment(entry: Entry): entry is Department {
+  return "users_count" in entry;
 }
 
 function EntryCard({
@@ -560,7 +564,7 @@ function EntryCard({
           <h2 className="font-extrabold leading-5 text-[#2D332F]">
             {entry.name}
           </h2>
-          {!isCategory(entry) && (
+          {isDepartment(entry) && (
             <span
               className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${
                 entry.accepts_submissions
@@ -568,7 +572,9 @@ function EntryCard({
                   : "bg-[#F0ECE4] text-[#6F6658]"
               }`}
             >
-              {entry.accepts_submissions ? "Submission college" : "Administrative office"}
+              {entry.accepts_submissions
+                ? "Accepts submissions"
+                : "Account assignment only"}
             </span>
           )}
         </div>
@@ -582,11 +588,7 @@ function EntryCard({
         <DataPill icon={<FileText size={14} />}>
           {entry.records_count} record{entry.records_count === 1 ? "" : "s"}
         </DataPill>
-        {isCategory(entry) ? (
-          <DataPill icon={<Clock3 size={14} />}>
-            {entry.retention_years} year retention
-          </DataPill>
-        ) : (
+        {isDepartment(entry) && (
           <DataPill icon={<Users size={14} />}>
             {entry.users_count} user{entry.users_count === 1 ? "" : "s"}
           </DataPill>
@@ -599,18 +601,16 @@ function EntryCard({
           onClick={onEdit}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#F0F7F3] px-3 py-2.5 text-xs font-bold text-[#075A3A] ring-1 ring-[#CFE0D6] hover:bg-[#E2F0E9]"
         >
-          <Pencil size={14} /> {isCategories ? "Edit" : "Edit purpose"}
+          <Pencil size={14} /> Edit
         </button>
-        {isCategories && (
-          <button
+        <button
             type="button"
             onClick={onDelete}
-            title="Delete category"
+            title={`Delete ${isCategories ? "category" : "department"}`}
             className="inline-flex items-center justify-center rounded-lg bg-red-50 px-3.5 py-2.5 text-red-700 hover:bg-red-100"
           >
             <Trash2 size={15} />
           </button>
-        )}
       </div>
     </article>
   );

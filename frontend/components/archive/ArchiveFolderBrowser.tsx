@@ -11,8 +11,6 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
-  Grid2X2,
-  List,
   Loader2,
   MoreVertical,
   Pencil,
@@ -24,6 +22,10 @@ import AppShell from "@/components/AppShell";
 import ArchiveRecordModal, {
   type ArchiveRecord,
 } from "@/components/archive/ArchiveRecordModal";
+import ViewModeToggle, {
+  type ViewMode,
+  usePersistentViewMode,
+} from "@/components/archive/ViewModeToggle";
 import { apiRequest } from "@/lib/api";
 
 type FolderItem = {
@@ -37,8 +39,6 @@ type FolderItem = {
   updated_at?: string;
 };
 
-type ViewMode = "grid" | "list";
-
 export default function ArchiveFolderBrowser({
   folderId,
 }: {
@@ -50,12 +50,10 @@ export default function ArchiveFolderBrowser({
   const [records, setRecords] = useState<ArchiveRecord[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window === "undefined") return "list";
-    return window.localStorage.getItem("archive-folder-view") === "grid"
-      ? "grid"
-      : "list";
-  });
+  const [viewMode, changeView] = usePersistentViewMode(
+    "archive-folder-view",
+    "list"
+  );
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<FolderItem | null>(null);
   const [name, setName] = useState("");
@@ -138,11 +136,6 @@ export default function ArchiveFolderBrowser({
     const timer = window.setTimeout(() => void loadPage(""), 0);
     return () => window.clearTimeout(timer);
   }, [folderId]);
-
-  function changeView(mode: ViewMode) {
-    setViewMode(mode);
-    window.localStorage.setItem("archive-folder-view", mode);
-  }
 
   function openCreate() {
     setEditingFolder(null);
@@ -268,10 +261,7 @@ export default function ArchiveFolderBrowser({
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A09582]" />
               <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder={numericFolderId ? "Search this folder..." : "Search folders..."} className="min-h-10 w-full rounded-lg border border-[#CFC4B1] bg-white py-2 pl-10 pr-3 text-sm font-medium text-[#252A27] caret-[#075A3A] outline-none placeholder:font-normal placeholder:text-[#766F63] focus:border-[#075A3A] focus:ring-4 focus:ring-[#E6F2EC]" />
             </form>
-            <div className="flex rounded-lg border border-[#D7CDBB] bg-white p-1" aria-label="View options">
-              <ViewButton active={viewMode === "list"} label="List view" onClick={() => changeView("list")}><List className="h-4 w-4" /></ViewButton>
-              <ViewButton active={viewMode === "grid"} label="Grid view" onClick={() => changeView("grid")}><Grid2X2 className="h-4 w-4" /></ViewButton>
-            </div>
+            <ViewModeToggle value={viewMode} onChange={changeView} />
           </div>
 
           <div className="p-3">
@@ -318,10 +308,6 @@ export default function ArchiveFolderBrowser({
   );
 }
 
-function ViewButton({ active, label, onClick, children }: { active: boolean; label: string; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" title={label} aria-label={label} aria-pressed={active} onClick={onClick} className={`flex h-8 w-9 items-center justify-center rounded-md transition ${active ? "bg-[#D9EEF8] text-[#075A3A]" : "text-[#766F63] hover:bg-[#F0ECE4]"}`}>{children}</button>;
-}
-
 function ListHeader({ records = false }: { records?: boolean }) {
   return <div className="grid min-w-[720px] grid-cols-[minmax(240px,1fr)_130px_150px_220px_44px] border-b border-[#E3DCCE] bg-[#F8F5EE] px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#766F63]"><span>Name</span><span>Type</span><span>Modified</span><span>{records ? "Move to" : "Contents"}</span><span /></div>;
 }
@@ -337,7 +323,7 @@ function FolderActions({ deleting, onEdit, onDelete }: { deleting: boolean; onEd
 }
 
 function RecordEntry({ record, folders, viewMode, moving, opening, onMove, onOpen }: { record: ArchiveRecord; folders: FolderItem[]; viewMode: ViewMode; moving: boolean; opening: boolean; onMove: (id: string) => void; onOpen: () => void }) {
-  const select = <select value={record.archive_folder?.id ? String(record.archive_folder.id) : ""} disabled={moving} onChange={(event) => onMove(event.target.value)} className="min-h-9 w-full rounded-lg border border-[#CFC4B1] bg-white px-2 text-xs font-medium text-[#252A27] outline-none focus:border-[#075A3A] focus:ring-4 focus:ring-[#E6F2EC] disabled:bg-[#F0ECE4] disabled:text-[#766F63]"><option value="">Unfiled</option>{folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.path || folder.name}</option>)}</select>;
+  const select = <select value={record.archive_folder?.id ? String(record.archive_folder.id) : ""} disabled={moving} onChange={(event) => onMove(event.target.value)} aria-label={`Move ${record.title} to another folder`} className="min-h-9 w-full rounded-lg border border-[#CFC4B1] bg-white px-2 text-xs font-medium text-[#252A27] outline-none focus:border-[#075A3A] focus:ring-4 focus:ring-[#E6F2EC] disabled:bg-[#F0ECE4] disabled:text-[#766F63]"><option value="">Unfiled records (no folder)</option>{folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.parent_id ? `↳ Subfolder: ${(folder.path || folder.name).replaceAll(" / ", " › ")}` : `Folder: ${folder.name}`}</option>)}</select>;
   if (viewMode === "grid") return <article className="rounded-xl border border-[#E3DCCE] p-4"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F8E9EE] text-[#6B0F2B]"><FileText className="h-6 w-6" /></div><h3 className="mt-3 line-clamp-2 min-h-10 font-bold text-[#252A27]">{record.title}</h3><p className="mt-1 text-xs text-[#766F63]">{record.record_code}</p><div className="mt-3">{select}</div><button type="button" onClick={onOpen} disabled={opening || moving} className="mt-3 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#6B0F2B] text-xs font-bold text-white disabled:opacity-50">{opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}View Record</button></article>;
   return <div className="grid min-w-[720px] grid-cols-[minmax(240px,1fr)_130px_150px_220px_44px] items-center border-b border-[#EEE8DD] px-3 py-2.5 text-sm last:border-0 hover:bg-[#FCFAF5]"><button type="button" onClick={onOpen} className="flex min-w-0 items-center gap-3 text-left font-semibold text-[#252A27] hover:text-[#075A3A]"><FileText className="h-5 w-5 shrink-0 text-[#6B0F2B]" /><span className="min-w-0"><span className="block truncate">{record.title}</span><span className="block truncate text-[11px] font-normal text-[#766F63]">{record.record_code}</span></span></button><span className="text-[#766F63]">Record</span><span className="text-[#766F63]">{formatDate(record.archived_at)}</span><div>{select}</div><button type="button" aria-label="View record" title="View record" onClick={onOpen} disabled={opening} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D7CDBB] bg-white text-[#6B0F2B] shadow-sm transition hover:border-[#6B0F2B] hover:bg-[#F8E9EE] focus:outline-none focus:ring-4 focus:ring-[#F8E9EE] disabled:opacity-50">{opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-5 w-5 stroke-[2.5]" />}</button></div>;
 }

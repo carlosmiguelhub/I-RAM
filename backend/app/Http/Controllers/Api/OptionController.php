@@ -20,7 +20,7 @@ class OptionController extends Controller
 
             'departments' => Department::query()
                 ->select('id', 'name')
-                ->whereIn('name', Department::INSTITUTIONAL_COLLEGES)
+                ->where('accepts_submissions', true)
                 ->orderBy('name')
                 ->get(),
 

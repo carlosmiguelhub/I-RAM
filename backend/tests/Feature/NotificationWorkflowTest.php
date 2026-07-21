@@ -105,6 +105,64 @@ class NotificationWorkflowTest extends TestCase
         ], $types);
     }
 
+    public function test_printed_request_is_ready_before_it_is_released(): void
+    {
+        [$staff, $admin, , $department, $category] =
+            $this->workflowUsers();
+        $record = $this->archivedRecord(
+            $admin,
+            $department,
+            $category
+        );
+
+        Sanctum::actingAs($staff);
+
+        $documentRequestId = $this->postJson('/api/document-requests', [
+            'record_id' => $record->id,
+            'purpose' => 'Claim a printed office copy',
+            'urgency' => 'normal',
+            'preferred_format' => 'printed',
+        ])->assertCreated()->json('request.id');
+
+        Sanctum::actingAs($admin);
+
+        $this->postJson(
+            "/api/document-requests/{$documentRequestId}/approve"
+        )->assertOk()->assertJsonPath('request.status', 'approved');
+
+        $this->postJson(
+            "/api/document-requests/{$documentRequestId}/release"
+        )->assertUnprocessable();
+
+        $this->postJson(
+            "/api/document-requests/{$documentRequestId}/ready-for-pickup",
+            ['review_notes' => 'Claim at the Records Office.']
+        )
+            ->assertOk()
+            ->assertJsonPath('request.status', 'ready_for_pickup')
+            ->assertJsonPath('request.review_notes', 'Claim at the Records Office.');
+
+        $this->assertTrue(
+            $staff->notifications()
+                ->get()
+                ->contains(fn ($notification) => $notification->data['type'] ===
+                        'document_request.ready_for_pickup')
+        );
+
+        $this->postJson(
+            "/api/document-requests/{$documentRequestId}/release"
+        )
+            ->assertOk()
+            ->assertJsonPath('request.status', 'released');
+
+        $this->assertTrue(
+            $staff->notifications()
+                ->get()
+                ->contains(fn ($notification) => $notification->data['type'] ===
+                        'document_request.released')
+        );
+    }
+
     public function test_user_can_read_only_their_own_notifications(): void
     {
         [$staff, $admin, , $department, $category] =
