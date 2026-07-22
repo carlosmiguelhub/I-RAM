@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Notifications\InAppNotification;
+use App\Notifications\WorkflowEmailNotification;
 use Illuminate\Support\Facades\Notification;
+use Throwable;
 
 class InAppNotificationService
 {
@@ -18,6 +20,7 @@ class InAppNotificationService
     ): void {
         $recipients = User::query()
             ->where('status', 'active')
+            ->whereNotNull('email_verified_at')
             ->whereKeyNot($actor->id)
             ->whereHas(
                 'role',
@@ -32,17 +35,21 @@ class InAppNotificationService
             return;
         }
 
+        $payload = $this->payload(
+            $actor,
+            $title,
+            $message,
+            $type,
+            $url,
+            $context
+        );
+
         Notification::send(
             $recipients,
-            new InAppNotification($this->payload(
-                $actor,
-                $title,
-                $message,
-                $type,
-                $url,
-                $context
-            ))
+            new InAppNotification($payload)
         );
+
+        $this->sendEmail($recipients, $payload);
     }
 
     public function notifyUser(
@@ -57,19 +64,23 @@ class InAppNotificationService
         if (
             ! $recipient
             || $recipient->status !== 'active'
+            || ! $recipient->hasVerifiedEmail()
             || $recipient->is($actor)
         ) {
             return;
         }
 
-        $recipient->notify(new InAppNotification($this->payload(
+        $payload = $this->payload(
             $actor,
             $title,
             $message,
             $type,
             $url,
             $context
-        )));
+        );
+
+        $recipient->notify(new InAppNotification($payload));
+        $this->sendEmail([$recipient], $payload);
     }
 
     private function payload(
@@ -92,5 +103,19 @@ class InAppNotificationService
             ],
             ...$context,
         ];
+    }
+
+    private function sendEmail(iterable $recipients, array $payload): void
+    {
+        try {
+            Notification::send(
+                $recipients,
+                new WorkflowEmailNotification($payload)
+            );
+        } catch (Throwable $exception) {
+            // Workflow actions must still succeed if the mail provider is
+            // temporarily unavailable. The exception remains visible in logs.
+            report($exception);
+        }
     }
 }

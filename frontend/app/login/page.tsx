@@ -15,12 +15,13 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("admin@iram.test");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const [error, setError] = useState("");
@@ -99,11 +100,15 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#F4F0E8] lg:flex lg:items-center lg:justify-center lg:px-4 lg:py-5">
+    <main className="relative min-h-screen w-full overflow-hidden bg-[#F4F0E8] transition-colors dark:bg-[#181714] lg:flex lg:items-center lg:justify-center lg:px-4 lg:py-5">
       <div className="pointer-events-none absolute -left-24 -top-24 hidden h-72 w-72 rounded-full bg-[#D9961A]/25 blur-3xl sm:block" />
       <div className="pointer-events-none absolute -bottom-28 -right-20 hidden h-80 w-80 rounded-full bg-[#075A3A]/20 blur-3xl sm:block" />
 
-      <div className="relative mx-auto grid min-h-screen w-full overflow-hidden bg-white shadow-2xl shadow-[#7D6F5A]/20 lg:min-h-[610px] lg:max-w-5xl lg:grid-cols-[0.95fr_1.05fr] lg:rounded-3xl lg:ring-1 lg:ring-[#DED5C5]">
+      <div className="absolute right-4 top-4 z-20 lg:right-7 lg:top-7">
+        <ThemeToggle compact />
+      </div>
+
+      <div className="relative mx-auto grid min-h-screen w-full overflow-hidden bg-white shadow-2xl shadow-[#7D6F5A]/20 transition-colors dark:bg-[#24221E] dark:shadow-black/25 lg:min-h-[610px] lg:max-w-5xl lg:grid-cols-[0.95fr_1.05fr] lg:rounded-3xl lg:ring-1 lg:ring-[#DED5C5] dark:lg:ring-[#454139]">
         <section className="relative hidden min-h-[610px] overflow-hidden bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] p-8 text-white lg:flex lg:flex-col lg:justify-between">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(217,150,26,0.22),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(107,15,43,0.22),transparent_34%)]" />
 
@@ -151,7 +156,7 @@ export default function LoginPage() {
 
         </section>
 
-        <section className="flex min-h-screen flex-col bg-white lg:min-h-[610px] lg:justify-center">
+        <section className="flex min-h-screen flex-col bg-white transition-colors dark:bg-[#24221E] lg:min-h-[610px] lg:justify-center">
           <div className="relative overflow-hidden bg-gradient-to-br from-[#075A3A] via-[#064D33] to-[#043D28] px-5 pb-7 pt-5 text-white lg:hidden">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(217,150,26,0.24),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(107,15,43,0.22),transparent_40%)]" />
 
@@ -307,14 +312,15 @@ export default function LoginPage() {
                 </Link>
               </p>
 
-              <div className="mt-5 rounded-2xl border border-[#E7D3A2] bg-[#FFF9EA] px-4 py-3 text-center text-xs leading-5 text-[#766F63] sm:mt-6 sm:text-left">
-                <span className="font-semibold text-[#514D46]">
-                  Demo administrator:
-                </span>{" "}
-                <span className="break-all sm:break-normal">
-                  admin@iram.test / password123
-                </span>
-              </div>
+              <p className="mt-2 text-center text-xs text-[#928875]">
+                Didn&apos;t receive your verification email?{" "}
+                <Link
+                  href="/verify-email"
+                  className="font-semibold text-[#075A3A] transition-colors hover:text-[#6B0F2B]"
+                >
+                  Resend it
+                </Link>
+              </p>
 
               <p className="mt-5 text-center text-[11px] leading-5 text-[#A09582] lg:hidden">
                 Record Acquisition and Archiving Management System

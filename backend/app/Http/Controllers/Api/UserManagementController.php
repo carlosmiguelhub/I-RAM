@@ -18,6 +18,12 @@ class UserManagementController extends Controller
     {
         $query = User::with(['role', 'department']);
 
+        if ($request->user()->role?->name === 'Records Officer') {
+            $query
+                ->where('department_id', $request->user()->department_id)
+                ->whereHas('role', fn ($roleQuery) => $roleQuery->where('name', 'Staff'));
+        }
+
         if ($request->filled('search')) {
             $search = trim((string) $request->search);
 
@@ -96,9 +102,10 @@ class UserManagementController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'role_id' => $role->id,
-                'department_id' =>
-                    $validated['department_id'] ?? null,
+                'department_id' => $validated['department_id'] ?? null,
                 'status' => $validated['status'],
+                'email_verified_at' => now(),
+                'activated_at' => $validated['status'] === 'active' ? now() : null,
                 'password' => Hash::make(
                     $validated['password']
                 ),
@@ -120,8 +127,10 @@ class UserManagementController extends Controller
         ], 201);
     }
 
-    public function show(User $user)
+    public function show(Request $request, User $user)
     {
+        $this->ensureActorCanManageUser($request, $user);
+
         return response()->json([
             'user' => $user->load(['role', 'department']),
         ]);
@@ -184,8 +193,7 @@ class UserManagementController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'role_id' => $newRole->id,
-                'department_id' =>
-                    $validated['department_id'] ?? null,
+                'department_id' => $validated['department_id'] ?? null,
             ]);
 
             $user->load(['role', 'department']);
@@ -224,12 +232,23 @@ class UserManagementController extends Controller
         Request $request,
         User $user
     ) {
+        $this->ensureActorCanManageUser($request, $user);
+
         $validated = $request->validate([
             'status' => [
                 'required',
                 Rule::in(['active', 'inactive']),
             ],
         ]);
+
+        if (
+            $validated['status'] === 'active'
+            && ! $user->hasVerifiedEmail()
+        ) {
+            return response()->json([
+                'message' => 'This user must verify their email address before the account can be activated.',
+            ], 422);
+        }
 
         if (
             $request->user()->id === $user->id
@@ -265,6 +284,9 @@ class UserManagementController extends Controller
         ) {
             $user->update([
                 'status' => $validated['status'],
+                'activated_at' => $validated['status'] === 'active'
+                    ? ($user->activated_at ?? now())
+                    : $user->activated_at,
             ]);
 
             if ($validated['status'] === 'inactive') {
@@ -346,5 +368,25 @@ class UserManagementController extends Controller
             'description' => $description,
             'ip_address' => $request->ip(),
         ]);
+    }
+
+    private function ensureActorCanManageUser(
+        Request $request,
+        User $targetUser
+    ): void {
+        $actor = $request->user();
+
+        if ($actor->role?->name !== 'Records Officer') {
+            return;
+        }
+
+        $targetUser->loadMissing('role');
+
+        abort_unless(
+            $targetUser->role?->name === 'Staff'
+                && $targetUser->department_id === $actor->department_id,
+            403,
+            'Records Officers may only manage Staff accounts in their own department.'
+        );
     }
 }

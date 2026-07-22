@@ -14,10 +14,15 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/email/verification-notification', [AuthController::class, 'resendVerification'])
+    ->middleware('throttle:3,1');
+Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+    ->middleware(['signed:relative', 'throttle:6,1'])
+    ->name('verification.verify');
 Route::get('/options', [OptionController::class, 'index']);
 Route::get('/public-settings', [SystemSettingController::class, 'publicSettings']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'account.access'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -59,12 +64,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/records/{record}/staff-access', [ArchiveController::class, 'updateStaffAccess']);
     });
 
-    Route::prefix('admin')->middleware('admin')->group(function () {
+    Route::prefix('admin')->middleware('account.manager')->group(function () {
         Route::get('/users', [UserManagementController::class, 'index']);
-        Route::post('/users', [UserManagementController::class, 'store']);
         Route::get('/users/{user}', [UserManagementController::class, 'show']);
-        Route::patch('/users/{user}', [UserManagementController::class, 'update']);
         Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus']);
+    });
+
+    Route::prefix('admin')->middleware('admin')->group(function () {
+        Route::post('/users', [UserManagementController::class, 'store']);
+        Route::patch('/users/{user}', [UserManagementController::class, 'update']);
         Route::patch('/users/{user}/password', [UserManagementController::class, 'resetPassword']);
 
         Route::get('/categories', [ClassificationManagementController::class, 'categories']);

@@ -451,7 +451,11 @@ class RecordController extends Controller
                 "{$request->user()->name} submitted {$record->record_code}: {$record->title}.",
                 'record.submitted',
                 '/records?status=received',
-                ['record_id' => $record->id]
+                [
+                    'record_id' => $record->id,
+                    'record_code' => $record->record_code,
+                    'record_title' => $record->title,
+                ]
             );
 
             return response()->json([
@@ -636,7 +640,12 @@ class RecordController extends Controller
             "Your record {$record->record_code} is now under review.",
             'record.review_started',
             '/records?scope=mine&status=under_review',
-            ['record_id' => $record->id]
+            [
+                'record_id' => $record->id,
+                'record_code' => $record->record_code,
+                'record_title' => $record->title,
+                'review_remarks' => $validated['review_remarks'] ?? null,
+            ]
         );
 
         return response()->json([
@@ -696,19 +705,6 @@ class RecordController extends Controller
             );
         });
 
-        $this->notifications->notifyUser(
-            $record->creator,
-            $request->user(),
-            'Record needs correction',
-            "Your record {$record->record_code} was returned for correction.",
-            'record.returned_for_correction',
-            '/records?scope=mine&status=returned_for_correction',
-            [
-                'record_id' => $record->id,
-                'correction_notes' => $validated['correction_notes'],
-            ]
-        );
-
         return response()->json([
             'message' => 'Review details saved successfully.',
             'record' => $record->fresh()->load(
@@ -762,6 +758,21 @@ class RecordController extends Controller
                 "Returned record {$record->record_code} for correction. Notes: {$validated['correction_notes']}"
             );
         });
+
+        $this->notifications->notifyUser(
+            $record->creator,
+            $request->user(),
+            'Record needs correction',
+            "Your record {$record->record_code} was returned for correction.",
+            'record.returned_for_correction',
+            '/records?scope=mine&status=returned_for_correction',
+            [
+                'record_id' => $record->id,
+                'record_code' => $record->record_code,
+                'record_title' => $record->title,
+                'correction_notes' => $validated['correction_notes'],
+            ]
+        );
 
         return response()->json([
             'message' => 'Record returned to the submitter for correction.',
@@ -917,7 +928,11 @@ class RecordController extends Controller
             "{$request->user()->name} resubmitted corrected record {$record->record_code}.",
             'record.resubmitted',
             '/records?status=received',
-            ['record_id' => $record->id]
+            [
+                'record_id' => $record->id,
+                'record_code' => $record->record_code,
+                'record_title' => $record->title,
+            ]
         );
 
         return response()->json([
@@ -988,7 +1003,12 @@ class RecordController extends Controller
             "Your record {$record->record_code} was approved and archived.",
             'record.archived',
             '/records?scope=mine&status=archived',
-            ['record_id' => $record->id]
+            [
+                'record_id' => $record->id,
+                'record_code' => $record->record_code,
+                'record_title' => $record->title,
+                'review_remarks' => $validated['review_remarks'],
+            ]
         );
 
         return response()->json([

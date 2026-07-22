@@ -15,6 +15,8 @@ type ManagedUser = {
   name: string;
   email: string;
   status: "active" | "inactive";
+  email_verified_at?: string | null;
+  activated_at?: string | null;
   created_at: string;
   role?: Option | null;
   department?: Option | null;
@@ -77,6 +79,7 @@ export default function UserManagementPage() {
   const departmentRequired =
     selectedRole?.name === "Staff" ||
     selectedRole?.name === "Records Officer";
+  const isAdmin = currentUser?.role?.name === "Admin";
 
   async function loadUsers() {
     setLoading(true);
@@ -129,7 +132,7 @@ export default function UserManagementPage() {
             apiRequest("/options"),
           ]);
 
-        if (meData.user?.role?.name !== "Admin") {
+        if (!['Admin', 'Records Officer'].includes(meData.user?.role?.name || "")) {
           router.replace("/dashboard");
           return;
         }
@@ -369,18 +372,19 @@ export default function UserManagementPage() {
               </h1>
 
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[#E5DDCC]">
-                Create accounts, assign roles and departments,
-                control access, and reset passwords.
+                {isAdmin
+                  ? "Create accounts, assign roles and departments, control access, and reset passwords."
+                  : "Review and activate verified Staff accounts from your department."}
               </p>
             </div>
 
-            <button
+            {isAdmin && <button
               type="button"
               onClick={openCreate}
               className="inline-flex items-center justify-center rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-black/15 transition hover:-translate-y-0.5 hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30"
             >
               + Create User
-            </button>
+            </button>}
           </div>
         </section>
 
@@ -497,9 +501,7 @@ export default function UserManagementPage() {
                       {user.email}
                     </p>
                   </div>
-                  <StatusBadge
-                    status={user.status}
-                  />
+                  <StatusBadge user={user} />
                 </div>
 
                 <div className="mt-4 space-y-2 text-sm">
@@ -527,6 +529,7 @@ export default function UserManagementPage() {
                     openPassword(user)
                   }
                   onStatus={() => openStatus(user)}
+                  canAdminister={isAdmin}
                 />
               </article>
             ))}
@@ -593,9 +596,7 @@ export default function UserManagementPage() {
                           "N/A"}
                       </td>
                       <td className="px-5 py-4">
-                        <StatusBadge
-                          status={user.status}
-                        />
+                        <StatusBadge user={user} />
                       </td>
                       <td className="px-5 py-4 text-[#625E56]">
                         {formatDate(user.created_at)}
@@ -615,6 +616,7 @@ export default function UserManagementPage() {
                           onStatus={() =>
                             openStatus(user)
                           }
+                          canAdminister={isAdmin}
                         />
                       </td>
                     </tr>
@@ -641,7 +643,7 @@ export default function UserManagementPage() {
             <header className="flex items-start justify-between border-b border-[#E3DCCE] px-6 py-5">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#D9961A]">
-                  Administrator Action
+                  {isAdmin ? "Administrator Action" : "Account Approval"}
                 </p>
                 <h2 className="mt-1 text-xl font-bold text-[#252A27]">
                   {modalMode === "create" &&
@@ -975,40 +977,47 @@ function UserActions({
   onEdit,
   onPassword,
   onStatus,
+  canAdminister,
 }: {
   user: ManagedUser;
   currentUserId?: number;
   onEdit: () => void;
   onPassword: () => void;
   onStatus: () => void;
+  canAdminister: boolean;
 }) {
   const isSelf = user.id === currentUserId;
+  const awaitingEmailVerification =
+    user.status === "inactive" && !user.email_verified_at;
+  const statusDisabled = isSelf || awaitingEmailVerification;
 
   return (
     <div className="mt-4 flex flex-wrap gap-2 md:mt-0">
-      <button
+      {canAdminister && <button
         type="button"
         onClick={onEdit}
         className="rounded-lg bg-[#F0F7F3] px-3 py-2 text-xs font-semibold text-[#075A3A] ring-1 ring-[#CFE0D6] hover:bg-[#E6F2EC]"
       >
         Edit
-      </button>
+      </button>}
 
-      <button
+      {canAdminister && <button
         type="button"
         onClick={onPassword}
         className="rounded-lg bg-[#F0ECE4] px-3 py-2 text-xs font-semibold text-[#514D46] hover:bg-[#E3DCCE]"
       >
         Reset Password
-      </button>
+      </button>}
 
       <button
         type="button"
         onClick={onStatus}
-        disabled={isSelf}
+        disabled={statusDisabled}
         title={
           isSelf
             ? "You cannot deactivate your own account."
+            : awaitingEmailVerification
+              ? "The user must verify their email before activation."
             : undefined
         }
         className={`rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${
@@ -1026,19 +1035,30 @@ function UserActions({
 }
 
 function StatusBadge({
-  status,
+  user,
 }: {
-  status: "active" | "inactive";
+  user: ManagedUser;
 }) {
+  const label = user.status === "active"
+    ? "Active"
+    : user.activated_at
+      ? "Inactive"
+      : "Not activated";
+
   return (
-    <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-bold capitalize ${
-        status === "active"
-          ? "bg-emerald-50 text-emerald-700"
-          : "bg-[#E3DCCE] text-[#514D46]"
-      }`}
-    >
-      {status}
+    <span className="inline-flex flex-col items-start gap-1">
+      <span
+        className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+          user.status === "active"
+            ? "bg-emerald-50 text-emerald-700"
+            : "bg-[#E3DCCE] text-[#514D46]"
+        }`}
+      >
+        {label}
+      </span>
+      {!user.email_verified_at && (
+        <span className="text-[10px] font-semibold text-amber-700">Email unverified</span>
+      )}
     </span>
   );
 }

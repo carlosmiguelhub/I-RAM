@@ -8,7 +8,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50">
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 transition-colors dark:bg-[#181714]">
       <Suspense fallback={null}>
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </Suspense>

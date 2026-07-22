@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
   --background: #ffffff;
@@ -17,6 +18,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+html[data-theme="dark"] {
+  --background: #181714;
+  --foreground: #ebe6dc;
+  color-scheme: dark;
 }
 html,
 body {
@@ -27,4 +35,142 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* Shared legacy utility colors are remapped here so existing screens participate
+   in dark mode while the green, maroon, and gold brand accents stay unchanged. */
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] [class~="bg-[#FCFAF5]"] {
+  background-color: #24221e;
+}
+
+[data-theme="dark"] .bg-slate-50,
+[data-theme="dark"] .bg-slate-100,
+[data-theme="dark"] [class~="bg-[#F8F5EE]"],
+[data-theme="dark"] [class~="bg-[#F4F0E8]"],
+[data-theme="dark"] [class~="bg-[#F7F3EA]"] {
+  background-color: #1b1a17;
+}
+
+[data-theme="dark"] [class~="bg-[#F0ECE4]"],
+[data-theme="dark"] [class~="bg-[#F0F7F3]"],
+[data-theme="dark"] [class~="bg-[#E6F2EC]"],
+[data-theme="dark"] [class~="bg-[#FFF9EA]"],
+[data-theme="dark"] [class~="bg-[#FFF3D6]"],
+[data-theme="dark"] [class~="bg-[#F8E9EE]"] {
+  background-color: #2c2923;
+}
+
+[data-theme="dark"] [class~="bg-[#6B0F2B]"] {
+  background-color: #7b2943;
+}
+
+[data-theme="dark"] .text-slate-950,
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .text-slate-800,
+[data-theme="dark"] .text-slate-700,
+[data-theme="dark"] [class~="text-[#252A27]"],
+[data-theme="dark"] [class~="text-[#2D332F]"],
+[data-theme="dark"] [class~="text-[#3F443F]"],
+[data-theme="dark"] [class~="text-[#514D46]"],
+[data-theme="dark"] [class~="text-[#625E56]"] {
+  color: #ebe6dc;
+}
+
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-600,
+[data-theme="dark"] [class~="text-[#766F63]"],
+[data-theme="dark"] [class~="text-[#817766]"],
+[data-theme="dark"] [class~="text-[#928875]"],
+[data-theme="dark"] [class~="text-[#A09582]"] {
+  color: #aaa398;
+}
+
+[data-theme="dark"] [class~="text-[#075A3A]"],
+[data-theme="dark"] [class~="text-[#4B5563]"],
+[data-theme="dark"] [class~="text-[#667085]"] {
+  color: #89b79d;
+}
+
+[data-theme="dark"] [class~="text-[#6B0F2B]"] {
+  color: #d49aaa;
+}
+
+[data-theme="dark"] [class~="text-[#A66B00]"],
+[data-theme="dark"] [class~="text-[#B87510]"] {
+  color: #d8ad61;
+}
+
+[data-theme="dark"] .border-slate-200,
+[data-theme="dark"] [class~="border-[#E3DCCE]"],
+[data-theme="dark"] [class~="border-[#DED5C5]"],
+[data-theme="dark"] [class~="border-[#D7CDBB]"],
+[data-theme="dark"] [class~="border-[#CFC4B1]"],
+[data-theme="dark"] [class~="border-[#EEE8DD]"] {
+  border-color: #454139;
+}
+
+[data-theme="dark"] [class~="ring-[#DED5C5]"],
+[data-theme="dark"] [class~="ring-[#D9D2C4]"],
+[data-theme="dark"] [class~="ring-[#CFE0D6]"],
+[data-theme="dark"] [class~="ring-[#E6F2EC]"] {
+  --tw-ring-color: #454139;
+}
+
+[data-theme="dark"] [class~="from-[#F0F7F3]"] {
+  --tw-gradient-from: #292923;
+  --tw-gradient-to: rgb(41 41 35 / 0);
+}
+
+[data-theme="dark"] [class~="to-[#FFF9EA]"] {
+  --tw-gradient-to: #302b22;
+}
+
+/* Hover and focus utilities need dark equivalents because their class names
+   describe the light theme even though the state is applied later. */
+[data-theme="dark"] [class~="hover:bg-white"]:hover,
+[data-theme="dark"] [class~="hover:bg-slate-100"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#F8F5EE]"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#F0ECE4]"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#FCFAF5]"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#F0F7F3]"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#E6F2EC]"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#FFF9EA]"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#FFF3D6]"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#F8E9EE]"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#E3DCCE]"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#E5DED2]"]:hover {
+  background-color: #302d27;
+}
+
+[data-theme="dark"] [class~="hover:bg-[#571023]"]:hover {
+  background-color: #8d3852;
+}
+
+[data-theme="dark"] [class~="hover:bg-[#075A3A]"]:hover,
+[data-theme="dark"] [class~="hover:bg-[#043D28]"]:hover {
+  background-color: #176044;
+}
+
+[data-theme="dark"] [class~="hover:text-[#075A3A]"]:hover {
+  color: #9bc5ad;
+}
+
+[data-theme="dark"] [class~="hover:text-[#6B0F2B]"]:hover {
+  color: #dcb0bc;
+}
+
+[data-theme="dark"] [class~="hover:border-[#075A3A]"]:hover,
+[data-theme="dark"] [class~="hover:border-[#91BAA3]"]:hover,
+[data-theme="dark"] [class~="hover:border-[#CFE0D6]"]:hover,
+[data-theme="dark"] [class~="hover:border-[#B9D5C5]"]:hover {
+  border-color: #6d987f;
+}
+
+[data-theme="dark"] [class~="focus:bg-white"]:focus {
+  background-color: #302d27;
+}
+
+[data-theme="dark"] [class~="focus:ring-[#E6F2EC]"]:focus {
+  --tw-ring-color: rgb(217 150 26 / 0.16);
 }

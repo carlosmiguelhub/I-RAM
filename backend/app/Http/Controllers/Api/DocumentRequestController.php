@@ -340,6 +340,11 @@ class DocumentRequestController extends Controller
             [
                 'record_id' => $record->id,
                 'document_request_id' => $documentRequest->id,
+                'record_code' => $record->record_code,
+                'record_title' => $record->title,
+                'purpose' => $validated['purpose'],
+                'urgency' => $validated['urgency'],
+                'preferred_format' => $validated['preferred_format'],
             ]
         );
 
@@ -412,6 +417,7 @@ class DocumentRequestController extends Controller
             [
                 'record_id' => $documentRequest->record_id,
                 'document_request_id' => $documentRequest->id,
+                'record_code' => $documentRequest->record->record_code,
             ]
         );
 
@@ -483,6 +489,8 @@ class DocumentRequestController extends Controller
             [
                 'record_id' => $documentRequest->record_id,
                 'document_request_id' => $documentRequest->id,
+                'record_code' => $documentRequest->record->record_code,
+                'review_notes' => $validated['review_notes'] ?? null,
             ]
         );
 
@@ -549,6 +557,8 @@ class DocumentRequestController extends Controller
             [
                 'record_id' => $documentRequest->record_id,
                 'document_request_id' => $documentRequest->id,
+                'record_code' => $documentRequest->record->record_code,
+                'review_notes' => $validated['review_notes'],
             ]
         );
 
@@ -615,6 +625,9 @@ class DocumentRequestController extends Controller
             [
                 'record_id' => $documentRequest->record_id,
                 'document_request_id' => $documentRequest->id,
+                'record_code' => $documentRequest->record->record_code,
+                'review_notes' => $validated['review_notes']
+                    ?? $documentRequest->review_notes,
             ]
         );
 
@@ -678,6 +691,9 @@ class DocumentRequestController extends Controller
             [
                 'record_id' => $documentRequest->record_id,
                 'document_request_id' => $documentRequest->id,
+                'record_code' => $documentRequest->record->record_code,
+                'review_notes' => $validated['review_notes']
+                    ?? $documentRequest->review_notes,
             ]
         );
 
@@ -733,6 +749,7 @@ class DocumentRequestController extends Controller
             [
                 'record_id' => $documentRequest->record_id,
                 'document_request_id' => $documentRequest->id,
+                'record_code' => $documentRequest->record->record_code,
             ]
         );
 

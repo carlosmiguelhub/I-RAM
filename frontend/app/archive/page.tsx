@@ -675,7 +675,7 @@ export default function ArchiveUnfiledPage() {
             }
           }}
         >
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-[#DED5C5]">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-[#DED5C5] sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#D9961A]">
@@ -782,7 +782,7 @@ export default function ArchiveUnfiledPage() {
             }
           }}
         >
-          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-[#DED5C5]">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-[#DED5C5] sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#D9961A]">

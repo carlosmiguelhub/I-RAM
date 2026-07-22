@@ -33,6 +33,8 @@ class AdminUserSeeder extends Seeder
                 'name' => 'IRAM Admin',
                 'password' => Hash::make($password),
                 'status' => 'active',
+                'email_verified_at' => now(),
+                'activated_at' => now(),
             ]
         );
     }

@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ClipboardCheck,
   ClipboardList,
+  CircleHelp,
   FilePlus2,
   FileUser,
   Files,
@@ -81,6 +82,18 @@ const mainMenuItems: SidebarItem[] = [
     href: "/audit-trail",
     icon: History,
     roles: ["Admin", "Records Officer"],
+  },
+  {
+    name: "Account Approvals",
+    href: "/admin/users",
+    icon: Users,
+    roles: ["Records Officer"],
+  },
+  {
+    name: "Help & Guidelines",
+    href: "/staff-guide",
+    icon: CircleHelp,
+    roles: ["Staff"],
   },
   {
     name: "Profile",
@@ -324,7 +337,7 @@ export default function Sidebar({
         className={`group relative flex min-h-10 items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
           active
             ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
-            : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5]"
+            : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5] dark:text-[#C9C1B5] dark:hover:bg-white/5 dark:hover:text-[#F4C25E] dark:hover:ring-white/10"
         }`}
       >
         {active && (
@@ -364,7 +377,7 @@ export default function Sidebar({
         className={`group flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-200 ${
           active
             ? "bg-[#FFF3D6] text-[#6B0F2B] ring-1 ring-[#E7C77F]"
-            : "text-[#667085] hover:bg-white hover:text-[#075A3A]"
+            : "text-[#667085] hover:bg-white hover:text-[#075A3A] dark:text-[#AAAFA9] dark:hover:bg-white/5 dark:hover:text-[#F4C25E]"
         }`}
       >
         <Icon
@@ -396,7 +409,7 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-dvh w-[min(16.5rem,86vw)] flex-col border-r border-[#DED5C5] bg-[#F8F5EE] px-3 py-3.5 shadow-2xl shadow-black/10 transition-transform duration-300 lg:h-screen lg:w-64 lg:translate-x-0 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-50 flex h-dvh w-[min(16.5rem,86vw)] flex-col border-r border-[#DED5C5] bg-[#F8F5EE] px-3 py-3.5 shadow-2xl shadow-black/10 transition-transform duration-300 dark:border-[#403C35] dark:bg-[#1E1D19] lg:h-screen lg:w-64 lg:translate-x-0 lg:shadow-none ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -452,7 +465,7 @@ export default function Sidebar({
                     className={`group relative flex min-h-10 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
                       recordsSectionActive
                         ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
-                        : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5]"
+                        : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5] dark:text-[#C9C1B5] dark:hover:bg-white/5 dark:hover:text-[#F4C25E] dark:hover:ring-white/10"
                     }`}
                   >
                     {recordsSectionActive && (
@@ -514,7 +527,7 @@ export default function Sidebar({
                 className={`group relative flex min-h-10 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
                   settingsSectionActive
                     ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
-                    : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5]"
+                    : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5] dark:text-[#C9C1B5] dark:hover:bg-white/5 dark:hover:text-[#F4C25E] dark:hover:ring-white/10"
                 }`}
               >
                 {settingsSectionActive && (

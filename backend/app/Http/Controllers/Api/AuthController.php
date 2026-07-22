@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -17,6 +18,10 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->email)),
+        ]);
+
         $validated = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
@@ -56,9 +61,17 @@ class AuthController extends Controller
             ], 401);
         }
 
+        if (! $user->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Please verify your email address before signing in. Check your inbox for the verification link.',
+                'code' => 'email_unverified',
+            ], 403);
+        }
+
         if ($user->status !== 'active') {
             return response()->json([
-                'message' => 'Your account is inactive.',
+                'message' => 'Your account is not activated yet. Please contact your Records Officer or an Administrator.',
+                'code' => 'activation_pending',
             ], 403);
         }
 
@@ -88,6 +101,10 @@ class AuthController extends Controller
             ], 403);
         }
 
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->email)),
+        ]);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
@@ -107,12 +124,14 @@ class AuthController extends Controller
             'role_id' => $staffRole->id,
             'department_id' => $validated['department_id'],
             'name' => $validated['name'],
-            'email' => $validated['email'],
+            'email' => Str::lower($validated['email']),
             'password' => Hash::make($validated['password']),
-            'status' => 'active',
+            'status' => 'inactive',
+            'email_verified_at' => null,
+            'activated_at' => null,
         ]);
 
-        $token = $this->createAccessToken($user);
+        $user->notify(new VerifyEmailNotification);
 
         AuditLog::create([
             'user_id' => $user->id,
@@ -123,10 +142,58 @@ class AuthController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Registration successful.',
-            'token' => $token,
+            'message' => 'Account created. Check your email to verify your address, then contact your Records Officer or an Administrator for activation.',
             'user' => $user->load(['role', 'department']),
         ], 201);
+    }
+
+    public function verifyEmail(Request $request, string $id, string $hash)
+    {
+        $user = User::findOrFail($id);
+
+        if (! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
+            return response()->json([
+                'message' => 'This email verification link is invalid.',
+            ], 403);
+        }
+
+        if (! $user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+
+            AuditLog::create([
+                'user_id' => $user->id,
+                'target_user_id' => $user->id,
+                'action' => 'email_address_verified',
+                'description' => "Verified email address for {$user->email}.",
+                'ip_address' => $request->ip(),
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Email verified successfully. Your account is now waiting for activation by your Records Officer or an Administrator.',
+            'status' => 'activation_pending',
+        ]);
+    }
+
+    public function resendVerification(Request $request)
+    {
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->email)),
+        ]);
+
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $user = User::where('email', Str::lower($validated['email']))->first();
+
+        if ($user && ! $user->hasVerifiedEmail()) {
+            $user->notify(new VerifyEmailNotification);
+        }
+
+        return response()->json([
+            'message' => 'If an unverified account exists for that email, a new verification link has been sent.',
+        ], 202);
     }
 
     public function me(Request $request)

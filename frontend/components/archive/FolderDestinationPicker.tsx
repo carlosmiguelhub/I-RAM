@@ -58,10 +58,10 @@ export default function FolderDestinationPicker({
           <FolderTree className="h-4 w-4" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className={`block truncate text-sm font-semibold ${selected ? "text-[#252A27]" : "text-[#766F63]"}`}>
+          <span className={`block break-words text-sm font-semibold [overflow-wrap:anywhere] ${selected ? "text-[#252A27]" : "text-[#766F63]"}`}>
             {selected?.name || (allowUnfiled && value === "" ? "Unfiled records" : "Choose a destination")}
           </span>
-          <span className="mt-0.5 block truncate text-[11px] text-[#928875]">
+          <span className="mt-0.5 block break-words text-[11px] text-[#928875] [overflow-wrap:anywhere]">
             {selected?.path || (allowUnfiled && value === "" ? "Outside all archive folders" : "Select a folder or subfolder")}
           </span>
         </span>
@@ -136,21 +136,21 @@ function DestinationOption({
       role="option"
       aria-selected={selected}
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition ${selected ? "bg-[#E6F2EC]" : "hover:bg-[#F8F5EE]"}`}
+      className={`flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition ${selected ? "bg-[#E6F2EC]" : "hover:bg-[#F8F5EE]"}`}
     >
-      <Folder className={`h-5 w-5 shrink-0 ${root ? "fill-[#D9961A] text-[#A66B00]" : "fill-[#CFE0D6] text-[#075A3A]"}`} />
+      <Folder className={`mt-0.5 h-5 w-5 shrink-0 ${root ? "fill-[#D9961A] text-[#A66B00]" : "fill-[#CFE0D6] text-[#075A3A]"}`} />
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
-          <span className="truncate text-sm font-semibold text-[#252A27]">{name}</span>
+        <span className="flex min-w-0 items-start gap-2">
+          <span className="min-w-0 flex-1 break-words text-sm font-semibold text-[#252A27] [overflow-wrap:anywhere]">{name}</span>
           <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${root ? "bg-[#FFF3D6] text-[#8B5A00]" : "bg-[#E6F2EC] text-[#075A3A]"}`}>
             {root ? "Folder" : "Subfolder"}
           </span>
         </span>
-        <span className="mt-1 flex min-w-0 items-center gap-0.5 overflow-hidden text-[10px] text-[#766F63]">
+        <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 gap-y-1 text-[10px] text-[#766F63]">
           {segments.map((segment, index) => (
             <span key={`${segment}-${index}`} className="flex min-w-0 items-center gap-0.5">
               {index > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-[#B1A795]" />}
-              <span className="truncate">{segment}</span>
+              <span className="break-words [overflow-wrap:anywhere]">{segment}</span>
             </span>
           ))}
         </span>

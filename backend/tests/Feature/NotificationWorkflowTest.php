@@ -7,13 +7,66 @@ use App\Models\Record;
 use App\Models\RecordCategory;
 use App\Models\Role;
 use App\Models\User;
+use App\Notifications\WorkflowEmailNotification;
+use App\Services\InAppNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class NotificationWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_workflow_email_is_sent_to_active_verified_managers(): void
+    {
+        Notification::fake();
+        [$staff, $admin, $officer] = $this->workflowUsers();
+
+        app(InAppNotificationService::class)->notifyManagers(
+            $staff,
+            'New record submitted',
+            'A new Staff record is waiting for review.',
+            'record.submitted',
+            '/records?status=received',
+            [
+                'record_code' => 'IRAM-2026-R000001',
+                'record_title' => 'Official test record',
+            ]
+        );
+
+        Notification::assertSentTo($admin, WorkflowEmailNotification::class);
+        Notification::assertSentTo($officer, WorkflowEmailNotification::class);
+        Notification::assertNotSentTo($staff, WorkflowEmailNotification::class);
+    }
+
+    public function test_workflow_email_uses_the_branded_template_and_action_link(): void
+    {
+        [$staff, $admin] = $this->workflowUsers();
+        $notification = new WorkflowEmailNotification([
+            'title' => 'Record needs correction',
+            'message' => 'Your record requires changes before it can be archived.',
+            'type' => 'record.returned_for_correction',
+            'url' => '/records?scope=mine&status=returned_for_correction',
+            'actor' => [
+                'name' => $admin->name,
+                'role' => 'Admin',
+            ],
+            'record_code' => 'IRAM-2026-R000001',
+            'correction_notes' => 'Replace the incomplete attachment.',
+        ]);
+
+        $mail = $notification->toMail($staff);
+        $html = $mail->render();
+
+        $this->assertSame('[IRAM] Record needs correction', $mail->subject);
+        $this->assertStringContainsString('Records Management Notification', $html);
+        $this->assertStringContainsString('Replace the incomplete attachment.', $html);
+        $this->assertStringContainsString(
+            'http://localhost:3000/records?scope=mine&amp;status=returned_for_correction',
+            $html
+        );
+    }
 
     public function test_staff_record_submission_notifies_active_managers(): void
     {
