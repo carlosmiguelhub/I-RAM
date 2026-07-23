@@ -137,7 +137,7 @@ function VerifyEmailContent() {
               <div>
                 <p className="text-sm font-bold text-[#2D332F]">Account activation is still required</p>
                 <p className="mt-1 text-xs leading-5 text-[#766F63]">
-                  Please contact your department&apos;s Records Officer or an Administrator. You cannot sign in or access IRAM features until they approve your account.
+                  Please contact an Administrator. You cannot sign in or access IRAM features until they approve your account.
                 </p>
               </div>
             </div>

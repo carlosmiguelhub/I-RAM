@@ -21,7 +21,7 @@ class EnsureAccountCanAccessSystem
 
         if ($user->status !== 'active') {
             return response()->json([
-                'message' => 'Your account is not activated yet. Please contact your Records Officer or an Administrator.',
+                'message' => 'Your account is not activated yet. Please contact an Administrator.',
                 'code' => 'activation_pending',
             ], 403);
         }

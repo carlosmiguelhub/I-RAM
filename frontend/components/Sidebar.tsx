@@ -90,12 +90,6 @@ const mainMenuItems: SidebarItem[] = [
     roles: ["Admin", "Records Officer"],
   },
   {
-    name: "Account Approvals",
-    href: "/admin/users",
-    icon: Users,
-    roles: ["Records Officer"],
-  },
-  {
     name: "Help & Guidelines",
     href: "/staff-guide",
     icon: CircleHelp,

@@ -245,7 +245,7 @@ export default function StaffGuidePage() {
             description="Your role and department determine which records and features you can access."
           >
             <p className="text-sm leading-6 text-[#766F63]">
-              If your name, email, department, role, or account status is incorrect, contact your Records Officer or an Administrator instead of creating another account.
+              If your name, email, department, role, or account status is incorrect, contact an Administrator instead of creating another account.
             </p>
             <GuideLink href="/profile" label="Open my profile" />
           </GuideCard>

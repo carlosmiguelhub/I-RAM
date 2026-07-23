@@ -111,7 +111,7 @@ class AccountVerificationAndActivationTest extends TestCase
         ])->assertOk()->assertJsonStructure(['token', 'user']);
     }
 
-    public function test_records_officer_can_only_activate_verified_staff_in_their_department(): void
+    public function test_records_officer_cannot_access_admin_user_management(): void
     {
         $staffRole = Role::create(['name' => 'Staff']);
         $officerRole = Role::create(['name' => 'Records Officer']);
@@ -137,13 +137,11 @@ class AccountVerificationAndActivationTest extends TestCase
         Sanctum::actingAs($officer);
 
         $this->getJson('/api/admin/users')
-            ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $ownStaff->id);
+            ->assertForbidden();
 
         $this->patchJson("/api/admin/users/{$ownStaff->id}/status", [
             'status' => 'active',
-        ])->assertOk();
+        ])->assertForbidden();
 
         $this->patchJson("/api/admin/users/{$otherStaff->id}/status", [
             'status' => 'active',

@@ -3,6 +3,10 @@ export type AuthUser = {
   name: string;
   email?: string | null;
   status?: string | null;
+  email_verified_at?: string | null;
+  activated_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   role?: {
     id?: number;
     name?: string | null;

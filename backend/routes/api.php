@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\DocumentRequestController;
 use App\Http\Controllers\Api\DisposalController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OptionController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RecordController;
 use App\Http\Controllers\Api\SystemSettingController;
 use App\Http\Controllers\Api\UserManagementController;
@@ -25,6 +26,10 @@ Route::get('/public-settings', [SystemSettingController::class, 'publicSettings'
 
 Route::middleware(['auth:sanctum', 'account.access'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::patch('/profile', [ProfileController::class, 'update']);
+    Route::patch('/profile/password', [ProfileController::class, 'changePassword']);
+    Route::post('/profile/logout-other-devices', [ProfileController::class, 'logoutOtherDevices']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/notifications', [NotificationController::class, 'index']);
@@ -78,16 +83,13 @@ Route::middleware(['auth:sanctum', 'account.access'])->group(function () {
         Route::get('/cases/{disposalCase}/certificate', [DisposalController::class, 'certificate']);
     });
 
-    Route::prefix('admin')->middleware('account.manager')->group(function () {
+    Route::prefix('admin')->middleware('admin')->group(function () {
         Route::get('/users', [UserManagementController::class, 'index']);
         Route::get('/users/{user}', [UserManagementController::class, 'show']);
-        Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus']);
-    });
-
-    Route::prefix('admin')->middleware('admin')->group(function () {
         Route::post('/users', [UserManagementController::class, 'store']);
         Route::patch('/users/{user}', [UserManagementController::class, 'update']);
         Route::patch('/users/{user}/password', [UserManagementController::class, 'resetPassword']);
+        Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus']);
 
         Route::get('/categories', [ClassificationManagementController::class, 'categories']);
         Route::post('/categories', [ClassificationManagementController::class, 'storeCategory']);

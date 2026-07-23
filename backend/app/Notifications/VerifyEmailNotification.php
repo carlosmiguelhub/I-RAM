@@ -44,7 +44,7 @@ class VerifyEmailNotification extends Notification
             ->line('Please verify your email address to continue your IRAM account registration.')
             ->action('Verify Email Address', $frontendUrl)
             ->line('This verification link expires in 60 minutes.')
-            ->line('After verification, an Administrator or Records Officer must activate your account before you can sign in.')
+            ->line('After verification, an Administrator must activate your account before you can sign in.')
             ->line('If you did not create this account, no action is required.');
     }
 }

@@ -70,7 +70,7 @@ class AuthController extends Controller
 
         if ($user->status !== 'active') {
             return response()->json([
-                'message' => 'Your account is not activated yet. Please contact your Records Officer or an Administrator.',
+                'message' => 'Your account is not activated yet. Please contact an Administrator.',
                 'code' => 'activation_pending',
             ], 403);
         }
@@ -142,7 +142,7 @@ class AuthController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Account created. Check your email to verify your address, then contact your Records Officer or an Administrator for activation.',
+            'message' => 'Account created. Check your email to verify your address, then contact an Administrator for activation.',
             'user' => $user->load(['role', 'department']),
         ], 201);
     }
@@ -170,7 +170,7 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'message' => 'Email verified successfully. Your account is now waiting for activation by your Records Officer or an Administrator.',
+            'message' => 'Email verified successfully. Your account is now waiting for activation by an Administrator.',
             'status' => 'activation_pending',
         ]);
     }

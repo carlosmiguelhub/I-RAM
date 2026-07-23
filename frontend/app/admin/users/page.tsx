@@ -132,7 +132,7 @@ export default function UserManagementPage() {
             apiRequest("/options"),
           ]);
 
-        if (!['Admin', 'Records Officer'].includes(meData.user?.role?.name || "")) {
+        if (meData.user?.role?.name !== "Admin") {
           router.replace("/dashboard");
           return;
         }
