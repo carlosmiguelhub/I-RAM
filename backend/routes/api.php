@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuditTrailController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ClassificationManagementController;
 use App\Http\Controllers\Api\DocumentRequestController;
+use App\Http\Controllers\Api\DisposalController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OptionController;
 use App\Http\Controllers\Api\RecordController;
@@ -62,6 +63,13 @@ Route::middleware(['auth:sanctum', 'account.access'])->group(function () {
         Route::delete('/folders/{archiveFolder}', [ArchiveController::class, 'destroyFolder']);
         Route::patch('/records/{record}/move', [ArchiveController::class, 'moveRecord']);
         Route::patch('/records/{record}/staff-access', [ArchiveController::class, 'updateStaffAccess']);
+        Route::patch('/records/{record}/retention', [ArchiveController::class, 'updateRetention']);
+    });
+
+    Route::prefix('disposal')->group(function () {
+        Route::get('/records', [DisposalController::class, 'index']);
+        Route::post('/records/{record}/restore', [DisposalController::class, 'restore']);
+        Route::post('/records/{record}/dispose', [DisposalController::class, 'dispose']);
     });
 
     Route::prefix('admin')->middleware('account.manager')->group(function () {

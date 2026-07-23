@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Archive,
+  CalendarClock,
   CheckCircle2,
   Download,
   FileText,
@@ -43,6 +44,11 @@ export type ArchiveRecord = {
   date_received?: string | null;
   archived_at?: string | null;
   storage_location?: string | null;
+  status?: string;
+  retention_type?: "permanent" | "temporary";
+  retention_years?: number | null;
+  retention_unit?: "years" | "minutes";
+  retention_expires_at?: string | null;
 
   staff_visible?: boolean;
   access_level?: ArchiveAccessLevel;
@@ -104,8 +110,14 @@ export default function ArchiveRecordModal({
     useState<number | null>(null);
 
   const [savingAccess, setSavingAccess] = useState(false);
+  const [savingRetention, setSavingRetention] = useState(false);
   const [accessMode, setAccessMode] =
     useState<AccessMode>("internal");
+  const [retentionType, setRetentionType] =
+    useState<"permanent" | "temporary">("permanent");
+  const [retentionYears, setRetentionYears] = useState("1");
+  const [retentionUnit, setRetentionUnit] =
+    useState<"years" | "minutes">("years");
 
   const [actionError, setActionError] = useState("");
   const [accessSuccess, setAccessSuccess] = useState("");
@@ -116,13 +128,17 @@ export default function ArchiveRecordModal({
     loading ||
     downloadingFileId !== null ||
     printingFileId !== null ||
-    savingAccess;
+    savingAccess ||
+    savingRetention;
 
   useEffect(() => {
     if (!record) return;
 
     const timeoutId = window.setTimeout(() => {
       setAccessMode(getAccessMode(record));
+      setRetentionType(record.retention_type || "permanent");
+      setRetentionYears(String(record.retention_years || 1));
+      setRetentionUnit(record.retention_unit || "years");
       setAccessSuccess("");
       setActionError("");
     }, 0);
@@ -184,6 +200,67 @@ export default function ArchiveRecordModal({
       );
     } finally {
       setSavingAccess(false);
+    }
+  }
+
+  async function saveRetentionSettings() {
+    if (!record) return;
+
+    const years = Number(retentionYears);
+
+    if (
+      retentionType === "temporary" &&
+      (!Number.isInteger(years) || years < 1 || years > 100)
+    ) {
+      setActionError(
+        "Temporary retention must be a whole number from 1 to 100 years."
+      );
+      return;
+    }
+
+    setSavingRetention(true);
+    setActionError("");
+    setAccessSuccess("");
+
+    try {
+      const data = await apiRequest(
+        `/archive/records/${record.id}/retention`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            retention_type: retentionType,
+            retention_years:
+              retentionType === "temporary" ? years : null,
+            retention_unit:
+              retentionType === "temporary"
+                ? retentionUnit
+                : "years",
+          }),
+        }
+      );
+
+      const updatedRecord = data.record as ArchiveRecord;
+      setRetentionType(
+        updatedRecord.retention_type || "permanent"
+      );
+      setRetentionYears(
+        String(updatedRecord.retention_years || 1)
+      );
+      setRetentionUnit(
+        updatedRecord.retention_unit || "years"
+      );
+      setAccessSuccess(
+        data.message || "Retention settings updated."
+      );
+      onRecordUpdated?.(updatedRecord);
+    } catch (err: unknown) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Failed to update retention settings."
+      );
+    } finally {
+      setSavingRetention(false);
     }
   }
 
@@ -541,7 +618,7 @@ export default function ArchiveRecordModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-0 backdrop-blur-sm sm:p-5"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/75 p-0 backdrop-blur-sm sm:p-6"
       onMouseDown={(event) => {
         if (
           event.target === event.currentTarget &&
@@ -555,32 +632,37 @@ export default function ArchiveRecordModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="archive-record-modal-title"
-        className="flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:max-h-[94vh] sm:max-w-6xl sm:rounded-3xl"
+        className="flex h-full w-full flex-col overflow-hidden bg-[#FCFCFB] shadow-2xl sm:max-h-[92vh] sm:max-w-5xl sm:rounded-2xl"
       >
-        <header className="bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 px-5 py-5 text-white sm:px-7">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 sm:flex">
-                <Archive className="h-5 w-5 text-blue-200" />
+        <header className="border-b border-white/10 bg-gradient-to-r from-[#063D2A] via-[#075A3A] to-[#043D28] px-5 py-4 text-white sm:px-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15 sm:flex">
+                <Archive className="h-4.5 w-4.5 text-[#F4C25E]" />
               </div>
 
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-emerald-300">
-                  Archived Record
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#F4C25E]">
+                    Archive record
+                  </p>
+                  {record?.record_code && (
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-[#E5DDCC]">
+                      {record.record_code}
+                    </span>
+                  )}
+                </div>
 
                 <h2
                   id="archive-record-modal-title"
-                  className="mt-1 break-words text-xl font-bold sm:text-2xl"
+                  className="mt-1 truncate text-lg font-extrabold sm:text-xl"
                 >
                   {record?.title || "Loading record..."}
                 </h2>
 
-                {record?.record_code && (
-                  <p className="mt-1 break-all text-sm text-slate-300">
-                    {record.record_code}
-                  </p>
-                )}
+                <p className="mt-0.5 text-xs text-[#D5E5DC]">
+                  Official archived copy and record controls
+                </p>
               </div>
             </div>
 
@@ -588,7 +670,7 @@ export default function ArchiveRecordModal({
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20 disabled:opacity-50"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white transition hover:bg-white/20 disabled:opacity-50"
               aria-label="Close record details"
             >
               <X className="h-5 w-5" />
@@ -596,7 +678,7 @@ export default function ArchiveRecordModal({
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           {(error || actionError) && (
             <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
               {actionError || error}
@@ -619,26 +701,26 @@ export default function ArchiveRecordModal({
               </p>
             </div>
           ) : record ? (
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-              <div className="space-y-5 lg:col-span-2">
-                <section className="rounded-2xl border border-slate-200 p-5">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+              <div className="space-y-4 lg:col-span-3">
+                <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">
-                        Record Information
+                      <h3 className="text-sm font-extrabold text-slate-900">
+                        Record profile
                       </h3>
 
-                      <p className="mt-1 text-sm text-slate-500">
-                        Official metadata for this archived record.
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Classification, custody, and provenance
                       </p>
                     </div>
 
-                    <span className="w-fit rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
-                      Archived
+                    <span className="w-fit rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">
+                      Active archive
                     </span>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <dl className="grid grid-cols-1 sm:grid-cols-2">
                     <InfoBox
                       label="Category"
                       value={record.category?.name || "N/A"}
@@ -690,29 +772,47 @@ export default function ArchiveRecordModal({
                       label="Archived By"
                       value={record.archiver?.name || "N/A"}
                     />
-                  </div>
+                  </dl>
                 </section>
 
-                <TextSection
-                  title="Description"
-                  value={record.description}
-                  emptyText="No description provided."
-                />
+                <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <TextSection
+                    title="Description"
+                    value={record.description}
+                    emptyText="No description provided."
+                  />
 
-                <TextSection
-                  title="Submission Remarks"
-                  value={record.remarks}
-                  emptyText="No submission remarks provided."
-                />
+                  <TextSection
+                    title="Submission Remarks"
+                    value={record.remarks}
+                    emptyText="No submission remarks provided."
+                  />
 
-                <TextSection
-                  title="Review Remarks"
-                  value={record.review_remarks}
-                  emptyText="No review remarks recorded."
-                />
+                  <TextSection
+                    title="Review Remarks"
+                    value={record.review_remarks}
+                    emptyText="No review remarks recorded."
+                  />
+                </section>
               </div>
 
-              <aside className="space-y-5">
+              <aside className="space-y-4 lg:col-span-2">
+                <RetentionPanel
+                  type={retentionType}
+                  years={retentionYears}
+                  unit={retentionUnit}
+                  expiresAt={record.retention_expires_at}
+                  saving={savingRetention}
+                  onTypeChange={(value) => {
+                    setRetentionType(value);
+                    setAccessSuccess("");
+                    setActionError("");
+                  }}
+                  onYearsChange={setRetentionYears}
+                  onUnitChange={setRetentionUnit}
+                  onSave={saveRetentionSettings}
+                />
+
                 <StaffAccessPanel
                   value={accessMode}
                   saving={savingAccess}
@@ -724,37 +824,28 @@ export default function ArchiveRecordModal({
                   onSave={saveAccessSettings}
                 />
 
-                <section className="rounded-2xl bg-slate-950 p-5 text-white">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
-                    <FolderOpen className="h-5 w-5 text-blue-200" />
-                  </div>
-
-                  <h3 className="mt-4 text-lg font-bold">
-                    Archive Location
-                  </h3>
-
-                  <p className="mt-2 text-sm leading-6 text-slate-300">
-                    Filed under{" "}
-                    <strong className="text-white">
+                <section className="flex items-start gap-3 rounded-xl bg-slate-900 p-4 text-white shadow-sm">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                    <FolderOpen className="h-4 w-4 text-[#F4C25E]" />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-extrabold uppercase tracking-wide text-slate-300">
+                      Archive location
+                    </h3>
+                    <p className="mt-1 truncate text-sm font-bold">
                       {record.archive_folder?.name || "Unfiled"}
-                    </strong>
-                    .
-                  </p>
-
-                  <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Storage location
-                  </p>
-
-                  <p className="mt-1 break-words text-sm font-semibold text-white">
-                    {record.storage_location || "Not specified"}
-                  </p>
+                    </p>
+                    <p className="mt-0.5 break-words text-xs leading-5 text-slate-400">
+                      {record.storage_location || "Storage not specified"}
+                    </p>
+                  </div>
                 </section>
 
-                <section className="rounded-2xl border border-slate-200 p-5">
+                <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">
-                        Documents
+                      <h3 className="text-sm font-extrabold text-slate-900">
+                        Attachments
                       </h3>
 
                       <p className="mt-1 text-sm text-slate-500">
@@ -786,7 +877,7 @@ export default function ArchiveRecordModal({
                         return (
                           <div
                             key={file.id}
-                            className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                            className="rounded-lg border border-slate-200 bg-slate-50/70 p-2.5"
                           >
                             <div className="flex items-start gap-3">
                               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-xs font-bold text-blue-700">
@@ -861,12 +952,12 @@ export default function ArchiveRecordModal({
         </div>
 
         {record && (
-          <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+          <footer className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:flex-row sm:justify-end sm:px-6">
             <button
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
             >
               Close
             </button>
@@ -875,7 +966,7 @@ export default function ArchiveRecordModal({
               type="button"
               onClick={printRecordDetails}
               disabled={busy}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#075A3A] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#064D33] disabled:opacity-50"
             >
               <FileText className="h-4 w-4" />
               Print Record Details
@@ -884,6 +975,128 @@ export default function ArchiveRecordModal({
         )}
       </div>
     </div>
+  );
+}
+
+function RetentionPanel({
+  type,
+  years,
+  unit,
+  expiresAt,
+  saving,
+  onTypeChange,
+  onYearsChange,
+  onUnitChange,
+  onSave,
+}: {
+  type: "permanent" | "temporary";
+  years: string;
+  unit: "years" | "minutes";
+  expiresAt?: string | null;
+  saving: boolean;
+  onTypeChange: (value: "permanent" | "temporary") => void;
+  onYearsChange: (value: string) => void;
+  onUnitChange: (value: "years" | "minutes") => void;
+  onSave: () => void;
+}) {
+  return (
+    <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+          <CalendarClock className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+            Retention Schedule
+          </p>
+          <h3 className="mt-0.5 text-sm font-extrabold text-slate-900">
+            Document retention
+          </h3>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {(
+          [
+            {
+              label: "Permanent",
+              type: "permanent",
+              unit: "years",
+            },
+            {
+              label: "Temporary",
+              type: "temporary",
+              unit: "years",
+            },
+            {
+              label: "1-min Test",
+              type: "temporary",
+              unit: "minutes",
+            },
+          ] as const
+        ).map((option) => (
+          <button
+            key={option.label}
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              onTypeChange(option.type);
+              onUnitChange(option.unit);
+              if (option.unit === "minutes") {
+                onYearsChange("1");
+              }
+            }}
+            className={`rounded-lg border px-2 py-2 text-[11px] font-bold ${
+              type === option.type && unit === option.unit
+                ? "border-amber-500 bg-white text-amber-800 ring-2 ring-amber-100"
+                : "border-slate-200 bg-white/70 text-slate-600"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {type === "temporary" && unit === "years" && (
+        <label className="mt-4 block text-sm font-semibold text-slate-700">
+          Retention years
+          <input
+            type="number"
+            min={1}
+            max={100}
+            step={1}
+            value={years}
+            disabled={saving}
+            onChange={(event) => onYearsChange(event.target.value)}
+            className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+          />
+        </label>
+      )}
+
+      <p className="mt-3 text-xs leading-5 text-slate-500">
+        {type === "permanent"
+          ? "This record will remain in the archive indefinitely."
+          : unit === "minutes"
+          ? "Practice mode expires one minute after saving. Refresh Archive or Disposal after one minute to process it."
+          : expiresAt
+          ? `Current disposal review date: ${formatDate(expiresAt)}. Saving recalculates it from the archived date.`
+          : "The review date will be calculated from the archived date."}
+      </p>
+
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={saving}
+        className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+      >
+        {saving ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Save className="h-4 w-4" />
+        )}
+        {saving ? "Saving Retention..." : "Save Retention"}
+      </button>
+    </section>
   );
 }
 
@@ -921,13 +1134,13 @@ function StaffAccessPanel({
   ];
 
   return (
-    <section className="rounded-2xl border border-blue-200 bg-blue-50/40 p-5">
+    <section className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 shadow-sm">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
           Staff Catalog Access
         </p>
 
-        <h3 className="mt-1 text-lg font-bold text-slate-900">
+        <h3 className="mt-0.5 text-sm font-extrabold text-slate-900">
           Visibility and Access
         </h3>
 
@@ -988,7 +1201,7 @@ function StaffAccessPanel({
         type="button"
         onClick={onSave}
         disabled={saving}
-        className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {saving ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1040,14 +1253,14 @@ function InfoBox({
   value: string;
 }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+    <div className="border-b border-slate-100 px-4 py-3 odd:sm:border-r">
+      <dt className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-400">
         {label}
-      </p>
+      </dt>
 
-      <p className="mt-1 break-words text-sm font-semibold text-slate-900">
+      <dd className="mt-1 break-words text-xs font-bold leading-5 text-slate-800">
         {value}
-      </p>
+      </dd>
     </div>
   );
 }
@@ -1062,15 +1275,15 @@ function TextSection({
   emptyText: string;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 p-5">
-      <h3 className="font-bold text-slate-900">
+    <div className="border-b border-slate-100 px-4 py-3 last:border-b-0">
+      <h3 className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-500">
         {title}
       </h3>
 
-      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
+      <p className="mt-1.5 whitespace-pre-wrap break-words text-xs leading-5 text-slate-600">
         {value || emptyText}
       </p>
-    </section>
+    </div>
   );
 }
 

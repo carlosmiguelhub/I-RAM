@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -65,6 +65,9 @@ export default function ArchiveFolderBrowser({
   const [viewRecord, setViewRecord] = useState<ArchiveRecord | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const searchRef = useRef("");
+  const roleVerifiedRef = useRef(false);
+  const syncingRef = useRef(false);
 
   const currentFolder = useMemo(
     () => folders.find((folder) => folder.id === numericFolderId) || null,
@@ -100,14 +103,24 @@ export default function ArchiveFolderBrowser({
     return result;
   }, [currentFolder, folders]);
 
-  async function loadPage(searchValue = search) {
-    setLoading(true);
-    setError("");
+  async function loadPage(
+    searchValue = search,
+    silent = false
+  ) {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
     try {
-      const meData = await apiRequest("/me");
-      if (!["Admin", "Records Officer"].includes(meData.user?.role?.name)) {
-        router.replace("/dashboard");
-        return;
+      if (!roleVerifiedRef.current) {
+        const meData = await apiRequest("/me");
+        if (!["Admin", "Records Officer"].includes(meData.user?.role?.name)) {
+          router.replace("/dashboard");
+          return;
+        }
+        roleVerifiedRef.current = true;
       }
 
       const requests: Promise<unknown>[] = [apiRequest("/archive/folders")];
@@ -126,15 +139,26 @@ export default function ArchiveFolderBrowser({
         setError("Archive folder not found.");
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load the archive folders.");
+      if (!silent) {
+        setError(err instanceof Error ? err.message : "Failed to load the archive folders.");
+      }
     } finally {
-      setLoading(false);
+      syncingRef.current = false;
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadPage(""), 0);
-    return () => window.clearTimeout(timer);
+    const pollId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void loadPage(searchRef.current, true);
+      }
+    }, 5000);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(pollId);
+    };
   }, [folderId]);
 
   function openCreate() {
@@ -259,7 +283,10 @@ export default function ArchiveFolderBrowser({
           <div className="flex flex-col gap-2 border-b border-[#E3DCCE] bg-[#FCFAF5] p-3 sm:flex-row sm:items-center">
             <form onSubmit={(event) => { event.preventDefault(); void loadPage(search); }} className="relative min-w-0 flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A09582]" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder={numericFolderId ? "Search this folder..." : "Search folders..."} className="min-h-10 w-full rounded-lg border border-[#CFC4B1] bg-white py-2 pl-10 pr-3 text-sm font-medium text-[#252A27] caret-[#075A3A] outline-none placeholder:font-normal placeholder:text-[#766F63] focus:border-[#075A3A] focus:ring-4 focus:ring-[#E6F2EC]" />
+              <input value={search} onChange={(event) => {
+                setSearch(event.target.value);
+                searchRef.current = event.target.value;
+              }} type="search" placeholder={numericFolderId ? "Search this folder..." : "Search folders..."} className="min-h-10 w-full rounded-lg border border-[#CFC4B1] bg-white py-2 pl-10 pr-3 text-sm font-medium text-[#252A27] caret-[#075A3A] outline-none placeholder:font-normal placeholder:text-[#766F63] focus:border-[#075A3A] focus:ring-4 focus:ring-[#E6F2EC]" />
             </form>
             <ViewModeToggle value={viewMode} onChange={changeView} />
           </div>

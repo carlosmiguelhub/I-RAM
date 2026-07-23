@@ -113,6 +113,11 @@
     const [reviewRemarks, setReviewRemarks] = useState("");
     const [correctionNotes, setCorrectionNotes] = useState("");
     const [storageLocation, setStorageLocation] = useState("");
+    const [retentionType, setRetentionType] =
+      useState<"permanent" | "temporary">("permanent");
+    const [retentionYears, setRetentionYears] = useState("1");
+    const [retentionUnit, setRetentionUnit] =
+      useState<"years" | "minutes">("years");
 
     const searchRef = useRef("");
     const activeStatusRef = useRef("");
@@ -340,6 +345,9 @@
       setReviewRemarks(record.review_remarks || "");
       setCorrectionNotes(record.correction_notes || "");
       setStorageLocation(record.storage_location || "");
+      setRetentionType("permanent");
+      setRetentionYears("1");
+      setRetentionUnit("years");
     }
 
     async function openPreview(recordId: number) {
@@ -386,6 +394,9 @@
       setReviewRemarks("");
       setCorrectionNotes("");
       setStorageLocation("");
+      setRetentionType("permanent");
+      setRetentionYears("1");
+      setRetentionUnit("years");
     }
 
     function replaceRecord(updatedRecord: RecordItem) {
@@ -496,6 +507,17 @@
         return;
       }
 
+      const years = Number(retentionYears);
+      if (
+        retentionType === "temporary" &&
+        (!Number.isInteger(years) || years < 1 || years > 100)
+      ) {
+        setWorkflowError(
+          "Temporary retention must be a whole number from 1 to 100 years."
+        );
+        return;
+      }
+
       await runWorkflowAction(
         `/records/${selectedRecord.id}/archive`,
         {
@@ -503,6 +525,13 @@
           body: JSON.stringify({
             review_remarks: reviewRemarks.trim(),
             storage_location: storageLocation.trim(),
+            retention_type: retentionType,
+            retention_years:
+              retentionType === "temporary" ? years : null,
+            retention_unit:
+              retentionType === "temporary"
+                ? retentionUnit
+                : "years",
           }),
         },
         "Record archived successfully."
@@ -917,12 +946,18 @@
             reviewRemarks={reviewRemarks}
             correctionNotes={correctionNotes}
             storageLocation={storageLocation}
+            retentionType={retentionType}
+            retentionYears={retentionYears}
+            retentionUnit={retentionUnit}
             workflowLoading={workflowLoading}
             workflowError={workflowError}
             workflowSuccess={workflowSuccess}
             onReviewRemarksChange={setReviewRemarks}
             onCorrectionNotesChange={setCorrectionNotes}
             onStorageLocationChange={setStorageLocation}
+            onRetentionTypeChange={setRetentionType}
+            onRetentionYearsChange={setRetentionYears}
+            onRetentionUnitChange={setRetentionUnit}
             onStartReview={handleStartReview}
             onSaveReview={handleSaveReview}
             onReturnForCorrection={handleReturnForCorrection}
@@ -946,12 +981,18 @@
     reviewRemarks,
     correctionNotes,
     storageLocation,
+    retentionType,
+    retentionYears,
+    retentionUnit,
     workflowLoading,
     workflowError,
     workflowSuccess,
     onReviewRemarksChange,
     onCorrectionNotesChange,
     onStorageLocationChange,
+    onRetentionTypeChange,
+    onRetentionYearsChange,
+    onRetentionUnitChange,
     onStartReview,
     onSaveReview,
     onReturnForCorrection,
@@ -969,12 +1010,22 @@
     reviewRemarks: string;
     correctionNotes: string;
     storageLocation: string;
+    retentionType: "permanent" | "temporary";
+    retentionYears: string;
+    retentionUnit: "years" | "minutes";
     workflowLoading: boolean;
     workflowError: string;
     workflowSuccess: string;
     onReviewRemarksChange: (value: string) => void;
     onCorrectionNotesChange: (value: string) => void;
     onStorageLocationChange: (value: string) => void;
+    onRetentionTypeChange: (
+      value: "permanent" | "temporary"
+    ) => void;
+    onRetentionYearsChange: (value: string) => void;
+    onRetentionUnitChange: (
+      value: "years" | "minutes"
+    ) => void;
     onStartReview: () => void;
     onSaveReview: () => void;
     onReturnForCorrection: () => void;
@@ -1154,6 +1205,81 @@
                               placeholder="Example: Archive Room A / Shelf 2 / Box 14"
                               className="mt-2 w-full rounded-xl border border-[#E3DCCE] bg-white px-4 py-3 text-sm text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:ring-4 focus:ring-[#CFE0D6] disabled:opacity-60"
                             />
+                          </div>
+
+                          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+                            <label className="text-sm font-semibold text-[#3F443F]">
+                              Retention schedule
+                            </label>
+                            <div className="mt-2 grid grid-cols-3 gap-2">
+                              {(
+                                [
+                                  {
+                                    label: "Permanent",
+                                    type: "permanent",
+                                    unit: "years",
+                                  },
+                                  {
+                                    label: "Temporary",
+                                    type: "temporary",
+                                    unit: "years",
+                                  },
+                                  {
+                                    label: "1-min Practice",
+                                    type: "temporary",
+                                    unit: "minutes",
+                                  },
+                                ] as const
+                              ).map((option) => (
+                                  <button
+                                    key={option.label}
+                                    type="button"
+                                    disabled={workflowLoading}
+                                    onClick={() => {
+                                      onRetentionTypeChange(option.type);
+                                      onRetentionUnitChange(option.unit);
+                                      if (option.unit === "minutes") {
+                                        onRetentionYearsChange("1");
+                                      }
+                                    }}
+                                    className={`rounded-xl border px-2 py-2.5 text-xs font-bold ${
+                                      retentionType === option.type &&
+                                      retentionUnit === option.unit
+                                        ? "border-amber-500 bg-white text-amber-800 ring-2 ring-amber-100"
+                                        : "border-[#E3DCCE] bg-white/70 text-[#625E56]"
+                                    }`}
+                                  >
+                                    {option.label}
+                                  </button>
+                                ))}
+                            </div>
+                            {retentionType === "temporary" &&
+                              retentionUnit === "years" && (
+                              <label className="mt-3 block text-xs font-bold text-[#625E56]">
+                                Number of years
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={100}
+                                  step={1}
+                                  value={retentionYears}
+                                  disabled={workflowLoading}
+                                  onChange={(event) =>
+                                    onRetentionYearsChange(
+                                      event.target.value
+                                    )
+                                  }
+                                  className="mt-1.5 min-h-11 w-full rounded-xl border border-[#E3DCCE] bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+                                />
+                              </label>
+                            )}
+                            <p className="mt-2 text-xs leading-5 text-[#766F63]">
+                              {retentionType === "permanent"
+                                ? "The record stays in the archive indefinitely."
+                                : retentionUnit === "minutes"
+                                ? "Practice mode: the record becomes eligible for disposal one minute after archiving."
+                                : "After this period, the system automatically transfers it to the restricted For Disposal Repository."}
+                            </p>
                           </div>
 
                           <div>

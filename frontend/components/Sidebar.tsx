@@ -78,6 +78,12 @@ const mainMenuItems: SidebarItem[] = [
     roles: ["Admin", "Records Officer"],
   },
   {
+    name: "For Disposal",
+    href: "/disposal",
+    icon: Trash2,
+    roles: ["Admin", "Records Officer"],
+  },
+  {
     name: "Audit Trail",
     href: "/audit-trail",
     icon: History,
@@ -120,12 +126,6 @@ const recordSubmenuItems: SidebarItem[] = [
     name: "Under Review",
     href: "/records?status=under_review",
     icon: ClipboardCheck,
-    roles: ["Admin", "Records Officer"],
-  },
-  {
-    name: "For Disposal",
-    href: "/records?status=for_disposal",
-    icon: Trash2,
     roles: ["Admin", "Records Officer"],
   },
 ];

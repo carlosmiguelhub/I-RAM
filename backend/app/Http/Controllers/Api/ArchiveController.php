@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\ArchiveFolder;
 use App\Models\AuditLog;
 use App\Models\Record;
+use App\Services\RecordRetentionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ArchiveController extends Controller
 {
+    public function __construct(
+        private readonly RecordRetentionService $retention
+    ) {}
+
     private function roleName(Request $request): string
     {
         return $request->user()->role?->name ?? '';
@@ -41,6 +46,7 @@ class ArchiveController extends Controller
             'reviewer',
             'returner',
             'archiver',
+            'disposer',
             'archiveFolder',
             'files',
         ];
@@ -65,6 +71,8 @@ class ArchiveController extends Controller
         if ($response = $this->denyArchiveAccess($request)) {
             return $response;
         }
+
+        $this->retention->moveExpiredRecords();
 
         $query = Record::with($this->recordRelations())
             ->where('status', 'archived');
@@ -431,6 +439,91 @@ class ArchiveController extends Controller
 
         return response()->json([
             'message' => "Access settings updated. This record is now {$visibilityLabel}.",
+            'record' => $record
+                ->fresh()
+                ->load($this->recordRelations()),
+        ]);
+    }
+
+    public function updateRetention(
+        Request $request,
+        Record $record
+    ) {
+        if ($response = $this->denyArchiveAccess($request)) {
+            return $response;
+        }
+
+        if ($record->status !== 'archived') {
+            return response()->json([
+                'message' => 'Retention settings can only be changed for archived records.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'retention_type' => [
+                'required',
+                Rule::in(['permanent', 'temporary']),
+            ],
+            'retention_years' => [
+                Rule::requiredIf(
+                    $request->input('retention_type') === 'temporary'
+                ),
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100',
+            ],
+            'retention_unit' => [
+                'sometimes',
+                Rule::in(['years', 'minutes']),
+            ],
+        ]);
+
+        $temporary = $validated['retention_type'] === 'temporary';
+        $retentionUnit = $temporary
+            ? ($validated['retention_unit'] ?? 'years')
+            : 'years';
+        $years = $temporary
+            ? (int) $validated['retention_years']
+            : null;
+
+        if ($retentionUnit === 'minutes' && $years !== 1) {
+            return response()->json([
+                'message' => 'Practice retention must be exactly 1 minute.',
+            ], 422);
+        }
+
+        $expiresAt = $temporary
+            ? ($retentionUnit === 'minutes'
+                ? now()->addMinute()
+                : ($record->archived_at ?? now())->copy()->addYears($years))
+            : null;
+
+        $record->update([
+            'retention_type' => $validated['retention_type'],
+            'retention_years' => $years,
+            'retention_unit' => $retentionUnit,
+            'retention_expires_at' => $expiresAt,
+        ]);
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'record_id' => $record->id,
+            'action' => 'updated_record_retention',
+            'description' => $temporary
+                ? "Set {$record->record_code} retention to {$years} {$retentionUnit}, expiring {$expiresAt->toDateTimeString()}"
+                : "Set {$record->record_code} retention to permanent",
+            'ip_address' => $request->ip(),
+        ]);
+
+        if ($temporary && $expiresAt->isPast()) {
+            $this->retention->moveToDisposal($record->fresh());
+        }
+
+        return response()->json([
+            'message' => $record->fresh()->status === 'for_disposal'
+                ? 'Retention period has already ended. The record was transferred to the For Disposal Repository.'
+                : 'Retention settings updated successfully.',
             'record' => $record
                 ->fresh()
                 ->load($this->recordRelations()),

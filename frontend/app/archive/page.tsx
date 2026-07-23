@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -69,6 +69,9 @@ export default function ArchiveUnfiledPage() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const searchRef = useRef("");
+  const roleVerifiedRef = useRef(false);
+  const syncingRef = useRef(false);
 
   const totalFoldered = useMemo(
     () =>
@@ -93,17 +96,29 @@ export default function ArchiveUnfiledPage() {
     [records, selectedRecordIds]
   );
 
-  async function loadPage(searchValue = search) {
-    setLoading(true);
-    setError("");
+  async function loadPage(
+    searchValue = search,
+    silent = false
+  ) {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
 
     try {
-      const meData = await apiRequest("/me");
-      const role = meData.user?.role?.name;
+      if (!roleVerifiedRef.current) {
+        const meData = await apiRequest("/me");
+        const role = meData.user?.role?.name;
 
-      if (!["Admin", "Records Officer"].includes(role)) {
-        router.replace("/dashboard");
-        return;
+        if (!["Admin", "Records Officer"].includes(role)) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        roleVerifiedRef.current = true;
       }
 
       const params = new URLSearchParams({
@@ -131,13 +146,16 @@ export default function ArchiveUnfiledPage() {
         )
       );
     } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to load the archive repository."
-      );
+      if (!silent) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load the archive repository."
+        );
+      }
     } finally {
-      setLoading(false);
+      syncingRef.current = false;
+      if (!silent) setLoading(false);
     }
   }
 
@@ -145,8 +163,16 @@ export default function ArchiveUnfiledPage() {
     const timeoutId = window.setTimeout(() => {
       void loadPage("");
     }, 0);
+    const pollId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void loadPage(searchRef.current, true);
+      }
+    }, 5000);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(pollId);
+    };
   }, []);
 
   function toggleSelectionMode() {
@@ -433,9 +459,10 @@ export default function ArchiveUnfiledPage() {
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A09582]" />
                 <input
                   value={search}
-                  onChange={(event) =>
-                    setSearch(event.target.value)
-                  }
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    searchRef.current = event.target.value;
+                  }}
                   placeholder="Search title, record code, category..."
                   className="min-h-10 w-full rounded-lg border border-[#E3DCCE] bg-[#F8F5EE] py-2 pl-10 pr-3 text-sm outline-none transition focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
                 />
@@ -651,11 +678,15 @@ export default function ArchiveUnfiledPage() {
       setViewRecord(updatedRecord);
 
       setRecords((current) =>
-        current.map((record) =>
-          record.id === updatedRecord.id
-            ? updatedRecord
-            : record
-        )
+        updatedRecord.status === "for_disposal"
+          ? current.filter(
+              (record) => record.id !== updatedRecord.id
+            )
+          : current.map((record) =>
+              record.id === updatedRecord.id
+                ? updatedRecord
+                : record
+            )
       );
 
       setSuccess(

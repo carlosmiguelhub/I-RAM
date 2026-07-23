@@ -10,6 +10,50 @@ use Throwable;
 
 class InAppNotificationService
 {
+    public function notifyManagersFromSystem(
+        string $title,
+        string $message,
+        string $type,
+        string $url,
+        array $context = []
+    ): void {
+        $recipients = User::query()
+            ->where('status', 'active')
+            ->whereNotNull('email_verified_at')
+            ->whereHas(
+                'role',
+                fn ($query) => $query->whereIn(
+                    'name',
+                    ['Admin', 'Records Officer']
+                )
+            )
+            ->get();
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        $payload = [
+            'title' => $title,
+            'message' => $message,
+            'type' => $type,
+            'url' => $url,
+            'actor' => [
+                'id' => null,
+                'name' => 'IRAM System',
+                'role' => 'System',
+            ],
+            ...$context,
+        ];
+
+        Notification::send(
+            $recipients,
+            new InAppNotification($payload)
+        );
+
+        $this->sendEmail($recipients, $payload);
+    }
+
     public function notifyManagers(
         User $actor,
         string $title,

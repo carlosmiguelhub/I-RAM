@@ -27,6 +27,14 @@ class Record extends Model
         'resubmitted_at',
         'archived_by',
         'archived_at',
+        'retention_type',
+        'retention_years',
+        'retention_unit',
+        'retention_expires_at',
+        'for_disposal_at',
+        'disposed_by',
+        'disposed_at',
+        'disposal_notes',
         'archive_folder_id',
 
         // Staff archive access
@@ -40,6 +48,10 @@ class Record extends Model
         'returned_at' => 'datetime',
         'resubmitted_at' => 'datetime',
         'archived_at' => 'datetime',
+        'retention_years' => 'integer',
+        'retention_expires_at' => 'datetime',
+        'for_disposal_at' => 'datetime',
+        'disposed_at' => 'datetime',
         'staff_visible' => 'boolean',
     ];
 
@@ -85,6 +97,14 @@ class Record extends Model
         return $this->belongsTo(
             User::class,
             'archived_by'
+        );
+    }
+
+    public function disposer()
+    {
+        return $this->belongsTo(
+            User::class,
+            'disposed_by'
         );
     }
 

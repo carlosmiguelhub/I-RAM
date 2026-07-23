@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class RecordController extends Controller
@@ -69,6 +70,10 @@ class RecordController extends Controller
             return false;
         }
 
+        if (in_array($record->status, ['for_disposal', 'disposed'], true)) {
+            return false;
+        }
+
         if ($record->status !== 'archived') {
             return $this->staffCanAccessRecord($request, $record);
         }
@@ -112,6 +117,7 @@ class RecordController extends Controller
             'reviewer',
             'returner',
             'archiver',
+            'disposer',
             'archiveFolder',
             'files',
         ];
@@ -284,7 +290,11 @@ class RecordController extends Controller
         } elseif (! $request->filled('status')) {
             // Keep the active Records page focused on submissions and review work.
             // Archived records are managed from the dedicated Archive repository.
-            $query->where('status', '!=', 'archived');
+            $query->whereNotIn('status', [
+                'archived',
+                'for_disposal',
+                'disposed',
+            ]);
         }
 
         if ($request->filled('search')) {
@@ -968,19 +978,66 @@ class RecordController extends Controller
                 'string',
                 'max:255',
             ],
+            'retention_type' => [
+                'sometimes',
+                Rule::in(['permanent', 'temporary']),
+            ],
+            'retention_years' => [
+                Rule::requiredIf(
+                    $request->input('retention_type') === 'temporary'
+                ),
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100',
+            ],
+            'retention_unit' => [
+                'sometimes',
+                Rule::in(['years', 'minutes']),
+            ],
         ]);
+
+        $retentionType = $validated['retention_type'] ?? 'permanent';
+        $temporary = $retentionType === 'temporary';
+        $retentionUnit = $temporary
+            ? ($validated['retention_unit'] ?? 'years')
+            : 'years';
+        $retentionYears = $temporary
+            ? (int) $validated['retention_years']
+            : null;
+
+        if ($retentionUnit === 'minutes' && $retentionYears !== 1) {
+            return response()->json([
+                'message' => 'Practice retention must be exactly 1 minute.',
+            ], 422);
+        }
+
+        $archivedAt = now();
 
         DB::transaction(function () use (
             $request,
             $record,
-            $validated
+            $validated,
+            $retentionType,
+            $retentionUnit,
+            $temporary,
+            $retentionYears,
+            $archivedAt
         ) {
             $record->update([
                 'status' => 'archived',
                 'review_remarks' => $validated['review_remarks'],
                 'storage_location' => $validated['storage_location'],
                 'archived_by' => $request->user()->id,
-                'archived_at' => now(),
+                'archived_at' => $archivedAt,
+                'retention_type' => $retentionType,
+                'retention_years' => $retentionYears,
+                'retention_unit' => $retentionUnit,
+                'retention_expires_at' => $temporary
+                    ? ($retentionUnit === 'minutes'
+                        ? $archivedAt->copy()->addMinute()
+                        : $archivedAt->copy()->addYears($retentionYears))
+                    : null,
 
                 // Freshly archived records are visible in the
                 // Staff Archive Catalog by default.

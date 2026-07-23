@@ -78,7 +78,7 @@ export default function NotificationBell() {
       if (document.visibilityState === "visible") {
         void loadNotifications(true);
       }
-    }, 30000);
+    }, 5000);
 
     return () => {
       window.clearTimeout(initialLoadId);
