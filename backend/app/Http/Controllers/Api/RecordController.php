@@ -522,6 +522,12 @@ class RecordController extends Controller
             ], 403);
         }
 
+        if ($recordFile->purged_at) {
+            return response()->json([
+                'message' => 'This attachment was permanently deleted under an approved disposal certificate.',
+            ], 410);
+        }
+
         if (! Storage::disk('local')->exists(
             $recordFile->file_path
         )) {

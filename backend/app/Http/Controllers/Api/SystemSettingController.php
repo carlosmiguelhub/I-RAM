@@ -119,6 +119,12 @@ class SystemSettingController extends Controller
                 'required',
                 'boolean',
             ],
+            'workflow.disposal_grace_days' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:365',
+            ],
 
             'files' => ['required', 'array'],
             'files.max_upload_size_mb' => [
@@ -254,13 +260,24 @@ class SystemSettingController extends Controller
             'enabled' => true,
             'counts' => [
                 'records' => DB::table('records')->count(),
+                'for_disposal_records' => DB::table('records')
+                    ->where('status', 'for_disposal')
+                    ->count(),
+                'disposed_records' => DB::table('records')
+                    ->where('status', 'disposed')
+                    ->count(),
                 'record_files' => DB::table('record_files')->count(),
+                'purged_file_metadata' => DB::table('record_files')
+                    ->whereNotNull('purged_at')
+                    ->count(),
+                'disposal_cases' => DB::table('disposal_cases')->count(),
+                'disposal_certificates' => DB::table('disposal_cases')
+                    ->whereNotNull('certificate_number')
+                    ->count(),
                 'document_requests' => DB::table('document_requests')->count(),
                 'archive_folders' => DB::table('archive_folders')->count(),
                 'notifications' => DB::table('notifications')->count(),
-                'related_audit_logs' => DB::table('audit_logs')
-                    ->whereIn('action', $this->practiceAuditActions())
-                    ->count(),
+                'audit_logs' => DB::table('audit_logs')->count(),
             ],
         ]);
     }
@@ -311,11 +328,24 @@ class SystemSettingController extends Controller
 
         $deleted = [
             'records' => 0,
+            'for_disposal_records' => DB::table('records')
+                ->where('status', 'for_disposal')
+                ->count(),
+            'disposed_records' => DB::table('records')
+                ->where('status', 'disposed')
+                ->count(),
             'record_files' => 0,
+            'purged_file_metadata' => DB::table('record_files')
+                ->whereNotNull('purged_at')
+                ->count(),
+            'disposal_cases' => 0,
+            'disposal_certificates' => DB::table('disposal_cases')
+                ->whereNotNull('certificate_number')
+                ->count(),
             'document_requests' => 0,
             'archive_folders' => 0,
             'notifications' => 0,
-            'related_audit_logs' => 0,
+            'audit_logs' => 0,
             'physical_files' => 0,
             'physical_file_failures' => 0,
         ];
@@ -330,6 +360,10 @@ class SystemSettingController extends Controller
 
             $deleted['document_requests'] = DB::table(
                 'document_requests'
+            )->delete();
+
+            $deleted['disposal_cases'] = DB::table(
+                'disposal_cases'
             )->delete();
 
             $deleted['record_files'] = DB::table(
@@ -353,11 +387,9 @@ class SystemSettingController extends Controller
                 )->delete();
             }
 
-            $deleted['related_audit_logs'] = DB::table(
+            $deleted['audit_logs'] = DB::table(
                 'audit_logs'
-            )
-                ->whereIn('action', $this->practiceAuditActions())
-                ->delete();
+            )->delete();
 
             $this->resetPracticeAutoIncrement(
                 $clearArchiveFolders
@@ -373,24 +405,6 @@ class SystemSettingController extends Controller
                 $deleted['physical_file_failures']++;
             }
         }
-
-        AuditLog::create([
-            'user_id' => $user->id,
-            'action' => 'development.practice_data_cleared',
-            'description' => sprintf(
-                'Cleared practice data: %d records, %d files, %d requests%s.',
-                $deleted['records'],
-                $deleted['record_files'],
-                $deleted['document_requests'],
-                $clearArchiveFolders
-                    ? sprintf(
-                        ', and %d archive folders',
-                        $deleted['archive_folders']
-                    )
-                    : ''
-            ),
-            'ip_address' => $request->ip(),
-        ]);
 
         return response()->json([
             'message' => $deleted['physical_file_failures'] > 0
@@ -409,50 +423,6 @@ class SystemSettingController extends Controller
         ]);
     }
 
-    private function practiceAuditActions(): array
-    {
-        return [
-            'created_record',
-            'uploaded_record_files',
-            'started_review',
-            'returned_for_correction',
-            'resubmitted_record',
-            'archived_record',
-            'downloaded_record_file',
-            'deleted_record_file',
-            'created_archive_folder',
-            'updated_archive_folder',
-            'deleted_archive_folder',
-            'moved_archived_record',
-            'document_request_created',
-            'document_request_started_review',
-            'document_request_approved',
-            'prepared_requested_document_for_pickup',
-            'document_request_rejected',
-            'document_request_released',
-            'document_request_cancelled',
-            'record.created',
-            'record.files_uploaded',
-            'record.review_started',
-            'record.returned_for_correction',
-            'record.resubmitted',
-            'record.archived',
-            'record_file.downloaded',
-            'record_file.deleted',
-            'archive_folder.created',
-            'archive_folder.updated',
-            'archive_folder.deleted',
-            'archive_record.moved',
-            'document_request.created',
-            'document_request.review_started',
-            'document_request.approved',
-            'document_request.ready_for_pickup',
-            'document_request.rejected',
-            'document_request.released',
-            'document_request.cancelled',
-        ];
-    }
-
     private function resetPracticeAutoIncrement(
         bool $clearArchiveFolders
     ): void {
@@ -469,6 +439,9 @@ class SystemSettingController extends Controller
         );
         DB::statement(
             'ALTER TABLE record_files AUTO_INCREMENT = 1'
+        );
+        DB::statement(
+            'ALTER TABLE disposal_cases AUTO_INCREMENT = 1'
         );
         DB::statement(
             'ALTER TABLE records AUTO_INCREMENT = 1'
@@ -562,6 +535,10 @@ class SystemSettingController extends Controller
                 ],
                 'lock_archived_records' => [
                     'type' => 'boolean',
+                    'is_public' => false,
+                ],
+                'disposal_grace_days' => [
+                    'type' => 'integer',
                     'is_public' => false,
                 ],
             ],

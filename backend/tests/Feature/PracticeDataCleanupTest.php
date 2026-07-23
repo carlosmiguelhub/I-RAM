@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\ArchiveFolder;
+use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\DocumentRequest;
+use App\Models\DisposalCase;
 use App\Models\Record;
 use App\Models\RecordCategory;
 use App\Models\Role;
@@ -63,6 +65,26 @@ class PracticeDataCleanupTest extends TestCase
             'preferred_format' => 'digital',
             'status' => 'pending',
         ]);
+        DisposalCase::create([
+            'record_id' => $record->id,
+            'requested_by' => $admin->id,
+            'approved_by' => $admin->id,
+            'status' => 'completed',
+            'authority_reference' => 'PRACTICE-AUTH-001',
+            'reason' => 'Practice disposal.',
+            'disposal_method' => 'secure_digital_deletion',
+            'certificate_number' => 'PRACTICE-CERT-001',
+            'requested_at' => now(),
+            'approved_at' => now(),
+            'scheduled_purge_at' => now(),
+            'completed_at' => now(),
+        ]);
+        AuditLog::create([
+            'user_id' => $admin->id,
+            'record_id' => $record->id,
+            'action' => 'disposal_files_purged',
+            'description' => 'Practice disposal audit entry.',
+        ]);
 
         Sanctum::actingAs($admin);
 
@@ -72,11 +94,16 @@ class PracticeDataCleanupTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('deleted.records', 1)
             ->assertJsonPath('deleted.document_requests', 1)
+            ->assertJsonPath('deleted.disposal_cases', 1)
             ->assertJsonPath('deleted.archive_folders', 2);
 
         $this->assertDatabaseCount('records', 0);
         $this->assertDatabaseCount('document_requests', 0);
         $this->assertDatabaseCount('archive_folders', 0);
+        $this->assertDatabaseCount('disposal_cases', 0);
+        $this->assertDatabaseCount('record_files', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
+        $this->assertDatabaseCount('notifications', 0);
         $this->assertDatabaseHas('users', ['id' => $admin->id]);
         $this->assertDatabaseHas('departments', ['id' => $department->id]);
         $this->assertDatabaseHas('record_categories', ['id' => $category->id]);

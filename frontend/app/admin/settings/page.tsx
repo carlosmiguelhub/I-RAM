@@ -43,6 +43,7 @@ type SettingsPayload = {
     allow_admin_review: boolean;
     require_correction_notes: boolean;
     lock_archived_records: boolean;
+    disposal_grace_days: number;
   };
   files: {
     max_upload_size_mb: number;
@@ -69,11 +70,16 @@ type PracticeDataSummary = {
   enabled: boolean;
   counts: {
     records: number;
+    for_disposal_records: number;
+    disposed_records: number;
     record_files: number;
+    purged_file_metadata: number;
+    disposal_cases: number;
+    disposal_certificates: number;
     document_requests: number;
     archive_folders: number;
     notifications: number;
-    related_audit_logs: number;
+    audit_logs: number;
   };
 };
 
@@ -96,6 +102,7 @@ const defaultSettings: SettingsPayload = {
     allow_admin_review: true,
     require_correction_notes: true,
     lock_archived_records: true,
+    disposal_grace_days: 30,
   },
   files: {
     max_upload_size_mb: 25,
@@ -761,13 +768,18 @@ function DevelopmentTools({
           </div>
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <PracticeCount label="Records" value={counts?.records ?? 0} />
+              <PracticeCount label="For disposal" value={counts?.for_disposal_records ?? 0} />
+              <PracticeCount label="Disposed" value={counts?.disposed_records ?? 0} />
               <PracticeCount label="Files" value={counts?.record_files ?? 0} />
+              <PracticeCount label="Purged file metadata" value={counts?.purged_file_metadata ?? 0} />
+              <PracticeCount label="Disposal cases" value={counts?.disposal_cases ?? 0} />
+              <PracticeCount label="Certificates" value={counts?.disposal_certificates ?? 0} />
               <PracticeCount label="Requests" value={counts?.document_requests ?? 0} />
               <PracticeCount label="Folders" value={counts?.archive_folders ?? 0} />
               <PracticeCount label="Notifications" value={counts?.notifications ?? 0} />
-              <PracticeCount label="Audit logs" value={counts?.related_audit_logs ?? 0} />
+              <PracticeCount label="Audit logs" value={counts?.audit_logs ?? 0} />
             </div>
 
             <button
@@ -792,7 +804,7 @@ function DevelopmentTools({
               Reset practice workspace
             </h3>
             <p className="mt-1 text-sm leading-5 text-red-700">
-              Deletes test records, uploaded files, requests, folders, notifications, and related audit logs.
+              Deletes all practice records, disposal cases, certificates, retained file metadata, requests, folders, notifications, and audit logs.
             </p>
           </div>
         </header>
@@ -886,7 +898,9 @@ function ClearPracticeDataModal({
             <PracticeCount label="Files" value={summary?.counts.record_files ?? 0} />
             <PracticeCount label="Requests" value={summary?.counts.document_requests ?? 0} />
             <PracticeCount label="Folders" value={summary?.counts.archive_folders ?? 0} />
-            <PracticeCount label="Notifications" value={summary?.counts.notifications ?? 0} />
+            <PracticeCount label="Disposals" value={summary?.counts.disposal_cases ?? 0} />
+            <PracticeCount label="Disposed" value={summary?.counts.disposed_records ?? 0} />
+            <PracticeCount label="Audit logs" value={summary?.counts.audit_logs ?? 0} />
           </div>
 
           <label className="block">
@@ -914,7 +928,7 @@ function ClearPracticeDataModal({
           </label>
 
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
-            All records, uploaded document files, document requests, archive folders, notifications, and related practice activity will be permanently removed. Accounts and master lists are preserved.
+            All records—including For Disposal and Disposed Records—uploaded files, retained file metadata, disposal cases, certificates, document requests, folders, notifications, and audit logs will be permanently removed. Accounts and master lists are preserved.
           </div>
         </div>
 
@@ -1171,6 +1185,28 @@ function WorkflowSettings({
             onChange("lock_archived_records", checked)
           }
         />
+
+        <div className="rounded-2xl border border-[#E3DCCE] bg-[#FCFAF6] p-4">
+          <Field
+            label="Disposal grace period"
+            suffix="days"
+            hint="Approved disposal can be cancelled or placed on legal hold during this period."
+          >
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={values.disposal_grace_days}
+              onChange={(event) =>
+                onChange(
+                  "disposal_grace_days",
+                  Number(event.target.value)
+                )
+              }
+              className={inputClass}
+            />
+          </Field>
+        </div>
       </div>
     </SettingsGroup>
   );

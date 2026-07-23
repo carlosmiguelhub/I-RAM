@@ -3,15 +3,19 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
+use App\Models\DisposalCase;
 use App\Models\Record;
 use App\Models\RecordCategory;
+use App\Models\RecordFile;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\InAppNotification;
 use App\Services\RecordRetentionService;
+use App\Services\RecordDisposalService;
 use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -50,9 +54,11 @@ class RecordRetentionAndDisposalTest extends TestCase
             ->assertJsonMissing(['record_code' => $record->record_code]);
     }
 
-    public function test_officer_can_restore_or_mark_record_disposed(): void
+    public function test_disposal_requires_independent_approval_and_preserves_file_metadata(): void
     {
-        [, $officer, $record] = $this->scenario();
+        Notification::fake();
+        Storage::fake('local');
+        [, $officer, $record, $admin] = $this->scenario();
         app(RecordRetentionService::class)->moveExpiredRecords();
         Sanctum::actingAs($officer);
 
@@ -85,22 +91,89 @@ class RecordRetentionAndDisposalTest extends TestCase
             'staff_visible' => false,
         ]);
 
+        $filePath = "records/{$record->id}/test.pdf";
+        Storage::disk('local')->put($filePath, 'test attachment');
+        $file = RecordFile::create([
+            'record_id' => $record->id,
+            'uploaded_by' => $officer->id,
+            'original_name' => 'test.pdf',
+            'stored_name' => 'test.pdf',
+            'file_path' => $filePath,
+            'mime_type' => 'application/pdf',
+            'file_size' => 15,
+        ]);
+
         $this->postJson(
-            "/api/disposal/records/{$record->id}/dispose",
+            "/api/disposal/records/{$record->id}/request",
             [
-                'disposal_notes' => 'Approved under disposal authority 2026-07.',
+                'authority_reference' => 'AUTH-2026-07',
+                'reason' => 'Retention period completed.',
+                'disposal_method' => 'secure_digital_deletion',
             ]
+        )->assertCreated();
+
+        $case = DisposalCase::where('record_id', $record->id)->firstOrFail();
+
+        $this->postJson(
+            "/api/disposal/cases/{$case->id}/approve",
+            ['confirmation' => $record->record_code]
+        )->assertForbidden();
+
+        Sanctum::actingAs($admin);
+        $this->postJson(
+            "/api/disposal/cases/{$case->id}/approve",
+            ['confirmation' => $record->record_code]
         )->assertOk();
+
+        $this->assertDatabaseHas('disposal_cases', [
+            'id' => $case->id,
+            'status' => 'approved',
+            'approved_by' => $admin->id,
+        ]);
+        $this->assertDatabaseHas('records', [
+            'id' => $record->id,
+            'status' => 'for_disposal',
+        ]);
+        Storage::disk('local')->assertExists($filePath);
+
+        Carbon::setTestNow(now()->addDays(31));
+        app(RecordDisposalService::class)->processApprovedCases();
+        Carbon::setTestNow();
 
         $this->assertDatabaseHas('records', [
             'id' => $record->id,
             'status' => 'disposed',
-            'disposed_by' => $officer->id,
+            'disposed_by' => $admin->id,
         ]);
         $this->assertDatabaseHas('audit_logs', [
             'record_id' => $record->id,
-            'action' => 'disposed_record',
+            'action' => 'disposal_files_purged',
         ]);
+        $this->assertDatabaseHas('record_files', [
+            'id' => $file->id,
+            'original_name' => 'test.pdf',
+            'purged_by' => $admin->id,
+        ]);
+        Storage::disk('local')->assertMissing($filePath);
+
+        $this->getJson('/api/disposal/disposed')
+            ->assertOk()
+            ->assertJsonFragment([
+                'record_code' => $record->record_code,
+            ]);
+        $this->getJson(
+            "/api/disposal/cases/{$case->id}/certificate"
+        )
+            ->assertOk()
+            ->assertJsonPath(
+                'certificate.certificate_number',
+                "DC-".now()->format('Y').'-'.str_pad(
+                    (string) $case->id,
+                    6,
+                    '0',
+                    STR_PAD_LEFT
+                )
+            );
     }
 
     public function test_one_minute_practice_retention_uses_normal_expiry_workflow(): void
@@ -143,10 +216,60 @@ class RecordRetentionAndDisposalTest extends TestCase
         ]);
     }
 
+    public function test_legal_hold_blocks_purge_and_release_restarts_grace_period(): void
+    {
+        Notification::fake();
+        [, $officer, $record, $admin] = $this->scenario();
+        app(RecordRetentionService::class)->moveExpiredRecords();
+        Sanctum::actingAs($officer);
+
+        $this->postJson(
+            "/api/disposal/records/{$record->id}/request",
+            [
+                'authority_reference' => 'LEGAL-TEST-01',
+                'reason' => 'Routine expiry.',
+                'disposal_method' => 'secure_digital_deletion',
+            ]
+        )->assertCreated();
+        $case = DisposalCase::where('record_id', $record->id)->firstOrFail();
+
+        Sanctum::actingAs($admin);
+        $this->postJson(
+            "/api/disposal/cases/{$case->id}/approve",
+            ['confirmation' => $record->record_code]
+        )->assertOk();
+        $this->patchJson(
+            "/api/disposal/records/{$record->id}/legal-hold",
+            [
+                'legal_hold' => true,
+                'reason' => 'Pending litigation review.',
+            ]
+        )->assertOk();
+
+        Carbon::setTestNow(now()->addDays(31));
+        app(RecordDisposalService::class)->processApprovedCases();
+
+        $this->assertDatabaseHas('records', [
+            'id' => $record->id,
+            'status' => 'for_disposal',
+            'legal_hold' => true,
+        ]);
+
+        $this->patchJson(
+            "/api/disposal/records/{$record->id}/legal-hold",
+            ['legal_hold' => false]
+        )->assertOk();
+        $case->refresh();
+
+        $this->assertTrue($case->scheduled_purge_at->isFuture());
+        Carbon::setTestNow();
+    }
+
     private function scenario(): array
     {
         $staffRole = Role::create(['name' => 'Staff']);
         $officerRole = Role::create(['name' => 'Records Officer']);
+        $adminRole = Role::create(['name' => 'Admin']);
         $department = Department::create([
             'name' => 'Retention Test Department',
             'code' => 'RTD',
@@ -162,6 +285,11 @@ class RecordRetentionAndDisposalTest extends TestCase
         ]);
         $officer = User::factory()->create([
             'role_id' => $officerRole->id,
+            'department_id' => $department->id,
+            'status' => 'active',
+        ]);
+        $admin = User::factory()->create([
+            'role_id' => $adminRole->id,
             'department_id' => $department->id,
             'status' => 'active',
         ]);
@@ -182,6 +310,6 @@ class RecordRetentionAndDisposalTest extends TestCase
             'access_level' => 'internal',
         ]);
 
-        return [$staff, $officer, $record];
+        return [$staff, $officer, $record, $admin];
     }
 }

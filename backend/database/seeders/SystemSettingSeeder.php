@@ -96,6 +96,13 @@ class SystemSettingSeeder extends Seeder
                 'type' => 'boolean',
                 'is_public' => false,
             ],
+            [
+                'group' => 'workflow',
+                'key' => 'disposal_grace_days',
+                'value' => '30',
+                'type' => 'integer',
+                'is_public' => false,
+            ],
 
             [
                 'group' => 'files',

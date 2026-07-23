@@ -35,6 +35,10 @@ class Record extends Model
         'disposed_by',
         'disposed_at',
         'disposal_notes',
+        'legal_hold',
+        'legal_hold_reason',
+        'legal_hold_by',
+        'legal_hold_at',
         'archive_folder_id',
 
         // Staff archive access
@@ -52,6 +56,8 @@ class Record extends Model
         'retention_expires_at' => 'datetime',
         'for_disposal_at' => 'datetime',
         'disposed_at' => 'datetime',
+        'legal_hold' => 'boolean',
+        'legal_hold_at' => 'datetime',
         'staff_visible' => 'boolean',
     ];
 
@@ -106,6 +112,24 @@ class Record extends Model
             User::class,
             'disposed_by'
         );
+    }
+
+    public function legalHoldAuthor()
+    {
+        return $this->belongsTo(
+            User::class,
+            'legal_hold_by'
+        );
+    }
+
+    public function disposalCases()
+    {
+        return $this->hasMany(DisposalCase::class);
+    }
+
+    public function latestDisposalCase()
+    {
+        return $this->hasOne(DisposalCase::class)->latestOfMany();
     }
 
     public function archiveFolder()

@@ -68,8 +68,14 @@ Route::middleware(['auth:sanctum', 'account.access'])->group(function () {
 
     Route::prefix('disposal')->group(function () {
         Route::get('/records', [DisposalController::class, 'index']);
+        Route::get('/disposed', [DisposalController::class, 'disposed']);
         Route::post('/records/{record}/restore', [DisposalController::class, 'restore']);
-        Route::post('/records/{record}/dispose', [DisposalController::class, 'dispose']);
+        Route::post('/records/{record}/request', [DisposalController::class, 'requestDisposal']);
+        Route::patch('/records/{record}/legal-hold', [DisposalController::class, 'updateLegalHold']);
+        Route::post('/cases/{disposalCase}/approve', [DisposalController::class, 'approve']);
+        Route::post('/cases/{disposalCase}/reject', [DisposalController::class, 'reject']);
+        Route::post('/cases/{disposalCase}/cancel', [DisposalController::class, 'cancel']);
+        Route::get('/cases/{disposalCase}/certificate', [DisposalController::class, 'certificate']);
     });
 
     Route::prefix('admin')->middleware('account.manager')->group(function () {

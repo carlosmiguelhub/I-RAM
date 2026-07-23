@@ -13,6 +13,9 @@ class RecordFile extends Model
         'file_path',
         'mime_type',
         'file_size',
+        'purged_at',
+        'purged_by',
+        'purge_reason',
         'uploaded_by',
     ];
 
@@ -29,6 +32,7 @@ class RecordFile extends Model
 
     protected $casts = [
         'file_size' => 'integer',
+        'purged_at' => 'datetime',
     ];
 
     public function getFileNameAttribute(): string
@@ -49,5 +53,10 @@ class RecordFile extends Model
     public function uploader()
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    public function purger()
+    {
+        return $this->belongsTo(User::class, 'purged_by');
     }
 }
