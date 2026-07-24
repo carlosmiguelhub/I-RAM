@@ -1,0 +1,22 @@
+# Replace 192.168.94.188 if the IRAM server receives a different fixed LAN IP.
+# Caddy terminates HTTPS and keeps Next.js/Laravel private on this computer.
+{
+	auto_https disable_redirects
+
+	storage file_system {
+		root {$IRAM_CADDY_STORAGE}
+	}
+}
+
+https://192.168.94.188:8443 {
+	encode zstd gzip
+	tls internal
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}

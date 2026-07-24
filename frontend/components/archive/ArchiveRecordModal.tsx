@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Archive,
   CalendarClock,
@@ -121,6 +121,7 @@ export default function ArchiveRecordModal({
 
   const [actionError, setActionError] = useState("");
   const [accessSuccess, setAccessSuccess] = useState("");
+  const modalScrollRef = useRef<HTMLDivElement>(null);
 
   const files = record?.files || [];
 
@@ -135,6 +136,10 @@ export default function ArchiveRecordModal({
     if (!record) return;
 
     const timeoutId = window.setTimeout(() => {
+      modalScrollRef.current?.scrollTo({
+        top: 0,
+        behavior: "instant",
+      });
       setAccessMode(getAccessMode(record));
       setRetentionType(record.retention_type || "permanent");
       setRetentionYears(String(record.retention_years || 1));
@@ -678,7 +683,10 @@ export default function ArchiveRecordModal({
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+        <div
+          ref={modalScrollRef}
+          className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
+        >
           {(error || actionError) && (
             <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
               {actionError || error}

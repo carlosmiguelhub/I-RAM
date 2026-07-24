@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
+import SubmissionProgressOverlay, {
+  type SubmissionStage,
+} from "@/components/SubmissionProgressOverlay";
 import { apiRequest } from "@/lib/api";
 
 type Option = {
@@ -94,6 +97,9 @@ export default function CorrectRecordPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
+  const [submissionStage, setSubmissionStage] =
+    useState<SubmissionStage>("preparing");
   const [removingFileId, setRemovingFileId] = useState<number | null>(null);
 
   const [error, setError] = useState("");
@@ -357,9 +363,21 @@ export default function CorrectRecordPage() {
 
   async function handleSaveAndResubmit() {
     setSaving(true);
+    setResubmitting(true);
+    setSubmissionStage("preparing");
     setError("");
     setSuccess("");
     setFileError("");
+    const progressTimers = [
+      window.setTimeout(
+        () => setSubmissionStage("uploading"),
+        450
+      ),
+      window.setTimeout(
+        () => setSubmissionStage("finalizing"),
+        1800
+      ),
+    ];
 
     try {
       const updatedRecord = await saveCorrections();
@@ -377,6 +395,10 @@ export default function CorrectRecordPage() {
         }
       );
 
+      progressTimers.forEach((timer) =>
+        window.clearTimeout(timer)
+      );
+      setSubmissionStage("success");
       setSuccess(
         data.message ||
           "Corrected submission sent back for review."
@@ -388,6 +410,9 @@ export default function CorrectRecordPage() {
         ? JSON.parse(savedUser)?.role?.name
         : "";
 
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, 750)
+      );
       router.push(
         roleName === "Staff"
           ? "/records"
@@ -396,13 +421,20 @@ export default function CorrectRecordPage() {
 
       router.refresh();
     } catch (error: unknown) {
+      progressTimers.forEach((timer) =>
+        window.clearTimeout(timer)
+      );
+      setResubmitting(false);
+      setSubmissionStage("preparing");
       setError(
         error instanceof Error
           ? error.message
           : "Failed to resubmit the record."
       );
     } finally {
-      setSaving(false);
+      if (!resubmitting) {
+        setSaving(false);
+      }
     }
   }
 
@@ -696,6 +728,12 @@ export default function CorrectRecordPage() {
           </div>
         </form>
       </div>
+      <SubmissionProgressOverlay
+        open={resubmitting}
+        stage={submissionStage}
+        fileCount={totalFiles}
+        action="resubmit"
+      />
     </AppShell>
   );
 }

@@ -14,6 +14,9 @@ import {
   UserRound,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import SubmissionProgressOverlay, {
+  type SubmissionStage,
+} from "@/components/SubmissionProgressOverlay";
 import { apiRequest } from "@/lib/api";
 
 type Department = {
@@ -86,6 +89,8 @@ export default function CreateRecordPage() {
   const [fileError, setFileError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [submissionStage, setSubmissionStage] =
+    useState<SubmissionStage>("preparing");
 
   const [form, setForm] = useState({
     title: "",
@@ -250,9 +255,9 @@ export default function CreateRecordPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    setLoading(true);
     setSubmitError("");
     setFileError("");
+    const progressTimers: number[] = [];
 
     try {
       if (!form.category_id) {
@@ -268,6 +273,19 @@ export default function CreateRecordPage() {
           "Your account is not assigned to a department."
         );
       }
+
+      setLoading(true);
+      setSubmissionStage("preparing");
+      progressTimers.push(
+        window.setTimeout(
+          () => setSubmissionStage("uploading"),
+          450
+        ),
+        window.setTimeout(
+          () => setSubmissionStage("finalizing"),
+          1800
+        )
+      );
 
       const payload = new FormData();
 
@@ -300,6 +318,11 @@ export default function CreateRecordPage() {
         body: payload,
       });
 
+      progressTimers.forEach((timer) =>
+        window.clearTimeout(timer)
+      );
+      setSubmissionStage("success");
+
       localStorage.setItem(
         "iram_records_changed_at",
         String(Date.now())
@@ -308,16 +331,22 @@ export default function CreateRecordPage() {
         new CustomEvent("iram:records-changed")
       );
 
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, 750)
+      );
       router.push("/records");
       router.refresh();
     } catch (error: unknown) {
+      progressTimers.forEach((timer) =>
+        window.clearTimeout(timer)
+      );
+      setLoading(false);
+      setSubmissionStage("preparing");
       setSubmitError(
         error instanceof Error
           ? error.message
           : "Failed to submit the record."
       );
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -353,7 +382,11 @@ export default function CreateRecordPage() {
           </div>
         </section>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-6 space-y-5"
+          aria-busy={loading}
+        >
           {submitError && (
             <div
               role="alert"
@@ -579,9 +612,13 @@ export default function CreateRecordPage() {
                 disabled={loading}
                 className="flex w-full items-center justify-center rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#6B0F2B]/20 transition hover:-translate-y-0.5 hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
-                {!loading && <Send className="mr-2 h-4 w-4" />}
+                {loading ? (
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
                 {loading
-                  ? "Submitting..."
+                  ? "Submitting securely..."
                   : isStaff
                     ? "Submit for Review"
                     : "Save Record"}
@@ -590,6 +627,11 @@ export default function CreateRecordPage() {
           </div>
         </form>
       </div>
+      <SubmissionProgressOverlay
+        open={loading}
+        stage={submissionStage}
+        fileCount={selectedFiles.length}
+      />
     </AppShell>
   );
 }

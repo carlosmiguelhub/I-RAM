@@ -7,7 +7,6 @@ import {
   BookOpen,
   Building2,
   ChevronDown,
-  CircleHelp,
   ClipboardCheck,
   ClipboardList,
   FilePlus2,
@@ -45,28 +44,22 @@ const workspaceItems: SidebarItem[] = [
     roles: allRoles,
   },
   {
-    name: "My Submissions",
-    href: "/records?scope=mine",
-    icon: FileUser,
-    roles: managerRoles,
-  },
-  {
-    name: "My Records",
+    name: "My Document Records",
     href: "/records",
     icon: FileUser,
     roles: ["Staff"],
   },
   {
-    name: "Archive Catalog",
-    href: "/archive-catalog",
-    icon: BookOpen,
+    name: "My Document Requests",
+    href: "/document-requests",
+    icon: ClipboardList,
     roles: ["Staff"],
   },
   {
     name: "Document Requests",
     href: "/document-requests",
     icon: ClipboardList,
-    roles: allRoles,
+    roles: managerRoles,
   },
   {
     name: "Archive Repository",
@@ -80,11 +73,23 @@ const workspaceItems: SidebarItem[] = [
     icon: Trash2,
     roles: managerRoles,
   },
+];
+
+const repositoryItems: SidebarItem[] = [
   {
-    name: "Help & Guidelines",
-    href: "/staff-guide",
-    icon: CircleHelp,
+    name: "Archive Catalog",
+    href: "/archive-catalog",
+    icon: BookOpen,
     roles: ["Staff"],
+  },
+];
+
+const personalItems: SidebarItem[] = [
+  {
+    name: "My Submissions",
+    href: "/records?scope=mine",
+    icon: FileUser,
+    roles: managerRoles,
   },
 ];
 
@@ -188,6 +193,20 @@ export default function Sidebar({
   const visibleRecordsItems = useMemo(
     () =>
       recordsItems.filter((item) =>
+        item.roles.includes(roleName)
+      ),
+    [roleName]
+  );
+  const visibleRepositoryItems = useMemo(
+    () =>
+      repositoryItems.filter((item) =>
+        item.roles.includes(roleName)
+      ),
+    [roleName]
+  );
+  const visiblePersonalItems = useMemo(
+    () =>
+      personalItems.filter((item) =>
         item.roles.includes(roleName)
       ),
     [roleName]
@@ -337,6 +356,37 @@ export default function Sidebar({
               />
             ))}
           </MenuSection>
+
+          {visibleRepositoryItems.length > 0 && (
+            <MenuSection
+              label="Records Repository"
+              collapsed={collapsed}
+            >
+              {visibleRepositoryItems.map((item) => (
+                <NavigationItem
+                  key={item.name}
+                  item={item}
+                  active={isActive(item.href)}
+                  collapsed={collapsed}
+                  onClick={onClose}
+                />
+              ))}
+            </MenuSection>
+          )}
+
+          {visiblePersonalItems.length > 0 && (
+            <MenuSection label="My Activity" collapsed={collapsed}>
+              {visiblePersonalItems.map((item) => (
+                <NavigationItem
+                  key={item.name}
+                  item={item}
+                  active={isActive(item.href)}
+                  collapsed={collapsed}
+                  onClick={onClose}
+                />
+              ))}
+            </MenuSection>
+          )}
 
           {visibleRecordsItems.length > 0 && (
             <MenuSection label="Records" collapsed={collapsed}>

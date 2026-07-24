@@ -1,6 +1,7 @@
 "use client";
 
-  import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
   import Link from "next/link";
   import { useRouter, useSearchParams } from "next/navigation";
   import {
@@ -1034,6 +1035,7 @@
     onDownload: (file: RecordFile) => void;
   }) {
     const files = record?.files || [];
+    const previewScrollRef = useRef<HTMLDivElement>(null);
     const isUnderReview = record?.status === "under_review";
     const isReceived = record?.status === "received";
     const showWorkflow =
@@ -1045,7 +1047,16 @@
       isRecordOwner &&
       record?.status === "returned_for_correction";
 
-    return (
+    useEffect(() => {
+      previewScrollRef.current?.scrollTo({
+        top: 0,
+        behavior: "instant",
+      });
+    }, [record?.id]);
+
+    if (typeof document === "undefined") return null;
+
+    return createPortal(
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-[#17231E]/75 p-0 backdrop-blur-sm sm:p-5"
         onMouseDown={(event) => {
@@ -1100,7 +1111,10 @@
             </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+          <div
+            ref={previewScrollRef}
+            className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6"
+          >
             {loading && !record ? (
               <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl bg-[#F8F5EE] text-sm font-medium text-[#766F63]">
                 <Loader2 className="h-6 w-6 animate-spin text-[#075A3A]" />
@@ -1594,7 +1608,8 @@ href={`/records/${record.id}/edit`}
             </footer>
           )}
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 

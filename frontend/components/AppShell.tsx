@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
+import StaffHelpCenter from "./StaffHelpCenter";
 import Topbar from "./Topbar";
 
 export default function AppShell({
@@ -51,12 +52,13 @@ export default function AppShell({
       >
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="w-full max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7 lg:py-6 xl:px-8">
+        <main className="min-w-0 w-full max-w-full px-4 py-5 sm:px-6 lg:px-7 lg:py-6 xl:px-8">
           <div key={pathname} className="iram-page-enter">
             {children}
           </div>
         </main>
       </div>
+      <StaffHelpCenter />
     </div>
   );
 }

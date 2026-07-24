@@ -1,4 +1,4 @@
 php artisan schedule:work
 npm run dev
 php artisan serve
-    
+    npm run dev -- --hostname 0.0.0.0

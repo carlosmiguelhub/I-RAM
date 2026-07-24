@@ -6,15 +6,14 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Archive,
   ChevronDown,
-  CircleHelp,
   FileText,
   LogOut,
   Menu,
-  Search,
 } from "lucide-react";
 import { apiRequest, clearStoredAuth } from "@/lib/api";
 import type { AuthUser } from "@/lib/types";
 import NotificationBell from "./NotificationBell";
+import PwaInstallButton from "./PwaInstallButton";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Topbar({
@@ -92,22 +91,7 @@ export default function Topbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        <div className="hidden h-9 w-48 items-center gap-2 rounded-xl border border-[#E2DED6] bg-[#FAF9F7] px-3 text-[#989289] xl:flex">
-          <Search className="h-4 w-4" />
-          <span className="text-xs">Search archive...</span>
-        </div>
-
-        {user?.role?.name === "Staff" && (
-          <Link
-            href="/staff-guide"
-            aria-label="Open Staff Help and Guidelines"
-            title="Staff Help and Guidelines"
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-[#59605B] transition hover:bg-[#F4F2EE] hover:text-[#075A3A] dark:text-[#A9B6C8] dark:hover:bg-white/5 dark:hover:text-[#78D6A7]"
-          >
-            <CircleHelp className="h-[1.15rem] w-[1.15rem]" />
-          </Link>
-        )}
-
+        <PwaInstallButton />
         <NotificationBell />
         <ThemeToggle compact />
 

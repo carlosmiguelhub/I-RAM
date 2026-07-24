@@ -76,7 +76,6 @@ export default function ArchiveCatalogPage() {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
-  const [accessLevel, setAccessLevel] = useState("");
   const [viewMode, changeView] = usePersistentViewMode(
     "archive-catalog-view",
     "grid"
@@ -107,10 +106,9 @@ export default function ArchiveCatalogPage() {
       Boolean(
         search.trim() ||
           categoryId ||
-          departmentId ||
-          accessLevel
+          departmentId
       ),
-    [search, categoryId, departmentId, accessLevel]
+    [search, categoryId, departmentId]
   );
 
   async function loadOptions() {
@@ -171,10 +169,6 @@ export default function ArchiveCatalogPage() {
 
       if (departmentId) {
         params.set("department_id", departmentId);
-      }
-
-      if (accessLevel) {
-        params.set("access_level", accessLevel);
       }
 
       const data: PaginationData = await apiRequest(
@@ -246,7 +240,6 @@ export default function ArchiveCatalogPage() {
     search,
     categoryId,
     departmentId,
-    accessLevel,
     selectedRecord,
     submitting,
   ]);
@@ -283,7 +276,6 @@ export default function ArchiveCatalogPage() {
     search,
     categoryId,
     departmentId,
-    accessLevel,
     selectedRecord,
     submitting,
   ]);
@@ -317,7 +309,6 @@ export default function ArchiveCatalogPage() {
     setSearch("");
     setCategoryId("");
     setDepartmentId("");
-    setAccessLevel("");
     setSuccess("");
 
     setTimeout(() => {
@@ -487,7 +478,7 @@ export default function ArchiveCatalogPage() {
               </button>
             </form>
 
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
               <FilterSelect
                 label="Category"
                 value={categoryId}
@@ -522,16 +513,6 @@ export default function ArchiveCatalogPage() {
                     {department.name}
                   </option>
                 ))}
-              </FilterSelect>
-
-              <FilterSelect
-                label="Access"
-                value={accessLevel}
-                onChange={(value) => setAccessLevel(value)}
-              >
-                <option value="">All access levels</option>
-                <option value="internal">Internal</option>
-                <option value="restricted">Restricted</option>
               </FilterSelect>
 
               <div className="flex items-end gap-2">
