@@ -36,7 +36,7 @@ export default function ThemeToggle({ compact = false }: { compact?: boolean }) 
       onClick={toggleTheme}
       aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
       title={`Switch to ${isDark ? "light" : "dark"} mode`}
-      className={`group inline-flex items-center justify-center rounded-xl border border-[#D7CDBB] bg-white/90 text-[#514D46] shadow-sm backdrop-blur transition-colors duration-200 hover:border-[#B98529] hover:bg-[#FFF9EA] hover:text-[#075A3A] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/20 dark:border-[#49443B] dark:bg-[#2C2923]/95 dark:text-[#D9D3C8] dark:hover:border-[#A98545] dark:hover:bg-[#373229] dark:hover:text-[#E8C77F] ${
+      className={`group inline-flex items-center justify-center rounded-xl border border-[#D7CDBB] bg-white/90 text-[#514D46] shadow-sm backdrop-blur transition-colors duration-200 hover:border-[#B98529] hover:bg-[#FFF9EA] hover:text-[#075A3A] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/20 dark:border-[#33445E] dark:bg-[#172337]/95 dark:text-[#D9E2EE] dark:hover:border-[#C99B42] dark:hover:bg-[#223149] dark:hover:text-[#F1C768] ${
         compact ? "h-9 w-9" : "h-10 gap-2 px-3"
       }`}
     >

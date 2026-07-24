@@ -1,18 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CircleHelp, Menu } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Archive,
+  ChevronDown,
+  CircleHelp,
+  FileText,
+  LogOut,
+  Menu,
+  Search,
+} from "lucide-react";
 import { apiRequest, clearStoredAuth } from "@/lib/api";
 import type { AuthUser } from "@/lib/types";
 import NotificationBell from "./NotificationBell";
 import ThemeToggle from "./ThemeToggle";
 
-export default function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
+export default function Topbar({
+  onMenuClick,
+}: {
+  onMenuClick: () => void;
+}) {
+  const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const pageTitle = getPageTitle(pathname);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -48,74 +62,113 @@ export default function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur transition-colors dark:border-[#403C35] dark:bg-[#22201C]/92 sm:px-6 lg:px-8">
-      <div className="flex min-w-0 items-center gap-3">
+    <header className="sticky top-0 z-30 flex h-16 items-center border-b border-[#E7E3DC] bg-white/95 px-4 backdrop-blur-md transition-colors dark:border-[#26354A] dark:bg-[#0D1728]/95 sm:px-6 lg:px-7 xl:px-8">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <button
           type="button"
           onClick={onMenuClick}
-          className="rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition-colors hover:bg-slate-100 dark:border-[#49443B] dark:bg-[#2C2923] dark:text-[#D9D3C8] dark:hover:bg-[#373229] lg:hidden"
-          aria-label="Open sidebar"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD7CC] bg-white text-[#4F5651] shadow-sm transition hover:bg-[#F7F5F1] hover:text-[#075A3A] dark:border-[#33445E] dark:bg-[#172337] dark:text-[#D9E2EE] lg:hidden"
+          aria-label="Open navigation"
         >
           <Menu className="h-5 w-5" />
         </button>
 
+        <span className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F0F7F3] text-[#075A3A] sm:flex">
+          {pathname.startsWith("/archive") ? (
+            <Archive className="h-4 w-4" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
+        </span>
+
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-bold text-slate-900 sm:text-base">
-            Document Archive
-          </h2>
-          <p className="hidden truncate text-xs text-slate-500 sm:block">
-            Record Acquisition and Archiving Management
+          <p className="truncate text-sm font-extrabold text-[#202622] sm:text-[15px]">
+            {pageTitle}
+          </p>
+          <p className="hidden truncate text-[11px] text-[#8A847B] sm:block">
+            IRAM · Record Acquisition and Archiving Management
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-1 sm:gap-3">
-        <div className="hidden w-64 items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 xl:flex xl:w-80">
-          <span className="text-sm text-slate-400">Search archive...</span>
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <div className="hidden h-9 w-48 items-center gap-2 rounded-xl border border-[#E2DED6] bg-[#FAF9F7] px-3 text-[#989289] xl:flex">
+          <Search className="h-4 w-4" />
+          <span className="text-xs">Search archive...</span>
         </div>
-
-        <NotificationBell />
 
         {user?.role?.name === "Staff" && (
           <Link
             href="/staff-guide"
             aria-label="Open Staff Help and Guidelines"
             title="Staff Help and Guidelines"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D7CDBB] bg-white text-[#075A3A] shadow-sm transition-colors hover:border-[#D9961A] hover:bg-[#FFF9EA] hover:text-[#6B0F2B] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/20 dark:border-[#49443B] dark:bg-[#2C2923] dark:text-[#89B79D] dark:hover:bg-[#373229] dark:hover:text-[#E8C77F]"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-[#59605B] transition hover:bg-[#F4F2EE] hover:text-[#075A3A] dark:text-[#A9B6C8] dark:hover:bg-white/5 dark:hover:text-[#78D6A7]"
           >
-            <CircleHelp className="h-5 w-5" />
+            <CircleHelp className="h-[1.15rem] w-[1.15rem]" />
           </Link>
         )}
 
+        <NotificationBell />
         <ThemeToggle compact />
 
         <Link
           href="/profile"
-          className="flex items-center gap-2 rounded-xl px-1.5 py-1.5 transition hover:bg-slate-100 dark:hover:bg-white/5 sm:px-2"
+          className="ml-0.5 flex min-w-0 items-center gap-2 rounded-xl p-1 transition hover:bg-[#F4F2EE] dark:hover:bg-white/5"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-sm font-bold uppercase text-white">
-            {user?.name?.charAt(0) || "U"}
-          </div>
-
-          <div className="hidden md:block">
-            <p className="max-w-32 truncate text-sm font-semibold text-slate-900">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#075A3A] text-[10px] font-extrabold uppercase text-white">
+            {initials(user?.name)}
+          </span>
+          <span className="hidden min-w-0 lg:block">
+            <span className="block max-w-28 truncate text-xs font-bold text-[#252A27]">
               {user?.name || "IRAM User"}
-            </p>
-            <p className="max-w-32 truncate text-xs text-slate-500">
+            </span>
+            <span className="block max-w-28 truncate text-[10px] text-[#8A847B]">
               {user?.role?.name || "Account"}
-            </p>
-          </div>
+            </span>
+          </span>
+          <ChevronDown className="hidden h-3.5 w-3.5 text-[#8A847B] lg:block" />
         </Link>
 
         <button
           type="button"
           onClick={handleLogout}
           disabled={loggingOut}
-          className="rounded-xl bg-slate-950 px-2.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:text-sm"
+          className="ml-0.5 flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#E2DED6] px-2.5 text-xs font-bold text-[#6B0F2B] transition hover:border-[#D4B9C2] hover:bg-[#FBF3F5] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#33445E] dark:hover:bg-white/5 sm:px-3"
+          aria-label="Logout"
         >
-          {loggingOut ? "..." : "Logout"}
+          <LogOut className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            {loggingOut ? "Signing out..." : "Logout"}
+          </span>
         </button>
       </div>
     </header>
   );
+}
+
+function getPageTitle(pathname: string) {
+  if (pathname === "/dashboard") return "Dashboard";
+  if (pathname.startsWith("/archive-catalog")) return "Archive Catalog";
+  if (pathname.startsWith("/archive/folders")) return "Archive Folders";
+  if (pathname.startsWith("/archive")) return "Archive Repository";
+  if (pathname.startsWith("/disposal")) return "For Disposal";
+  if (pathname.startsWith("/document-requests")) {
+    return "Document Requests";
+  }
+  if (pathname.startsWith("/records/create")) return "New Record";
+  if (pathname.startsWith("/records")) return "Records";
+  if (pathname.startsWith("/audit-trail")) return "Audit Trail";
+  if (pathname.startsWith("/admin/users")) return "User Management";
+  if (pathname.startsWith("/admin/departments")) return "Departments";
+  if (pathname.startsWith("/admin/categories")) return "Categories";
+  if (pathname.startsWith("/admin/settings")) return "System Settings";
+  if (pathname.startsWith("/staff-guide")) return "Help & Guidelines";
+  if (pathname.startsWith("/profile")) return "Profile & Security";
+  return "Document Archive";
+}
+
+function initials(name?: string | null) {
+  const parts = (name || "User").trim().split(/\s+/);
+
+  return `${parts[0]?.[0] || "U"}${parts[1]?.[0] || ""}`.toUpperCase();
 }

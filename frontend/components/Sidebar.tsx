@@ -4,19 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Archive,
   BookOpen,
   Building2,
   ChevronDown,
+  CircleHelp,
   ClipboardCheck,
   ClipboardList,
-  CircleHelp,
   FilePlus2,
   FileUser,
   Files,
   FolderArchive,
   Gauge,
   History,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   Tags,
   Trash2,
@@ -24,39 +25,35 @@ import {
   Users,
   X,
 } from "lucide-react";
+import type { AuthUser } from "@/lib/types";
 
 type SidebarItem = {
   name: string;
   href: string;
-  icon: React.ComponentType<{
-    className?: string;
-  }>;
+  icon: React.ComponentType<{ className?: string }>;
   roles: string[];
 };
 
-const mainMenuItems: SidebarItem[] = [
+const allRoles = ["Admin", "Records Officer", "Staff"];
+const managerRoles = ["Admin", "Records Officer"];
+
+const workspaceItems: SidebarItem[] = [
   {
     name: "Dashboard",
     href: "/dashboard",
     icon: Gauge,
-    roles: ["Admin", "Records Officer", "Staff"],
+    roles: allRoles,
   },
   {
     name: "My Submissions",
     href: "/records?scope=mine",
     icon: FileUser,
-    roles: ["Admin", "Records Officer"],
+    roles: managerRoles,
   },
   {
     name: "My Records",
     href: "/records",
     icon: FileUser,
-    roles: ["Staff"],
-  },
-  {
-    name: "New Submission",
-    href: "/records/create",
-    icon: FilePlus2,
     roles: ["Staff"],
   },
   {
@@ -69,25 +66,19 @@ const mainMenuItems: SidebarItem[] = [
     name: "Document Requests",
     href: "/document-requests",
     icon: ClipboardList,
-    roles: ["Admin", "Records Officer", "Staff"],
+    roles: allRoles,
   },
   {
     name: "Archive Repository",
     href: "/archive",
     icon: FolderArchive,
-    roles: ["Admin", "Records Officer"],
+    roles: managerRoles,
   },
   {
     name: "For Disposal",
     href: "/disposal",
     icon: Trash2,
-    roles: ["Admin", "Records Officer"],
-  },
-  {
-    name: "Audit Trail",
-    href: "/audit-trail",
-    icon: History,
-    roles: ["Admin", "Records Officer"],
+    roles: managerRoles,
   },
   {
     name: "Help & Guidelines",
@@ -95,36 +86,36 @@ const mainMenuItems: SidebarItem[] = [
     icon: CircleHelp,
     roles: ["Staff"],
   },
-  {
-    name: "Profile",
-    href: "/profile",
-    icon: UserCircle2,
-    roles: ["Records Officer", "Staff"],
-  },
 ];
 
-const recordSubmenuItems: SidebarItem[] = [
+const recordsItems: SidebarItem[] = [
   {
     name: "All Records",
     href: "/records",
     icon: Files,
-    roles: ["Admin", "Records Officer"],
+    roles: managerRoles,
   },
   {
     name: "Add Record",
     href: "/records/create",
     icon: FilePlus2,
-    roles: ["Admin", "Records Officer"],
+    roles: managerRoles,
   },
   {
     name: "Under Review",
     href: "/records?status=under_review",
     icon: ClipboardCheck,
-    roles: ["Admin", "Records Officer"],
+    roles: managerRoles,
   },
 ];
 
-const settingsSubmenuItems: SidebarItem[] = [
+const administrationItems: SidebarItem[] = [
+  {
+    name: "Audit Trail",
+    href: "/audit-trail",
+    icon: History,
+    roles: managerRoles,
+  },
   {
     name: "User Management",
     href: "/admin/users",
@@ -144,12 +135,6 @@ const settingsSubmenuItems: SidebarItem[] = [
     roles: ["Admin"],
   },
   {
-    name: "Profile",
-    href: "/profile",
-    icon: UserCircle2,
-    roles: ["Admin"],
-  },
-  {
     name: "System Settings",
     href: "/admin/settings",
     icon: Settings,
@@ -159,114 +144,72 @@ const settingsSubmenuItems: SidebarItem[] = [
 
 export default function Sidebar({
   open,
+  collapsed,
   onClose,
+  onToggleCollapse,
 }: {
   open: boolean;
+  collapsed: boolean;
   onClose: () => void;
+  onToggleCollapse: () => void;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  const [roleName, setRoleName] = useState("");
-  const [recordsOpen, setRecordsOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [administrationOpen, setAdministrationOpen] = useState(true);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       const storedUser = localStorage.getItem("iram_user");
 
       if (!storedUser) {
-        setRoleName("");
+        setUser(null);
         return;
       }
 
       try {
-        const user = JSON.parse(storedUser);
-        setRoleName(user?.role?.name || "");
+        setUser(JSON.parse(storedUser));
       } catch {
-        setRoleName("");
+        setUser(null);
       }
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
   }, []);
 
-  const visibleMainItems = useMemo(() => {
-    if (!roleName) return [];
-
-    return mainMenuItems.filter((item) =>
-      item.roles.includes(roleName)
-    );
-  }, [roleName]);
-
-  const visibleRecordItems = useMemo(() => {
-    if (!roleName) return [];
-
-    return recordSubmenuItems.filter((item) =>
-      item.roles.includes(roleName)
-    );
-  }, [roleName]);
-
-  const visibleSettingsItems = useMemo(() => {
-    if (!roleName) return [];
-
-    return settingsSubmenuItems.filter((item) =>
-      item.roles.includes(roleName)
-    );
-  }, [roleName]);
-
-  const canSeeRecordsGroup =
-    roleName === "Admin" || roleName === "Records Officer";
-
-  const canSeeSettingsGroup = roleName === "Admin";
+  const roleName = user?.role?.name || "";
+  const visibleWorkspaceItems = useMemo(
+    () =>
+      workspaceItems.filter((item) =>
+        item.roles.includes(roleName)
+      ),
+    [roleName]
+  );
+  const visibleRecordsItems = useMemo(
+    () =>
+      recordsItems.filter((item) =>
+        item.roles.includes(roleName)
+      ),
+    [roleName]
+  );
+  const visibleAdministrationItems = useMemo(
+    () =>
+      administrationItems.filter((item) =>
+        item.roles.includes(roleName)
+      ),
+    [roleName]
+  );
 
   const currentStatus = searchParams.get("status");
   const currentScope = searchParams.get("scope");
-
-  const recordsSectionActive =
-    canSeeRecordsGroup &&
-    pathname.startsWith("/records") &&
-    currentScope !== "mine";
-
-  const settingsSectionActive =
-    canSeeSettingsGroup &&
-    (pathname.startsWith("/admin/") ||
-      pathname === "/profile");
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      if (recordsSectionActive) {
-        setRecordsOpen(true);
-      }
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [recordsSectionActive]);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      if (settingsSectionActive) {
-        setSettingsOpen(true);
-      }
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [settingsSectionActive]);
-
   const primaryAction =
-    roleName === "Staff"
-      ? "New Submission"
-      : "Add New Record";
+    roleName === "Staff" ? "New Submission" : "Add New Record";
 
   function isActive(href: string) {
     const [itemPath, queryString] = href.split("?");
 
     if (pathname !== itemPath) {
-      if (!queryString) {
-        return pathname.startsWith(`${itemPath}/`);
-      }
-
-      return false;
+      return !queryString && pathname.startsWith(`${itemPath}/`);
     }
 
     if (queryString) {
@@ -284,311 +227,312 @@ export default function Sidebar({
     return true;
   }
 
-  function isRecordChildActive(href: string) {
-    const [itemPath, queryString] = href.split("?");
-
-    if (queryString) {
-      if (pathname !== itemPath) return false;
-
-      const expectedParams = new URLSearchParams(queryString);
-
-      return Array.from(expectedParams.entries()).every(
-        ([key, value]) => searchParams.get(key) === value
-      );
-    }
-
-    if (href === "/records") {
-      return (
-        pathname === "/records" &&
-        !currentStatus &&
-        !currentScope
-      );
-    }
-
-    if (href === "/records/create") {
-      return pathname === "/records/create";
-    }
-
-    return pathname === itemPath;
-  }
-
-  function isSettingsChildActive(href: string) {
-    return (
-      pathname === href ||
-      pathname.startsWith(`${href}/`)
-    );
-  }
-
-  function renderMenuItem(item: SidebarItem) {
-    const Icon = item.icon;
-    const active = isActive(item.href);
-
-    return (
-      <Link
-        key={item.name}
-        href={item.href}
-        onClick={onClose}
-        className={`group relative flex min-h-10 items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
-          active
-            ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
-            : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5] dark:text-[#C9C1B5] dark:hover:bg-white/5 dark:hover:text-[#F4C25E] dark:hover:ring-white/10"
-        }`}
-      >
-        {active && (
-          <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[#D9961A]" />
-        )}
-
-        <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-all duration-200 ${
-            active
-              ? "bg-white/15 text-[#F4C25E]"
-              : "bg-[#EAE5D9] text-[#075A3A] group-hover:bg-[#075A3A] group-hover:text-[#F4C25E]"
-          }`}
-        >
-          <Icon className="h-4 w-4" />
-        </span>
-
-        <span className="truncate">{item.name}</span>
-
-        {active && (
-          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-[#F4C25E] shadow-[0_0_0_3px_rgba(244,194,94,0.18)]" />
-        )}
-      </Link>
-    );
-  }
-
-  function renderSubmenuItem(
-    item: SidebarItem,
-    active: boolean
-  ) {
-    const Icon = item.icon;
-
-    return (
-      <Link
-        key={item.name}
-        href={item.href}
-        onClick={onClose}
-        className={`group flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-200 ${
-          active
-            ? "bg-[#FFF3D6] text-[#6B0F2B] ring-1 ring-[#E7C77F]"
-            : "text-[#667085] hover:bg-white hover:text-[#075A3A] dark:text-[#AAAFA9] dark:hover:bg-white/5 dark:hover:text-[#F4C25E]"
-        }`}
-      >
-        <Icon
-          className={`h-4 w-4 shrink-0 transition-colors ${
-            active
-              ? "text-[#B87510]"
-              : "text-[#8C938F] group-hover:text-[#075A3A]"
-          }`}
-        />
-
-        <span className="truncate">{item.name}</span>
-
-        {active && (
-          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[#D9961A]" />
-        )}
-      </Link>
-    );
-  }
-
   return (
     <>
       {open && (
         <button
           type="button"
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-[#17231E]/55 backdrop-blur-sm lg:hidden"
-          aria-label="Close sidebar overlay"
+          className="fixed inset-0 z-40 bg-[#15231D]/45 backdrop-blur-[2px] lg:hidden"
+          aria-label="Close navigation overlay"
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-dvh w-[min(16.5rem,86vw)] flex-col border-r border-[#DED5C5] bg-[#F8F5EE] px-3 py-3.5 shadow-2xl shadow-black/10 transition-transform duration-300 dark:border-[#403C35] dark:bg-[#1E1D19] lg:h-screen lg:w-64 lg:translate-x-0 lg:shadow-none ${
-          open ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-[min(18rem,88vw)] flex-col border-r border-[#E0D9CC] bg-[#F7F5F1] shadow-2xl transition-[width,transform] duration-300 ease-out dark:border-[#26354A] dark:bg-[#0D1728] lg:translate-x-0 lg:shadow-none ${
+          collapsed ? "lg:w-[4.75rem]" : "lg:w-64"
+        } ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="flex items-center justify-between gap-3">
-          <div className="relative flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden rounded-xl bg-gradient-to-br from-[#075A3A] to-[#043D28] p-2.5 shadow-md shadow-[#075A3A]/15">
-            <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#D9961A]/15" />
-            <div className="absolute -bottom-10 right-8 h-20 w-20 rounded-full border border-white/10" />
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="absolute -right-3.5 top-5 hidden h-7 w-7 items-center justify-center rounded-full border border-[#DAD4C9] bg-white text-[#676D68] shadow-md transition hover:scale-105 hover:border-[#075A3A] hover:text-[#075A3A] dark:border-[#33445E] dark:bg-[#172337] dark:text-[#B9C5D5] lg:flex"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="h-3.5 w-3.5" />
+          ) : (
+            <PanelLeftClose className="h-3.5 w-3.5" />
+          )}
+        </button>
 
-            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#D9961A] text-white shadow-sm shadow-black/10 ring-1 ring-white/20">
-              <Archive className="h-5 w-5" />
-            </div>
+        <div
+          className={`border-b border-[#E2DED6] p-3 dark:border-[#26354A] ${
+            collapsed ? "lg:px-2" : ""
+          }`}
+        >
+          <div className="flex items-center gap-1">
+            <Link
+              href="/profile"
+              onClick={onClose}
+              title={collapsed ? user?.name || "Profile" : undefined}
+              className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-xl p-1.5 transition hover:bg-white dark:hover:bg-white/5 ${
+                collapsed ? "lg:justify-center" : ""
+              }`}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#075A3A] text-xs font-extrabold uppercase text-white">
+                {initials(user?.name)}
+              </span>
+              <span
+                className={`min-w-0 overflow-hidden transition-[opacity,width] duration-200 ${
+                  collapsed
+                    ? "lg:w-0 lg:opacity-0"
+                    : "lg:w-auto lg:opacity-100"
+                }`}
+              >
+                <span className="block truncate text-sm font-bold text-[#252A27]">
+                  {user?.name || "IRAM User"}
+                </span>
+                <span className="block truncate text-[11px] text-[#817B72]">
+                  {roleName || "Records Management"}
+                </span>
+              </span>
+            </Link>
 
-            <div className="relative min-w-0">
-              <h1 className="truncate text-xs font-extrabold tracking-wide text-white">
-                IRAM Archive
-              </h1>
-
-              <p className="mt-0.5 truncate text-[10px] font-medium text-[#E7DDBE]">
-                {roleName || "Records Management"}
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#6B0F2B] hover:bg-white lg:hidden"
+              aria-label="Close navigation"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          <button
-            type="button"
+          <Link
+            href="/records/create"
             onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#6B0F2B] transition hover:bg-white hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5] lg:hidden"
-            aria-label="Close sidebar"
+            title={collapsed ? primaryAction : undefined}
+            className={`mt-3 flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#571023] hover:shadow-md ${
+              collapsed ? "lg:px-0" : "px-3"
+            }`}
           >
-            <X className="h-5 w-5" />
-          </button>
+            <FilePlus2 className="h-4 w-4 shrink-0" />
+            <span
+              className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200 ${
+                collapsed
+                  ? "lg:max-w-0 lg:opacity-0"
+                  : "lg:max-w-40 lg:opacity-100"
+              }`}
+            >
+              {primaryAction}
+            </span>
+          </Link>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 px-1.5">
-          <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#9B8F7C]">
-            Main Navigation
-          </span>
+        <nav
+          className={`flex-1 overflow-x-hidden overflow-y-auto py-3 ${
+            collapsed ? "px-3 lg:px-2" : "px-3"
+          }`}
+        >
+          <MenuSection label="Workspace" collapsed={collapsed}>
+            {visibleWorkspaceItems.map((item) => (
+              <NavigationItem
+                key={item.name}
+                item={item}
+                active={isActive(item.href)}
+                collapsed={collapsed}
+                onClick={onClose}
+              />
+            ))}
+          </MenuSection>
 
-          <span className="h-px flex-1 bg-gradient-to-r from-[#D7CDBB] to-transparent" />
-        </div>
+          {visibleRecordsItems.length > 0 && (
+            <MenuSection label="Records" collapsed={collapsed}>
+              {visibleRecordsItems.map((item) => (
+                <NavigationItem
+                  key={item.name}
+                  item={item}
+                  active={isActive(item.href)}
+                  collapsed={collapsed}
+                  onClick={onClose}
+                />
+              ))}
+            </MenuSection>
+          )}
 
-        <nav className="mt-2 flex-1 space-y-0.5 overflow-y-auto overscroll-contain pb-3 pr-0.5">
-          {visibleMainItems.map((item, index) => (
-            <div key={item.name}>
-              {index === 1 && canSeeRecordsGroup && (
-                <div className="mb-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRecordsOpen((current) => !current)
-                    }
-                    aria-expanded={recordsOpen}
-                    className={`group relative flex min-h-10 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                      recordsSectionActive
-                        ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
-                        : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5] dark:text-[#C9C1B5] dark:hover:bg-white/5 dark:hover:text-[#F4C25E] dark:hover:ring-white/10"
-                    }`}
-                  >
-                    {recordsSectionActive && (
-                      <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[#D9961A]" />
-                    )}
-
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-all duration-200 ${
-                        recordsSectionActive
-                          ? "bg-white/15 text-[#F4C25E]"
-                          : "bg-[#EAE5D9] text-[#075A3A] group-hover:bg-[#075A3A] group-hover:text-[#F4C25E]"
-                      }`}
-                    >
-                      <Files className="h-4 w-4" />
-                    </span>
-
-                    <span className="truncate">Records</span>
-
-                    <ChevronDown
-                      className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 ${
-                        recordsOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  <div
-                    className={`grid transition-all duration-200 ${
-                      recordsOpen
-                        ? "mt-1 grid-rows-[1fr] opacity-100"
-                        : "grid-rows-[0fr] opacity-0"
-                    }`}
-                  >
-                    <div className="overflow-hidden">
-                      <div className="ml-4 space-y-0.5 border-l border-[#D7CDBB] pl-2.5">
-                        {visibleRecordItems.map((recordItem) =>
-                          renderSubmenuItem(
-                            recordItem,
-                            isRecordChildActive(recordItem.href)
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {renderMenuItem(item)}
-            </div>
-          ))}
-
-          {canSeeSettingsGroup && (
-            <div className="pt-1">
+          {visibleAdministrationItems.length > 0 && (
+            <section className="mb-5 last:mb-0">
               <button
                 type="button"
                 onClick={() =>
-                  setSettingsOpen((current) => !current)
+                  setAdministrationOpen((current) => !current)
                 }
-                aria-expanded={settingsOpen}
-                className={`group relative flex min-h-10 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                  settingsSectionActive
-                    ? "bg-[#6B0F2B] text-white shadow-md shadow-[#6B0F2B]/15"
-                    : "text-[#4B5563] hover:bg-white hover:text-[#075A3A] hover:shadow-sm hover:ring-1 hover:ring-[#DED5C5] dark:text-[#C9C1B5] dark:hover:bg-white/5 dark:hover:text-[#F4C25E] dark:hover:ring-white/10"
+                aria-expanded={administrationOpen}
+                title={
+                  collapsed ? "Administration" : undefined
+                }
+                className={`mb-1 flex min-h-8 w-full items-center rounded-lg px-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#9A9388] transition hover:bg-white hover:text-[#075A3A] dark:hover:bg-white/5 ${
+                  collapsed
+                    ? "lg:justify-center lg:px-0"
+                    : "justify-between"
                 }`}
               >
-                {settingsSectionActive && (
-                  <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[#D9961A]" />
-                )}
-
-                <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-all duration-200 ${
-                    settingsSectionActive
-                      ? "bg-white/15 text-[#F4C25E]"
-                      : "bg-[#EAE5D9] text-[#075A3A] group-hover:bg-[#075A3A] group-hover:text-[#F4C25E]"
-                  }`}
-                >
-                  <Settings className="h-4 w-4" />
+                <span className={collapsed ? "lg:hidden" : ""}>
+                  Administration
                 </span>
-
-                <span className="truncate">Settings</span>
-
-                <ChevronDown
-                  className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 ${
-                    settingsOpen ? "rotate-180" : ""
-                  }`}
-                />
+                {collapsed ? (
+                  <Settings className="hidden h-4 w-4 lg:block" />
+                ) : (
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                      administrationOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                )}
               </button>
 
               <div
-                className={`grid transition-all duration-200 ${
-                  settingsOpen
-                    ? "mt-1 grid-rows-[1fr] opacity-100"
+                className={`grid transition-[grid-template-rows,opacity] duration-250 ease-out ${
+                  administrationOpen
+                    ? "grid-rows-[1fr] opacity-100"
                     : "grid-rows-[0fr] opacity-0"
                 }`}
               >
                 <div className="overflow-hidden">
-                  <div className="ml-4 space-y-0.5 border-l border-[#D7CDBB] pl-2.5">
-                    {visibleSettingsItems.map((settingsItem) =>
-                      renderSubmenuItem(
-                        settingsItem,
-                        isSettingsChildActive(
-                          settingsItem.href
-                        )
-                      )
-                    )}
+                  <div className="space-y-0.5">
+                    {visibleAdministrationItems.map((item) => (
+                      <NavigationItem
+                        key={item.name}
+                        item={item}
+                        active={isActive(item.href)}
+                        collapsed={collapsed}
+                        onClick={onClose}
+                      />
+                    ))}
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
           )}
         </nav>
 
-        <div className="border-t border-[#D7CDBB] pt-3">
+        <div
+          className={`border-t border-[#E2DED6] p-3 dark:border-[#26354A] ${
+            collapsed ? "lg:px-2" : ""
+          }`}
+        >
           <Link
-            href="/records/create"
+            href="/profile"
             onClick={onClose}
-            className="group flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-[#6B0F2B] to-[#7C1735] px-3 py-2 text-xs font-bold text-white shadow-md shadow-[#6B0F2B]/15 transition-all duration-200 hover:from-[#571023] hover:to-[#6B0F2B] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/25"
+            title={collapsed ? "Profile & Security" : undefined}
+            className={`flex min-h-10 items-center gap-2.5 rounded-xl px-2.5 text-sm font-semibold transition ${
+              collapsed ? "lg:justify-center lg:px-0" : ""
+            } ${
+              pathname === "/profile"
+                ? "bg-[#E8E5DF] text-[#075A3A] dark:bg-[#1C2A40] dark:text-[#78D6A7]"
+                : "text-[#555C57] hover:bg-white hover:text-[#075A3A] dark:text-[#B9C5D5] dark:hover:bg-white/5"
+            }`}
           >
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#D9961A] text-white transition-transform duration-200 group-hover:rotate-6">
-              <FilePlus2 className="h-4 w-4" />
+            <UserCircle2 className="h-[1.1rem] w-[1.1rem] shrink-0" />
+            <span
+              className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200 ${
+                collapsed
+                  ? "lg:max-w-0 lg:opacity-0"
+                  : "lg:max-w-40 lg:opacity-100"
+              }`}
+            >
+              Profile & Security
             </span>
-
-            {primaryAction}
           </Link>
-
-          <p className="mt-2 text-center text-[9px] font-medium uppercase tracking-[0.12em] text-[#A09582]">
-            Record Acquisition & Archiving
+          <p
+            className={`mt-3 px-2.5 text-[9px] font-bold uppercase tracking-[0.15em] text-[#A49D91] ${
+              collapsed ? "lg:hidden" : ""
+            }`}
+          >
+            IRAM Records System
           </p>
         </div>
       </aside>
     </>
   );
+}
+
+function MenuSection({
+  label,
+  collapsed,
+  children,
+}: {
+  label: string;
+  collapsed: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mb-5 last:mb-0">
+      <p
+        className={`mb-1.5 px-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#9A9388] ${
+          collapsed ? "lg:hidden" : ""
+        }`}
+      >
+        {label}
+      </p>
+      {collapsed && (
+        <div className="mx-auto mb-2 hidden h-px w-7 bg-[#DDD7CC] dark:bg-[#33445E] lg:block" />
+      )}
+      <div className="space-y-0.5">{children}</div>
+    </section>
+  );
+}
+
+function NavigationItem({
+  item,
+  active,
+  collapsed,
+  onClick,
+}: {
+  item: SidebarItem;
+  active: boolean;
+  collapsed: boolean;
+  onClick: () => void;
+}) {
+  const Icon = item.icon;
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onClick}
+      title={collapsed ? item.name : undefined}
+      aria-label={collapsed ? item.name : undefined}
+      className={`group flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-semibold transition hover:translate-x-0.5 ${
+        collapsed ? "lg:justify-center lg:px-0" : ""
+      } ${
+        active
+          ? "bg-[#E4E2DE] text-[#075A3A] dark:bg-[#1C2A40] dark:text-[#78D6A7]"
+          : "text-[#4F5651] hover:bg-white hover:text-[#075A3A] dark:text-[#B9C5D5] dark:hover:bg-white/5 dark:hover:text-[#78D6A7]"
+      }`}
+    >
+      <span
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ${
+          active
+            ? "bg-white text-[#6B0F2B] shadow-sm dark:bg-[#273750] dark:text-[#F1C768]"
+            : "text-[#727973] group-hover:text-[#075A3A]"
+        }`}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <span
+        className={`truncate whitespace-nowrap transition-[max-width,opacity] duration-200 ${
+          collapsed
+            ? "lg:max-w-0 lg:opacity-0"
+            : "lg:max-w-40 lg:opacity-100"
+        }`}
+      >
+        {item.name}
+      </span>
+      {active && (
+        <span
+          className={`ml-auto h-1.5 w-1.5 rounded-full bg-[#D9961A] ${
+            collapsed ? "lg:hidden" : ""
+          }`}
+        />
+      )}
+    </Link>
+  );
+}
+
+function initials(name?: string | null) {
+  const parts = (name || "User").trim().split(/\s+/);
+
+  return `${parts[0]?.[0] || "U"}${parts[1]?.[0] || ""}`.toUpperCase();
 }
