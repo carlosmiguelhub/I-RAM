@@ -1,0 +1,30 @@
+@page {
+  size: Letter portrait;
+  margin: 0.35in;
+}
+
+@media print {
+  :global(html),
+  :global(body) {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .sheet {
+    width: 7.8in;
+    max-width: 7.8in;
+    min-height: 0;
+    margin: 0 auto;
+  }
+
+  .ticket,
+  .ticket header,
+  .ticket section,
+  .ticket footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

@@ -56,6 +56,7 @@ class WorkflowEmailNotification extends Notification
             'correction_notes' => 'Correction notes',
             'review_notes' => 'Review notes',
             'review_remarks' => 'Review remarks',
+            'claim_code' => 'Claim code',
         ];
         $details = [];
 

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
+use App\Models\DocumentRequest;
 use App\Models\Record;
 use App\Models\RecordCategory;
 use App\Models\Role;
@@ -140,6 +141,20 @@ class NotificationWorkflowTest extends TestCase
         $this->postJson(
             "/api/document-requests/{$documentRequestId}/start-review"
         )->assertOk();
+
+        Sanctum::actingAs($staff);
+
+        $this->postJson(
+            "/api/document-requests/{$documentRequestId}/cancel"
+        )
+            ->assertUnprocessable()
+            ->assertJsonPath(
+                'message',
+                'This request can no longer be cancelled because review has already started.'
+            );
+
+        Sanctum::actingAs($admin);
+
         $this->postJson(
             "/api/document-requests/{$documentRequestId}/approve",
             ['review_notes' => 'Approved for digital access.']
@@ -156,6 +171,79 @@ class NotificationWorkflowTest extends TestCase
             'document_request.approved',
             'document_request.review_started',
         ], $types);
+    }
+
+    public function test_staff_can_have_up_to_four_active_requests_for_the_same_record(): void
+    {
+        Notification::fake();
+        [$staff, $admin, , $department, $category] =
+            $this->workflowUsers();
+        $record = $this->archivedRecord(
+            $admin,
+            $department,
+            $category
+        );
+
+        Sanctum::actingAs($staff);
+
+        $formats = [
+            'digital',
+            'printed',
+            'view_only',
+            'digital',
+        ];
+        $requestIds = [];
+
+        foreach ($formats as $index => $format) {
+            $requestIds[] = $this->postJson(
+                '/api/document-requests',
+                [
+                    'record_id' => $record->id,
+                    'purpose' => 'Active request '.($index + 1),
+                    'urgency' => 'normal',
+                    'preferred_format' => $format,
+                ]
+            )
+                ->assertCreated()
+                ->json('request.id');
+        }
+
+        $this->postJson('/api/document-requests', [
+            'record_id' => $record->id,
+            'purpose' => 'Request above the active limit',
+            'urgency' => 'normal',
+            'preferred_format' => 'printed',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath(
+                'message',
+                'You already have 4 active requests for this record. Complete or cancel an eligible request before submitting another.'
+            );
+
+        $this->postJson(
+            "/api/document-requests/{$requestIds[0]}/cancel"
+        )->assertOk();
+
+        $this->postJson('/api/document-requests', [
+            'record_id' => $record->id,
+            'purpose' => 'Replacement after cancellation',
+            'urgency' => 'normal',
+            'preferred_format' => 'printed',
+        ])->assertCreated();
+
+        $this->assertSame(
+            4,
+            DocumentRequest::query()
+                ->where('record_id', $record->id)
+                ->where('requested_by', $staff->id)
+                ->whereIn('status', [
+                    'pending',
+                    'under_review',
+                    'approved',
+                    'ready_for_pickup',
+                ])
+                ->count()
+        );
     }
 
     public function test_printed_request_is_ready_before_it_is_released(): void
@@ -193,7 +281,19 @@ class NotificationWorkflowTest extends TestCase
         )
             ->assertOk()
             ->assertJsonPath('request.status', 'ready_for_pickup')
-            ->assertJsonPath('request.review_notes', 'Claim at the Records Office.');
+            ->assertJsonPath('request.review_notes', 'Claim at the Records Office.')
+            ->assertJson(fn ($json) => $json
+                ->whereType('request.claim_code', 'string')
+                ->etc());
+
+        $claimCode = DocumentRequest::findOrFail(
+            $documentRequestId
+        )->claim_code;
+
+        $this->assertMatchesRegularExpression(
+            '/^IRAM-CLM-\d{4}-\d{6}-[A-Z0-9]{4}$/',
+            $claimCode
+        );
 
         $this->assertTrue(
             $staff->notifications()

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Archive,
   CheckCircle2,
@@ -12,10 +13,12 @@ import {
   FileClock,
   FileX2,
   Loader2,
+  LockKeyhole,
   RefreshCcw,
   Search,
   Send,
   ShieldCheck,
+  TicketCheck,
   UserRound,
   X,
 } from "lucide-react";
@@ -86,6 +89,7 @@ type DocumentRequest = {
   reviewed_at?: string | null;
   approved_at?: string | null;
   ready_for_pickup_at?: string | null;
+  claim_code?: string | null;
   rejected_at?: string | null;
   released_at?: string | null;
   cancelled_at?: string | null;
@@ -606,7 +610,7 @@ export default function DocumentRequestsPage() {
                   }
                   type="search"
                   inputMode="search"
-                  placeholder="Search by record title or code..."
+                  placeholder="Search title, record code, or claim code..."
                   className="min-h-10 w-full rounded-lg border border-[#E3DCCE] bg-[#F8F5EE] py-2 pl-10 pr-3 text-sm text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
                 />
               </div>
@@ -822,7 +826,9 @@ function RequestListEntry({
   const canDecide = canManage && ["pending", "under_review"].includes(request.status);
   const canMarkReady = canManage && request.preferred_format === "printed" && request.status === "approved";
   const canRelease = canManage && (request.status === "ready_for_pickup" || (request.preferred_format !== "printed" && request.status === "approved"));
-  const canCancel = !canManage && ["pending", "under_review"].includes(request.status);
+  const canCancel = !canManage && request.status === "pending";
+  const cancellationLocked = !canManage && request.status === "under_review";
+  const hasClaimTicket = request.preferred_format === "printed" && Boolean(request.claim_code) && ["ready_for_pickup", "released"].includes(request.status);
 
   const actionClass = "inline-flex min-h-8 items-center gap-1 rounded-lg border px-2.5 text-[11px] font-semibold transition";
 
@@ -849,7 +855,9 @@ function RequestListEntry({
         {canDecide && <button type="button" onClick={onReject} className={`${actionClass} border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}>Reject</button>}
         {canMarkReady && <button type="button" onClick={onReady} className={`${actionClass} border-[#CFE0D6] bg-[#E6F2EC] text-[#075A3A] hover:bg-[#D7EBE0]`}>Ready for Pickup</button>}
         {canRelease && <button type="button" onClick={onRelease} className={`${actionClass} border-[#E4CBD4] bg-[#F8E9EE] text-[#6B0F2B] hover:bg-[#F1DDE4]`}>Confirm Release</button>}
+        {hasClaimTicket && <Link href={`/document-requests/${request.id}/claim-ticket`} className={`${actionClass} border-[#D7B96B] bg-[#FFF9EA] text-[#8B5A00] hover:bg-[#FFF3D6]`}><TicketCheck className="h-3.5 w-3.5" />Claim Ticket</Link>}
         {canCancel && <button type="button" onClick={onCancel} className={`${actionClass} border-red-200 bg-white text-red-700 hover:bg-red-50`}>Cancel</button>}
+        {cancellationLocked && <button type="button" disabled title="Cancellation is locked because review has started." className={`${actionClass} cursor-not-allowed border-[#E3DCCE] bg-[#F0ECE4] text-[#928875] opacity-75`}><LockKeyhole className="h-3.5 w-3.5" />Cancellation Locked</button>}
       </div>
     </article>
   );
@@ -895,7 +903,15 @@ function RequestCard({
 
   const canCancel =
     !canManage &&
-    ["pending", "under_review"].includes(request.status);
+    request.status === "pending";
+
+  const cancellationLocked =
+    !canManage && request.status === "under_review";
+
+  const hasClaimTicket =
+    request.preferred_format === "printed" &&
+    Boolean(request.claim_code) &&
+    ["ready_for_pickup", "released"].includes(request.status);
 
   return (
     <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#E3DCCE] bg-white p-3.5 transition hover:border-[#CFE0D6] hover:shadow-sm">
@@ -971,7 +987,9 @@ function RequestCard({
         canApproveOrReject ||
         canMarkReady ||
         canRelease ||
-        canCancel) && (
+        hasClaimTicket ||
+        canCancel ||
+        cancellationLocked) && (
         <div className="mt-2.5 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
           {canStartReview && (
             <button
@@ -1039,6 +1057,28 @@ function RequestCard({
               <X className="h-4 w-4" />
               Cancel Request
             </button>
+          )}
+
+          {cancellationLocked && (
+            <button
+              type="button"
+              disabled
+              title="Cancellation is locked because review has started."
+              className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-[#E3DCCE] bg-[#F0ECE4] px-3 py-2.5 text-sm font-semibold text-[#928875] opacity-80 min-[420px]:col-span-2"
+            >
+              <LockKeyhole className="h-4 w-4" />
+              Cancellation Locked - Under Review
+            </button>
+          )}
+
+          {hasClaimTicket && (
+            <Link
+              href={`/document-requests/${request.id}/claim-ticket`}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#D7B96B] bg-[#FFF9EA] px-3 py-2.5 text-sm font-bold text-[#8B5A00] transition hover:bg-[#FFF3D6] min-[420px]:col-span-2"
+            >
+              <TicketCheck className="h-4 w-4" />
+              View / Print Claim Ticket
+            </Link>
           )}
         </div>
       )}
@@ -1268,6 +1308,13 @@ function RequestModal({
             />
           )}
 
+          {request.claim_code && (
+            <DetailBox
+              label="Claim code"
+              value={request.claim_code}
+            />
+          )}
+
         <div className="mt-5">
           <p className="text-sm font-semibold text-[#514D46]">
             Purpose
@@ -1357,9 +1404,22 @@ function RequestModal({
           </div>
         )}
 
+        {mode === "view" &&
+          request.preferred_format === "printed" &&
+          request.claim_code &&
+          ["ready_for_pickup", "released"].includes(request.status) && (
+            <Link
+              href={`/document-requests/${request.id}/claim-ticket`}
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#D7B96B] bg-[#FFF9EA] px-5 py-3 text-sm font-bold text-[#8B5A00] transition hover:bg-[#FFF3D6]"
+            >
+              <TicketCheck className="h-5 w-5" />
+              View / Print Claim Ticket
+            </Link>
+          )}
+
         {mode === "ready" && (
           <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800">
-            This notifies the requester that the printed copy is ready. The request will remain open until the document is actually claimed.
+            This creates a unique claim ticket and notifies the requester that the printed copy is ready. The request remains open until the document is actually claimed.
           </div>
         )}
 

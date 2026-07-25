@@ -9,9 +9,19 @@ use App\Models\Record;
 use App\Services\InAppNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DocumentRequestController extends Controller
 {
+    private const MAX_ACTIVE_REQUESTS_PER_RECORD = 4;
+
+    private const ACTIVE_REQUEST_STATUSES = [
+        'pending',
+        'under_review',
+        'approved',
+        'ready_for_pickup',
+    ];
+
     public function __construct(
         private readonly InAppNotificationService $notifications
     ) {}
@@ -69,6 +79,20 @@ class DocumentRequestController extends Controller
             $documentRequest->expires_at === null
             || $documentRequest->expires_at->isFuture()
         );
+    }
+
+    private function generateClaimCode(DocumentRequest $documentRequest): string
+    {
+        do {
+            $code = sprintf(
+                'IRAM-CLM-%s-%06d-%s',
+                now()->format('Y'),
+                $documentRequest->id,
+                Str::upper(Str::random(4))
+            );
+        } while (DocumentRequest::where('claim_code', $code)->exists());
+
+        return $code;
     }
 
     private function hideFilesWithoutAccess(
@@ -206,19 +230,29 @@ class DocumentRequestController extends Controller
         if ($request->filled('search')) {
             $search = trim((string) $request->search);
 
-            $query->whereHas(
-                'record',
-                function ($recordQuery) use ($search) {
-                    $recordQuery
+            $query->where(
+                function ($requestQuery) use ($search) {
+                    $requestQuery
                         ->where(
-                            'record_code',
+                            'claim_code',
                             'like',
                             "%{$search}%"
                         )
-                        ->orWhere(
-                            'title',
-                            'like',
-                            "%{$search}%"
+                        ->orWhereHas(
+                            'record',
+                            function ($recordQuery) use ($search) {
+                                $recordQuery
+                                    ->where(
+                                        'record_code',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                                    ->orWhere(
+                                        'title',
+                                        'like',
+                                        "%{$search}%"
+                                    );
+                            }
                         );
                 }
             );
@@ -282,32 +316,36 @@ class DocumentRequestController extends Controller
             ], 403);
         }
 
-        $existingRequest = DocumentRequest::query()
-            ->where('record_id', $record->id)
-            ->where(
-                'requested_by',
-                $request->user()->id
-            )
-            ->whereIn('status', [
-                'pending',
-                'under_review',
-                'approved',
-                'ready_for_pickup',
-            ])
-            ->exists();
-
-        if ($existingRequest) {
-            return response()->json([
-                'message' => 'You already have an active request for this record.',
-            ], 422);
-        }
-
         $documentRequest = DB::transaction(
             function () use (
                 $request,
                 $record,
                 $validated
             ) {
+                Record::query()
+                    ->whereKey($record->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $activeRequestCount = DocumentRequest::query()
+                    ->where('record_id', $record->id)
+                    ->where(
+                        'requested_by',
+                        $request->user()->id
+                    )
+                    ->whereIn(
+                        'status',
+                        self::ACTIVE_REQUEST_STATUSES
+                    )
+                    ->count();
+
+                if (
+                    $activeRequestCount
+                    >= self::MAX_ACTIVE_REQUESTS_PER_RECORD
+                ) {
+                    return null;
+                }
+
                 $documentRequest =
                     DocumentRequest::create([
                         'record_id' => $record->id,
@@ -330,6 +368,15 @@ class DocumentRequestController extends Controller
                 return $documentRequest;
             }
         );
+
+        if ($documentRequest === null) {
+            return response()->json([
+                'message' => sprintf(
+                    'You already have %d active requests for this record. Complete or cancel an eligible request before submitting another.',
+                    self::MAX_ACTIVE_REQUESTS_PER_RECORD
+                ),
+            ], 422);
+        }
 
         $this->notifications->notifyManagers(
             $request->user(),
@@ -672,28 +719,33 @@ class DocumentRequestController extends Controller
             'review_notes' => $validated['review_notes']
                 ?? $documentRequest->review_notes,
             'ready_for_pickup_at' => now(),
+            'claim_code' => $documentRequest->claim_code
+                ?? $this->generateClaimCode($documentRequest),
         ]);
+
+        $documentRequest->refresh();
 
         $this->audit(
             $request,
             $documentRequest->record,
             'prepared_requested_document_for_pickup',
-            "Prepared requested record for pickup: {$documentRequest->record->record_code}"
+            "Prepared requested record for pickup: {$documentRequest->record->record_code}. Claim code: {$documentRequest->claim_code}"
         );
 
         $this->notifications->notifyUser(
             $documentRequest->requester,
             $request->user(),
             'Document ready for pickup',
-            "Your printed copy of {$documentRequest->record->record_code} is ready for pickup.",
+            "Your printed copy of {$documentRequest->record->record_code} is ready for pickup. Present claim code {$documentRequest->claim_code} when collecting it.",
             'document_request.ready_for_pickup',
-            '/document-requests?status=ready_for_pickup',
+            "/document-requests/{$documentRequest->id}/claim-ticket",
             [
                 'record_id' => $documentRequest->record_id,
                 'document_request_id' => $documentRequest->id,
                 'record_code' => $documentRequest->record->record_code,
                 'review_notes' => $validated['review_notes']
                     ?? $documentRequest->review_notes,
+                'claim_code' => $documentRequest->claim_code,
             ]
         );
 
@@ -718,13 +770,9 @@ class DocumentRequestController extends Controller
             ], 403);
         }
 
-        if (! in_array(
-            $documentRequest->status,
-            ['pending', 'under_review'],
-            true
-        )) {
+        if ($documentRequest->status !== 'pending') {
             return response()->json([
-                'message' => 'This request can no longer be cancelled.',
+                'message' => 'This request can no longer be cancelled because review has already started.',
             ], 422);
         }
 

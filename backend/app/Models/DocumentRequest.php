@@ -19,6 +19,7 @@ class DocumentRequest extends Model
         'reviewed_at',
         'approved_at',
         'ready_for_pickup_at',
+        'claim_code',
         'rejected_at',
         'released_at',
         'cancelled_at',
