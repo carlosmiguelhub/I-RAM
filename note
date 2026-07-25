@@ -1,4 +1,11 @@
 php artisan schedule:work
 npm run dev
 php artisan serve
-    npm run dev -- --hostname 0.0.0.0
+  
+
+
+    ipconfig
+    allowedeDevOrigins(new IP)
+      npm run dev -- --hostname 0.0.0.0
+    php artisan serve --host=0.0.0.0 --port=8000
+    https://newIP:3000/login

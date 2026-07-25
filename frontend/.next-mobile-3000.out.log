@@ -1,0 +1,27 @@
+
+> frontend@0.1.0 dev
+> next dev --hostname 0.0.0.0 --port 3000
+
+▲ Next.js 16.2.10 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://0.0.0.0:3000
+- Environments: .env.local
+✓ Ready in 1178ms
+Creating turbopack project { dir: 'C:\\Users\\Carlos\\iram-system\\frontend', testMode: true }
+
+ GET /dashboard 200 in 970ms (next.js: 563ms, application-code: 407ms)
+ GET /dashboard 200 in 954ms (next.js: 836ms, application-code: 118ms)
+ GET /manifest.webmanifest 200 in 98ms (next.js: 78ms, application-code: 19ms)
+ HEAD /login 200 in 224ms (next.js: 88ms, application-code: 136ms)
+ HEAD /login 200 in 187ms (next.js: 13ms, application-code: 175ms)
+ GET /login 200 in 70ms (next.js: 8ms, application-code: 63ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 4ms, application-code: 9ms)
+ GET /login 200 in 80ms (next.js: 10ms, application-code: 69ms)
+ GET /manifest.webmanifest 200 in 14ms (next.js: 5ms, application-code: 9ms)
+ GET /login 200 in 71ms (next.js: 8ms, application-code: 64ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 4ms, application-code: 8ms)
+ GET / 307 in 149ms (next.js: 67ms, application-code: 82ms)
+ GET /login 200 in 105ms (next.js: 13ms, application-code: 92ms)
+ GET /manifest.webmanifest 200 in 15ms (next.js: 5ms, application-code: 11ms)
+ HEAD /login 200 in 78ms (next.js: 11ms, application-code: 67ms)
+[?25h

@@ -1,0 +1,288 @@
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <LoadingBoundary name="login/" loading={null}>
+      <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+        <RedirectBoundary>
+          <RedirectErrorBoundary router={{...}}>
+            <InnerLayoutRouter url="/login" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+              <SegmentViewNode type="page" pagePath="login/page...">
+                <SegmentTrieNode>
+                <ClientPageRoot Component={function LoginPage} serverProvidedParams={{...}}>
+                  <LoginPage params={Promise} searchParams={Promise}>
+                    <main className="relative m...">
+                      <div>
+                      <div>
+                      <div>
+                      <div className="relative m...">
+                        <section>
+                        <section className="flex min-h...">
+                          <div>
+                          <div className="flex flex-...">
+                            <div className="mx-auto w-...">
+                              <p>
+                              <h2>
+                              <p>
+                              <form
+                                onSubmit={function handleLogin}
+                                className="mt-6 space-y-4 sm:space-y-5"
+                                noValidate={true}
+-                               __gcruniqueid="1"
+                              >
+                                <div>
+                                  <label>
+                                  <div className="relative mt-2">
+                                    <Mail>
+                                    <input
+                                      id="email"
+                                      value=""
+                                      onChange={function onChange}
+                                      type="email"
+                                      autoComplete="email"
+                                      inputMode="email"
+                                      placeholder="name@example.com"
+                                      aria-invalid={false}
+                                      className="h-12 w-full rounded-xl border bg-[#FCFAF5] pl-12 pr-4 text-base text-..."
+-                                     __gcruniqueid="2"
+                                    >
+                                <div>
+                                  <label>
+                                  <div className="relative mt-2">
+                                    <LockKeyhole>
+                                    <input
+                                      id="password"
+                                      value=""
+                                      onChange={function onChange}
+                                      type="password"
+                                      autoComplete="current-password"
+                                      placeholder="Enter your password"
+                                      aria-invalid={false}
+                                      className="h-12 w-full rounded-xl border bg-[#FCFAF5] pl-12 pr-12 text-base text..."
+-                                     __gcruniqueid="3"
+                                    >
+                                    ...
+                                ...
+                              ...
+              ...
+            ...
+ 
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <LoadingBoundary name="login/" loading={null}>
+      <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+        <RedirectBoundary>
+          <RedirectErrorBoundary router={{...}}>
+            <InnerLayoutRouter url="/login" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+              <SegmentViewNode type="page" pagePath="login/page...">
+                <SegmentTrieNode>
+                <ClientPageRoot Component={function LoginPage} serverProvidedParams={{...}}>
+                  <LoginPage params={Promise} searchParams={Promise}>
+                    <main className="relative m...">
+                      <div>
+                      <div>
+                      <div>
+                      <div className="relative m...">
+                        <section>
+                        <section className="flex min-h...">
+                          <div>
+                          <div className="flex flex-...">
+                            <div className="mx-auto w-...">
+                              <p>
+                              <h2>
+                              <p>
+                              <form
+                                onSubmit={function handleLogin}
+                                className="mt-6 space-y-4 sm:space-y-5"
+                                noValidate={true}
+-                               __gcruniqueid="1"
+                              >
+                                <div>
+                                  <label>
+                                  <div className="relative mt-2">
+                                    <Mail>
+                                    <input
+                                      id="email"
+                                      value=""
+                                      onChange={function onChange}
+                                      type="email"
+                                      autoComplete="email"
+                                      inputMode="email"
+                                      placeholder="name@example.com"
+                                      aria-invalid={false}
+                                      className="h-12 w-full rounded-xl border bg-[#FCFAF5] pl-12 pr-4 text-base text-..."
+-                                     __gcruniqueid="2"
+                                    >
+                                <div>
+                                  <label>
+                                  <div className="relative mt-2">
+                                    <LockKeyhole>
+                                    <input
+                                      id="password"
+                                      value=""
+                                      onChange={function onChange}
+                                      type="password"
+                                      autoComplete="current-password"
+                                      placeholder="Enter your password"
+                                      aria-invalid={false}
+                                      className="h-12 w-full rounded-xl border bg-[#FCFAF5] pl-12 pr-12 text-base text..."
+-                                     __gcruniqueid="3"
+                                    >
+                                    ...
+                                ...
+                              ...
+              ...
+            ...
+ 
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <LoadingBoundary name="login/" loading={null}>
+      <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+        <RedirectBoundary>
+          <RedirectErrorBoundary router={{...}}>
+            <InnerLayoutRouter url="/login" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+              <SegmentViewNode type="page" pagePath="login/page...">
+                <SegmentTrieNode>
+                <ClientPageRoot Component={function LoginPage} serverProvidedParams={{...}}>
+                  <LoginPage params={Promise} searchParams={Promise}>
+                    <main className="relative m...">
+                      <div>
+                      <div>
+                      <div>
+                      <div className="relative m...">
+                        <section>
+                        <section className="flex min-h...">
+                          <div>
+                          <div className="flex flex-...">
+                            <div className="mx-auto w-...">
+                              <p>
+                              <h2>
+                              <p>
+                              <form
+                                onSubmit={function handleLogin}
+                                className="mt-6 space-y-4 sm:space-y-5"
+                                noValidate={true}
+-                               __gcruniqueid="1"
+                              >
+                                <div>
+                                  <label>
+                                  <div className="relative mt-2">
+                                    <Mail>
+                                    <input
+                                      id="email"
+                                      value=""
+                                      onChange={function onChange}
+                                      type="email"
+                                      autoComplete="email"
+                                      inputMode="email"
+                                      placeholder="name@example.com"
+                                      aria-invalid={false}
+                                      className="h-12 w-full rounded-xl border bg-[#FCFAF5] pl-12 pr-4 text-base text-..."
+-                                     __gcruniqueid="2"
+                                    >
+                                <div>
+                                  <label>
+                                  <div className="relative mt-2">
+                                    <LockKeyhole>
+                                    <input
+                                      id="password"
+                                      value=""
+                                      onChange={function onChange}
+                                      type="password"
+                                      autoComplete="current-password"
+                                      placeholder="Enter your password"
+                                      aria-invalid={false}
+                                      className="h-12 w-full rounded-xl border bg-[#FCFAF5] pl-12 pr-12 text-base text..."
+-                                     __gcruniqueid="3"
+                                    >
+                                    ...
+                                ...
+                              ...
+              ...
+            ...
+ 
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/login" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="en" className="h-full ant..." suppressHydrationWarning={true}>
+                          <body
+                            className="min-h-full flex flex-col"
+-                           data-new-gr-c-s-check-loaded="14.1314.0"
+-                           data-gr-ext-installed=""
+                          >
+                  ...
+ 
+Failed to proxy http://127.0.0.1:8000/api/login Error: connect ECONNREFUSED 127.0.0.1:8000
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8000) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8000) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
