@@ -11,6 +11,10 @@ import {
   Menu,
 } from "lucide-react";
 import { apiRequest, clearStoredAuth } from "@/lib/api";
+import {
+  defaultClientSystemSettings,
+  loadClientSystemSettings,
+} from "@/lib/system-settings";
 import type { AuthUser } from "@/lib/types";
 import NotificationBell from "./NotificationBell";
 import PwaInstallButton from "./PwaInstallButton";
@@ -25,6 +29,9 @@ export default function Topbar({
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [systemIdentity, setSystemIdentity] = useState(
+    defaultClientSystemSettings.general
+  );
   const pageTitle = getPageTitle(pathname);
 
   useEffect(() => {
@@ -41,6 +48,12 @@ export default function Topbar({
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    void loadClientSystemSettings()
+      .then((settings) => setSystemIdentity(settings.general))
+      .catch(() => undefined);
   }, []);
 
   async function handleLogout() {
@@ -85,7 +98,8 @@ export default function Topbar({
             {pageTitle}
           </p>
           <p className="hidden truncate text-[11px] text-[#8A847B] sm:block">
-            IRAM · Record Acquisition and Archiving Management
+            {systemIdentity.system_name} ·{" "}
+            {systemIdentity.organization_name}
           </p>
         </div>
       </div>

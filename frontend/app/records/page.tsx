@@ -15,6 +15,10 @@ import { createPortal } from "react-dom";
   } from "lucide-react";
   import AppShell from "@/components/AppShell";
   import { apiRequest } from "@/lib/api";
+  import {
+    defaultClientSystemSettings,
+    loadClientSystemSettings,
+  } from "@/lib/system-settings";
   import type { AuthUser } from "@/lib/types";
 
   const API_URL =
@@ -95,6 +99,9 @@ import { createPortal } from "react-dom";
     const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
     const [autoRefreshNotice, setAutoRefreshNotice] = useState("");
     const [user, setUser] = useState<AuthUser | null>(null);
+    const [systemSettings, setSystemSettings] = useState(
+      defaultClientSystemSettings
+    );
 
     const [selectedRecord, setSelectedRecord] =
       useState<RecordItem | null>(null);
@@ -129,7 +136,9 @@ import { createPortal } from "react-dom";
     const roleName = user?.role?.name || "";
     const isStaff = roleName === "Staff";
     const canManageWorkflow =
-      roleName === "Admin" || roleName === "Records Officer";
+      roleName === "Records Officer" ||
+      (roleName === "Admin" &&
+        systemSettings.workflow.allow_admin_review);
     const scope = searchParams.get("scope");
     const isMySubmissionsView = isStaff || scope === "mine";
 
@@ -222,9 +231,13 @@ import { createPortal } from "react-dom";
     useEffect(() => {
       async function initPage() {
         try {
-          const meData = await apiRequest("/me");
+          const [meData, loadedSettings] = await Promise.all([
+            apiRequest("/me"),
+            loadClientSystemSettings(),
+          ]);
 
           setUser(meData.user);
+          setSystemSettings(loadedSettings);
           localStorage.setItem(
             "iram_user",
             JSON.stringify(meData.user)
@@ -472,7 +485,10 @@ import { createPortal } from "react-dom";
     async function handleReturnForCorrection() {
       if (!selectedRecord) return;
 
-      if (!correctionNotes.trim()) {
+      if (
+        systemSettings.workflow.require_correction_notes &&
+        !correctionNotes.trim()
+      ) {
         setWorkflowError(
           "Correction notes are required before returning the submission."
         );
@@ -484,7 +500,7 @@ import { createPortal } from "react-dom";
         {
           method: "POST",
           body: JSON.stringify({
-            correction_notes: correctionNotes.trim(),
+            correction_notes: correctionNotes.trim() || null,
           }),
         },
         "Record returned to the submitter for correction."
@@ -501,7 +517,10 @@ import { createPortal } from "react-dom";
         return;
       }
 
-      if (!storageLocation.trim()) {
+      if (
+        systemSettings.records.require_storage_location &&
+        !storageLocation.trim()
+      ) {
         setWorkflowError(
           "A storage location is required before archiving."
         );

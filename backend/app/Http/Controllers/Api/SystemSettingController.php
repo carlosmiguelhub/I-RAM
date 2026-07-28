@@ -56,6 +56,37 @@ class SystemSettingController extends Controller
         ]);
     }
 
+    public function clientSettings(): JsonResponse
+    {
+        $allowedKeys = [
+            'system_name',
+            'organization_name',
+            'contact_email',
+            'record_code_prefix',
+            'require_storage_location',
+            'require_submission_remarks',
+            'allow_admin_review',
+            'require_correction_notes',
+            'lock_archived_records',
+            'disposal_grace_days',
+            'max_upload_size_mb',
+            'max_files_per_submission',
+            'allowed_extensions',
+        ];
+
+        $settings = SystemSetting::query()
+            ->whereIn('key', $allowedKeys)
+            ->get()
+            ->groupBy('group')
+            ->map(fn ($groupSettings) => $groupSettings->mapWithKeys(
+                fn ($setting) => [
+                    $setting->key => $setting->typed_value,
+                ]
+            ));
+
+        return response()->json(['settings' => $settings]);
+    }
+
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -75,16 +106,6 @@ class SystemSettingController extends Controller
                 'email',
                 'max:255',
             ],
-            'general.timezone' => [
-                'required',
-                'string',
-                'max:100',
-            ],
-            'general.date_format' => [
-                'required',
-                'string',
-                'max:50',
-            ],
 
             'records' => ['required', 'array'],
             'records.record_code_prefix' => [
@@ -103,10 +124,6 @@ class SystemSettingController extends Controller
             ],
 
             'workflow' => ['required', 'array'],
-            'workflow.require_records_officer_review' => [
-                'required',
-                'boolean',
-            ],
             'workflow.allow_admin_review' => [
                 'required',
                 'boolean',
@@ -137,7 +154,7 @@ class SystemSettingController extends Controller
                 'required',
                 'integer',
                 'min:1',
-                'max:50',
+                'max:10',
             ],
             'files.allowed_extensions' => [
                 'required',
@@ -156,6 +173,10 @@ class SystemSettingController extends Controller
                     'jpg',
                     'jpeg',
                     'png',
+                    'ppt',
+                    'pptx',
+                    'txt',
+                    'csv',
                 ]),
             ],
 
@@ -163,10 +184,6 @@ class SystemSettingController extends Controller
             'security.allow_registration' => [
                 'required',
                 'boolean',
-            ],
-            'security.default_registered_role' => [
-                'required',
-                Rule::in(['Staff']),
             ],
             'security.session_timeout_minutes' => [
                 'required',
@@ -495,14 +512,6 @@ class SystemSettingController extends Controller
                     'type' => 'string',
                     'is_public' => true,
                 ],
-                'timezone' => [
-                    'type' => 'string',
-                    'is_public' => false,
-                ],
-                'date_format' => [
-                    'type' => 'string',
-                    'is_public' => false,
-                ],
             ],
 
             'records' => [
@@ -521,10 +530,6 @@ class SystemSettingController extends Controller
             ],
 
             'workflow' => [
-                'require_records_officer_review' => [
-                    'type' => 'boolean',
-                    'is_public' => false,
-                ],
                 'allow_admin_review' => [
                     'type' => 'boolean',
                     'is_public' => false,
@@ -562,10 +567,6 @@ class SystemSettingController extends Controller
                 'allow_registration' => [
                     'type' => 'boolean',
                     'is_public' => true,
-                ],
-                'default_registered_role' => [
-                    'type' => 'string',
-                    'is_public' => false,
                 ],
                 'session_timeout_minutes' => [
                     'type' => 'integer',

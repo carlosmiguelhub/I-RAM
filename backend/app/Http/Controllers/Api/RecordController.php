@@ -37,6 +37,21 @@ class RecordController extends Controller
         );
     }
 
+    private function canManageWorkflow(Request $request): bool
+    {
+        $role = $this->roleName($request);
+
+        if ($role === 'Records Officer') {
+            return true;
+        }
+
+        return $role === 'Admin'
+            && (bool) SystemSetting::getValue(
+                'allow_admin_review',
+                true
+            );
+    }
+
     private function staffCanAccessRecord(
         Request $request,
         Record $record
@@ -125,9 +140,9 @@ class RecordController extends Controller
 
     private function denyRecordManagement(Request $request)
     {
-        if (! $this->canManageRecords($request)) {
+        if (! $this->canManageWorkflow($request)) {
             return response()->json([
-                'message' => 'Only an Administrator or Records Officer may perform this action.',
+                'message' => 'Only an authorized Records Officer may perform this workflow action.',
             ], 403);
         }
 
@@ -259,6 +274,20 @@ class RecordController extends Controller
         ];
     }
 
+    private function maxFilesPerSubmission(): int
+    {
+        return max(
+            1,
+            min(
+                10,
+                (int) SystemSetting::getValue(
+                    'max_files_per_submission',
+                    10
+                )
+            )
+        );
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -368,6 +397,12 @@ class RecordController extends Controller
             ], 403);
         }
 
+        $maxFiles = $this->maxFilesPerSubmission();
+        $requireRemarks = (bool) SystemSetting::getValue(
+            'require_submission_remarks',
+            false
+        );
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -385,9 +420,20 @@ class RecordController extends Controller
                 'string',
                 'max:255',
             ],
-            'remarks' => ['nullable', 'string'],
-            'files' => ['nullable', 'array', 'max:5'],
+            'remarks' => [
+                $requireRemarks ? 'required' : 'nullable',
+                'string',
+                'max:5000',
+            ],
+            'files' => [
+                'nullable',
+                'array',
+                'max:'.$maxFiles,
+            ],
             'files.*' => $this->uploadedFileRules(),
+        ], [
+            'remarks.required' => 'Submission remarks are required by the current system settings.',
+            'files.max' => "A submission may contain a maximum of {$maxFiles} files.",
         ]);
 
         if ($user->department_id === null || ! $user->department) {
@@ -743,9 +789,14 @@ class RecordController extends Controller
             ], 422);
         }
 
+        $requireCorrectionNotes = (bool) SystemSetting::getValue(
+            'require_correction_notes',
+            true
+        );
+
         $validated = $request->validate([
             'correction_notes' => [
-                'required',
+                $requireCorrectionNotes ? 'required' : 'nullable',
                 'string',
                 'max:5000',
             ],
@@ -760,7 +811,7 @@ class RecordController extends Controller
         ) {
             $record->update([
                 'status' => 'returned_for_correction',
-                'correction_notes' => $validated['correction_notes'],
+                'correction_notes' => $validated['correction_notes'] ?? null,
                 'returned_by' => $request->user()->id,
                 'returned_at' => now(),
                 'resubmitted_at' => null,
@@ -771,7 +822,7 @@ class RecordController extends Controller
                 $request,
                 $record,
                 'returned_record_for_correction',
-                "Returned record {$record->record_code} for correction. Notes: {$validated['correction_notes']}"
+                "Returned record {$record->record_code} for correction."
             );
         });
 
@@ -786,7 +837,7 @@ class RecordController extends Controller
                 'record_id' => $record->id,
                 'record_code' => $record->record_code,
                 'record_title' => $record->title,
-                'correction_notes' => $validated['correction_notes'],
+                'correction_notes' => $validated['correction_notes'] ?? null,
             ]
         );
 
@@ -814,6 +865,12 @@ class RecordController extends Controller
             ], 422);
         }
 
+        $maxFiles = $this->maxFilesPerSubmission();
+        $requireRemarks = (bool) SystemSetting::getValue(
+            'require_submission_remarks',
+            false
+        );
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -822,17 +879,28 @@ class RecordController extends Controller
                 'exists:record_categories,id',
             ],
             'date_received' => ['required', 'date'],
-            'remarks' => ['nullable', 'string'],
-            'files' => ['nullable', 'array', 'max:5'],
+            'remarks' => [
+                $requireRemarks ? 'required' : 'nullable',
+                'string',
+                'max:5000',
+            ],
+            'files' => [
+                'nullable',
+                'array',
+                'max:'.$maxFiles,
+            ],
             'files.*' => $this->uploadedFileRules(),
+        ], [
+            'remarks.required' => 'Submission remarks are required by the current system settings.',
+            'files.max' => "A submission may contain a maximum of {$maxFiles} files.",
         ]);
 
         $existingCount = $record->files()->count();
         $newCount = count($request->file('files', []));
 
-        if ($existingCount + $newCount > 5) {
+        if ($existingCount + $newCount > $maxFiles) {
             return response()->json([
-                'message' => 'A submission may contain a maximum of 5 files.',
+                'message' => "A submission may contain a maximum of {$maxFiles} files.",
             ], 422);
         }
 
@@ -973,6 +1041,11 @@ class RecordController extends Controller
             ], 422);
         }
 
+        $requireStorageLocation = (bool) SystemSetting::getValue(
+            'require_storage_location',
+            true
+        );
+
         $validated = $request->validate([
             'review_remarks' => [
                 'required',
@@ -980,7 +1053,7 @@ class RecordController extends Controller
                 'max:5000',
             ],
             'storage_location' => [
-                'required',
+                $requireStorageLocation ? 'required' : 'nullable',
                 'string',
                 'max:255',
             ],
@@ -1033,7 +1106,7 @@ class RecordController extends Controller
             $record->update([
                 'status' => 'archived',
                 'review_remarks' => $validated['review_remarks'],
-                'storage_location' => $validated['storage_location'],
+                'storage_location' => $validated['storage_location'] ?? null,
                 'archived_by' => $request->user()->id,
                 'archived_at' => $archivedAt,
                 'retention_type' => $retentionType,
@@ -1143,6 +1216,18 @@ class RecordController extends Controller
             return response()->json([
                 'message' => 'You are not allowed to delete records.',
             ], 403);
+        }
+
+        if (
+            $record->status === 'archived'
+            && (bool) SystemSetting::getValue(
+                'lock_archived_records',
+                true
+            )
+        ) {
+            return response()->json([
+                'message' => 'Archived records are locked by the current system settings. Use the authorized disposal workflow instead.',
+            ], 422);
         }
 
         $recordCode = $record->record_code;

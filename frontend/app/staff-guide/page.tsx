@@ -151,7 +151,7 @@ export default function StaffGuidePage() {
           >
             <div className="grid gap-4 md:grid-cols-3">
               <MiniStep number="1" title="Enter details" text="Add the received date, a descriptive title, and the correct category." />
-              <MiniStep number="2" title="Attach files" text="Upload up to 5 supported files, with a maximum of 10 MB for each file." />
+              <MiniStep number="2" title="Attach files" text="Upload up to 10 supported files. The current size and file-type rules appear on the submission form." />
               <MiniStep number="3" title="Review and submit" text="Add a description or remarks, check everything, then select Submit for Review." />
             </div>
             <div className="mt-5 rounded-xl bg-[#F8F5EE] p-4 text-xs leading-5 text-[#766F63] ring-1 ring-[#E3DCCE]">

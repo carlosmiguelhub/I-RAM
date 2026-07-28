@@ -26,6 +26,7 @@ Route::get('/public-settings', [SystemSettingController::class, 'publicSettings'
 
 Route::middleware(['auth:sanctum', 'account.access'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/system-settings', [SystemSettingController::class, 'clientSettings']);
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::patch('/profile', [ProfileController::class, 'update']);
     Route::patch('/profile/password', [ProfileController::class, 'changePassword']);

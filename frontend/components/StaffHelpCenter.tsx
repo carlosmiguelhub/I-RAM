@@ -16,6 +16,10 @@ import {
   UserCircle2,
   X,
 } from "lucide-react";
+import {
+  defaultClientSystemSettings,
+  loadClientSystemSettings,
+} from "@/lib/system-settings";
 
 const workflowStatuses = [
   ["Received", "Waiting for review"],
@@ -27,6 +31,9 @@ const workflowStatuses = [
 export default function StaffHelpCenter() {
   const [isStaff, setIsStaff] = useState(false);
   const [open, setOpen] = useState(false);
+  const [systemSettings, setSystemSettings] = useState(
+    defaultClientSystemSettings
+  );
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -42,6 +49,12 @@ export default function StaffHelpCenter() {
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    void loadClientSystemSettings()
+      .then(setSystemSettings)
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -111,11 +124,18 @@ export default function StaffHelpCenter() {
                         id="staff-help-title"
                         className="mt-1 text-xl font-extrabold sm:text-2xl"
                       >
-                        IRAM Help Center
+                        {systemSettings.general.system_name} Help Center
                       </h2>
                       <p className="mt-1 max-w-2xl text-sm leading-6 text-[#D5E5DC]">
                         Quick guidance for submitting, tracking, and
                         requesting official documents.
+                        {systemSettings.general.contact_email && (
+                          <>
+                            {" "}
+                            Records Office:{" "}
+                            {systemSettings.general.contact_email}
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -139,7 +159,7 @@ export default function StaffHelpCenter() {
                     description="Create a clear record and send it to the Records Office for formal review."
                     steps={[
                       "Enter the official title, date, and category.",
-                      "Attach up to 5 supported files, maximum 10 MB each.",
+                      "Attach up to 10 supported files; the current size and type rules appear on the submission form.",
                       "Review the details, then select Submit for Review.",
                     ]}
                     href="/records/create"

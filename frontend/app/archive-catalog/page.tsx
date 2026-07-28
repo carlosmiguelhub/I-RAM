@@ -19,6 +19,9 @@ import {
   X,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import DocumentRequestProgressOverlay, {
+  type RequestProgressStage,
+} from "@/components/DocumentRequestProgressOverlay";
 import ViewModeToggle, {
   usePersistentViewMode,
 } from "@/components/archive/ViewModeToggle";
@@ -88,6 +91,8 @@ export default function ArchiveCatalogPage() {
   const [loading, setLoading] = useState(true);
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [requestProgressStage, setRequestProgressStage] =
+    useState<RequestProgressStage>("validating");
   const [backgroundRefreshing, setBackgroundRefreshing] =
     useState(false);
 
@@ -359,7 +364,18 @@ export default function ArchiveCatalogPage() {
     }
 
     setSubmitting(true);
+    setRequestProgressStage("validating");
     setModalError("");
+    const progressTimers = [
+      window.setTimeout(
+        () => setRequestProgressStage("submitting"),
+        350
+      ),
+      window.setTimeout(
+        () => setRequestProgressStage("notifying"),
+        1100
+      ),
+    ];
 
     try {
       const data = await apiRequest("/document-requests", {
@@ -374,14 +390,20 @@ export default function ArchiveCatalogPage() {
         }),
       });
 
-      setSelectedRecord(null);
-      setRequestForm(initialRequestForm);
+      progressTimers.forEach((timer) => window.clearTimeout(timer));
+      setRequestProgressStage("success");
 
       setSuccess(
         data.message ||
           "Document request submitted successfully."
       );
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, 700)
+      );
+      setSelectedRecord(null);
+      setRequestForm(initialRequestForm);
     } catch (err: unknown) {
+      progressTimers.forEach((timer) => window.clearTimeout(timer));
       setModalError(
         err instanceof Error
           ? err.message
@@ -389,6 +411,7 @@ export default function ArchiveCatalogPage() {
       );
     } finally {
       setSubmitting(false);
+      setRequestProgressStage("validating");
     }
   }
 
@@ -794,6 +817,11 @@ export default function ArchiveCatalogPage() {
           </form>
         </div>
       )}
+      <DocumentRequestProgressOverlay
+        open={submitting}
+        stage={requestProgressStage}
+        documentTitle={selectedRecord?.title || "Archived document"}
+      />
     </AppShell>
   );
 }

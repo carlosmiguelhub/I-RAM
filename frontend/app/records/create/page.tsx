@@ -18,6 +18,10 @@ import SubmissionProgressOverlay, {
   type SubmissionStage,
 } from "@/components/SubmissionProgressOverlay";
 import { apiRequest } from "@/lib/api";
+import {
+  defaultClientSystemSettings,
+  loadClientSystemSettings,
+} from "@/lib/system-settings";
 
 type Department = {
   id: number;
@@ -44,24 +48,6 @@ type SelectedFile = {
   id: string;
   file: File;
 };
-
-const MAX_FILES = 5;
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-
-const ALLOWED_EXTENSIONS = [
-  "pdf",
-  "doc",
-  "docx",
-  "xls",
-  "xlsx",
-  "ppt",
-  "pptx",
-  "jpg",
-  "jpeg",
-  "png",
-  "txt",
-  "csv",
-];
 
 function createFileId(file: File) {
   const fallbackId = `${Date.now()}-${Math.random()
@@ -91,6 +77,9 @@ export default function CreateRecordPage() {
   const [loading, setLoading] = useState(false);
   const [submissionStage, setSubmissionStage] =
     useState<SubmissionStage>("preparing");
+  const [systemSettings, setSystemSettings] = useState(
+    defaultClientSystemSettings
+  );
 
   const [form, setForm] = useState({
     title: "",
@@ -104,6 +93,11 @@ export default function CreateRecordPage() {
   });
 
   const isStaff = user?.role?.name === "Staff";
+  const maxFiles = systemSettings.files.max_files_per_submission;
+  const maxFileSize =
+    systemSettings.files.max_upload_size_mb * 1024 * 1024;
+  const allowedExtensions =
+    systemSettings.files.allowed_extensions;
 
   const totalFileSize = selectedFiles.reduce(
     (total, selectedFile) => total + selectedFile.file.size,
@@ -113,9 +107,10 @@ export default function CreateRecordPage() {
   useEffect(() => {
     async function loadPageData() {
       try {
-        const [meData, data] = await Promise.all([
+        const [meData, data, loadedSettings] = await Promise.all([
           apiRequest("/me"),
           apiRequest("/options"),
+          loadClientSystemSettings(),
         ]);
         const currentUser: User = meData.user;
 
@@ -136,6 +131,7 @@ export default function CreateRecordPage() {
 
         setDepartments(data.departments || []);
         setCategories(data.categories || []);
+        setSystemSettings(loadedSettings);
 
         if (
           currentUser.role?.name === "Staff" &&
@@ -179,8 +175,8 @@ export default function CreateRecordPage() {
 
     setFileError("");
 
-    if (selectedFiles.length + files.length > MAX_FILES) {
-      setFileError(`You may upload a maximum of ${MAX_FILES} files.`);
+    if (selectedFiles.length + files.length > maxFiles) {
+      setFileError(`You may upload a maximum of ${maxFiles} files.`);
       resetFileInput();
       return;
     }
@@ -189,14 +185,16 @@ export default function CreateRecordPage() {
       const extension =
         file.name.split(".").pop()?.toLowerCase() || "";
 
-      if (!ALLOWED_EXTENSIONS.includes(extension)) {
+      if (!allowedExtensions.includes(extension)) {
         setFileError(`${file.name} is not an allowed file type.`);
         resetFileInput();
         return;
       }
 
-      if (file.size > MAX_FILE_SIZE) {
-        setFileError(`${file.name} exceeds the 10 MB file limit.`);
+      if (file.size > maxFileSize) {
+        setFileError(
+          `${file.name} exceeds the ${systemSettings.files.max_upload_size_mb} MB file limit.`
+        );
         resetFileInput();
         return;
       }
@@ -271,6 +269,15 @@ export default function CreateRecordPage() {
       if (isStaff && !user?.department_id) {
         throw new Error(
           "Your account is not assigned to a department."
+        );
+      }
+
+      if (
+        systemSettings.records.require_submission_remarks &&
+        !form.remarks.trim()
+      ) {
+        throw new Error(
+          "Submission remarks are required by the current system settings."
         );
       }
 
@@ -462,11 +469,15 @@ export default function CreateRecordPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="absolute inset-x-0 top-0 h-1 bg-[#D9961A]" />
-                <SectionTitle number="2" title="Record Files" subtitle="Attach up to 5 supporting documents, with a maximum size of 10 MB per file." />
+                <SectionTitle
+                  number="2"
+                  title="Record Files"
+                  subtitle={`Attach up to ${maxFiles} supporting documents, with a maximum size of ${systemSettings.files.max_upload_size_mb} MB per file.`}
+                />
               </div>
 
               <span className="w-fit rounded-full bg-[#FFF3D6] px-3 py-1 text-xs font-extrabold text-[#A66B00] ring-1 ring-[#EBCF8F]">
-                {selectedFiles.length}/{MAX_FILES} files
+                {selectedFiles.length}/{maxFiles} files
               </span>
             </div>
 
@@ -474,7 +485,7 @@ export default function CreateRecordPage() {
               <label
                 htmlFor="record-files"
                 className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 text-center transition sm:px-6 sm:py-10 ${
-                  selectedFiles.length >= MAX_FILES || loading
+                  selectedFiles.length >= maxFiles || loading
                     ? "cursor-not-allowed border-[#E3DCCE] bg-[#F0ECE4] opacity-70"
                     : "cursor-pointer border-[#D7CDBB] bg-[#F8F5EE] hover:border-[#91BAA3] hover:bg-[#F0F7F3]/50"
                 }`}
@@ -496,9 +507,11 @@ export default function CreateRecordPage() {
                   id="record-files"
                   type="file"
                   multiple
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.txt,.csv"
+                  accept={allowedExtensions
+                    .map((extension) => `.${extension}`)
+                    .join(",")}
                   onChange={handleFileChange}
-                  disabled={loading || selectedFiles.length >= MAX_FILES}
+                  disabled={loading || selectedFiles.length >= maxFiles}
                   className="sr-only"
                 />
               </label>
@@ -588,11 +601,22 @@ export default function CreateRecordPage() {
 
               <div className="md:col-span-2">
                 <FormTextarea
-                  label="Remarks"
+                  label={`Remarks${
+                    systemSettings.records.require_submission_remarks
+                      ? " (required)"
+                      : ""
+                  }`}
                   name="remarks"
                   value={form.remarks}
                   onChange={handleChange}
-                  placeholder="Optional notes..."
+                  placeholder={
+                    systemSettings.records.require_submission_remarks
+                      ? "Add the required submission remarks..."
+                      : "Optional notes..."
+                  }
+                  required={
+                    systemSettings.records.require_submission_remarks
+                  }
                 />
               </div>
             </div>
@@ -771,6 +795,7 @@ function FormTextarea({
   value,
   onChange,
   placeholder,
+  required = false,
 }: {
   label: string;
   name: string;
@@ -779,6 +804,7 @@ function FormTextarea({
     event: React.ChangeEvent<HTMLTextAreaElement>
   ) => void;
   placeholder?: string;
+  required?: boolean;
 }) {
   return (
     <label className="block">
@@ -791,6 +817,7 @@ function FormTextarea({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
+        required={required}
         rows={4}
         className="mt-2 w-full resize-none rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] px-4 py-3 text-base text-[#2D332F] outline-none transition placeholder:text-[#A09582] focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] sm:text-sm"
       />

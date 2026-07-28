@@ -31,20 +31,6 @@ class SystemSettingSeeder extends Seeder
                 'type' => 'string',
                 'is_public' => true,
             ],
-            [
-                'group' => 'general',
-                'key' => 'timezone',
-                'value' => 'Asia/Manila',
-                'type' => 'string',
-                'is_public' => false,
-            ],
-            [
-                'group' => 'general',
-                'key' => 'date_format',
-                'value' => 'M d, Y',
-                'type' => 'string',
-                'is_public' => false,
-            ],
 
             [
                 'group' => 'records',
@@ -68,13 +54,6 @@ class SystemSettingSeeder extends Seeder
                 'is_public' => false,
             ],
 
-            [
-                'group' => 'workflow',
-                'key' => 'require_records_officer_review',
-                'value' => 'true',
-                'type' => 'boolean',
-                'is_public' => false,
-            ],
             [
                 'group' => 'workflow',
                 'key' => 'allow_admin_review',
@@ -130,6 +109,10 @@ class SystemSettingSeeder extends Seeder
                     'jpg',
                     'jpeg',
                     'png',
+                    'ppt',
+                    'pptx',
+                    'txt',
+                    'csv',
                 ]),
                 'type' => 'array',
                 'is_public' => false,
@@ -141,13 +124,6 @@ class SystemSettingSeeder extends Seeder
                 'value' => 'true',
                 'type' => 'boolean',
                 'is_public' => true,
-            ],
-            [
-                'group' => 'security',
-                'key' => 'default_registered_role',
-                'value' => 'Staff',
-                'type' => 'string',
-                'is_public' => false,
             ],
             [
                 'group' => 'security',

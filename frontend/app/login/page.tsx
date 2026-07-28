@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Archive,
   Eye,
@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import ThemeToggle from "@/components/ThemeToggle";
+import {
+  defaultClientSystemSettings,
+  loadPublicSystemSettings,
+} from "@/lib/system-settings";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,6 +31,22 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [systemIdentity, setSystemIdentity] = useState(
+    defaultClientSystemSettings.general
+  );
+  const [registrationAllowed, setRegistrationAllowed] =
+    useState(true);
+
+  useEffect(() => {
+    void loadPublicSystemSettings()
+      .then((settings) => {
+        setSystemIdentity(settings.general);
+        setRegistrationAllowed(
+          settings.security.allow_registration
+        );
+      })
+      .catch(() => undefined);
+  }, []);
 
   function validateForm() {
     const errors: Record<string, string> = {};
@@ -186,7 +206,7 @@ export default function LoginPage() {
               </p>
 
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#252A27] sm:text-3xl">
-                Sign in to IRAM
+                Sign in to {systemIdentity.system_name}
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-[#766F63]">
@@ -302,15 +322,17 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              <p className="mt-5 text-center text-sm text-[#766F63] sm:mt-6">
-                No account yet?{" "}
-                <Link
-                  href="/register"
-                  className="font-semibold text-[#075A3A] transition hover:text-[#075A3A]"
-                >
-                  Create an account
-                </Link>
-              </p>
+              {registrationAllowed && (
+                <p className="mt-5 text-center text-sm text-[#766F63] sm:mt-6">
+                  No account yet?{" "}
+                  <Link
+                    href="/register"
+                    className="font-semibold text-[#075A3A] transition hover:text-[#075A3A]"
+                  >
+                    Create an account
+                  </Link>
+                </p>
+              )}
 
               <p className="mt-2 text-center text-xs text-[#928875]">
                 Didn&apos;t receive your verification email?{" "}
@@ -323,7 +345,7 @@ export default function LoginPage() {
               </p>
 
               <p className="mt-5 text-center text-[11px] leading-5 text-[#A09582] lg:hidden">
-                Record Acquisition and Archiving Management System
+                {systemIdentity.organization_name}
               </p>
             </div>
           </div>

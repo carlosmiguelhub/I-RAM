@@ -20,6 +20,10 @@ import {
 import ThemeToggle from "@/components/ThemeToggle";
 import { apiRequest } from "@/lib/api";
 import { getErrorMessage } from "@/lib/types";
+import {
+  defaultClientSystemSettings,
+  loadPublicSystemSettings,
+} from "@/lib/system-settings";
 
 type Department = {
   id: number;
@@ -41,12 +45,31 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [registrationAllowed, setRegistrationAllowed] =
+    useState(true);
+  const [systemIdentity, setSystemIdentity] = useState(
+    defaultClientSystemSettings.general
+  );
 
   useEffect(() => {
     async function loadOptions() {
       try {
-        const data = await apiRequest("/options");
+        const [data, publicSettings] = await Promise.all([
+          apiRequest("/options"),
+          loadPublicSystemSettings(),
+        ]);
         setDepartments(data.departments || []);
+        setSystemIdentity(publicSettings.general);
+        setRegistrationAllowed(
+          publicSettings.security.allow_registration
+        );
+        if (!publicSettings.security.allow_registration) {
+          setError(
+            publicSettings.general.contact_email
+              ? `Public registration is currently disabled. Contact ${publicSettings.general.contact_email} for account assistance.`
+              : "Public registration is currently disabled. Contact the Records Office for account assistance."
+          );
+        }
       } catch (loadError) {
         console.error("Failed to load departments:", loadError);
       }
@@ -100,6 +123,15 @@ export default function RegisterPage() {
   async function handleRegister(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+
+    if (!registrationAllowed) {
+      setError(
+        systemIdentity.contact_email
+          ? `Public registration is currently disabled. Contact ${systemIdentity.contact_email} for account assistance.`
+          : "Public registration is currently disabled. Contact the Records Office for account assistance."
+      );
+      return;
+    }
 
     if (!validateForm()) return;
     setLoading(true);
@@ -178,7 +210,7 @@ export default function RegisterPage() {
               Create account
             </p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#252A27] dark:text-[#F3EEE5] sm:text-3xl">
-              Register for IRAM
+              Register for {systemIdentity.system_name}
             </h2>
             <p className="mt-2 text-sm leading-6 text-[#766F63] dark:text-[#B9B0A2]">
               Accounts begin with Staff access. Administrators manage elevated roles.
@@ -277,7 +309,7 @@ export default function RegisterPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !registrationAllowed}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-5 text-sm font-bold text-white shadow-lg shadow-[#6B0F2B]/20 transition hover:-translate-y-0.5 hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60 sm:col-span-2"
               >
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}

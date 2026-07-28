@@ -71,6 +71,130 @@ class CriticalWorkflowTest extends TestCase
         Storage::disk('local')->assertExists($file->file_path);
     }
 
+    public function test_live_submission_settings_enforce_remarks_and_ten_file_limit(): void
+    {
+        Storage::fake('local');
+
+        [$staff, $department, $category] = $this->staffContext();
+        Sanctum::actingAs($staff);
+
+        SystemSetting::setValue(
+            'records',
+            'require_submission_remarks',
+            true,
+            'boolean'
+        );
+        SystemSetting::setValue(
+            'files',
+            'max_files_per_submission',
+            10,
+            'integer'
+        );
+        SystemSetting::setValue(
+            'files',
+            'allowed_extensions',
+            ['pdf'],
+            'array'
+        );
+
+        $payload = [
+            'title' => 'Live settings test',
+            'category_id' => $category->id,
+            'department_id' => $department->id,
+            'date_received' => now()->toDateString(),
+        ];
+
+        $this->postJson('/api/records', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('remarks');
+
+        $files = collect(range(1, 10))
+            ->map(fn ($number) => UploadedFile::fake()->create(
+                "evidence-{$number}.pdf",
+                10,
+                'application/pdf'
+            ))
+            ->all();
+
+        $this->post('/api/records', [
+            ...$payload,
+            'remarks' => 'Required operational context.',
+            'files' => $files,
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonCount(10, 'record.files');
+
+        $tooManyFiles = collect(range(1, 11))
+            ->map(fn ($number) => UploadedFile::fake()->create(
+                "overflow-{$number}.pdf",
+                10,
+                'application/pdf'
+            ))
+            ->all();
+
+        $this->post('/api/records', [
+            ...$payload,
+            'title' => 'Too many files',
+            'remarks' => 'Required operational context.',
+            'files' => $tooManyFiles,
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('files');
+    }
+
+    public function test_client_settings_and_admin_review_permission_are_live(): void
+    {
+        [, $department, $category] = $this->staffContext();
+        $adminRole = Role::firstOrCreate(['name' => 'Admin']);
+        $admin = User::factory()->create([
+            'role_id' => $adminRole->id,
+            'department_id' => $department->id,
+            'status' => 'active',
+        ]);
+        $record = Record::create([
+            'record_code' => 'LIVE-SETTINGS-001',
+            'title' => 'Workflow permission test',
+            'category_id' => $category->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'date_received' => now()->toDateString(),
+            'status' => 'received',
+        ]);
+
+        SystemSetting::setValue(
+            'workflow',
+            'allow_admin_review',
+            false,
+            'boolean'
+        );
+        SystemSetting::setValue(
+            'files',
+            'max_files_per_submission',
+            10,
+            'integer'
+        );
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/system-settings')
+            ->assertOk()
+            ->assertJsonPath(
+                'settings.workflow.allow_admin_review',
+                false
+            )
+            ->assertJsonPath(
+                'settings.files.max_files_per_submission',
+                10
+            )
+            ->assertJsonMissingPath(
+                'settings.security.login_attempt_limit'
+            );
+
+        $this->postJson(
+            "/api/records/{$record->id}/start-review"
+        )->assertForbidden();
+    }
+
     public function test_archived_file_download_requires_active_approved_access(): void
     {
         Storage::fake('local');

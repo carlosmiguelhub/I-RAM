@@ -8,6 +8,10 @@ import SubmissionProgressOverlay, {
   type SubmissionStage,
 } from "@/components/SubmissionProgressOverlay";
 import { apiRequest } from "@/lib/api";
+import {
+  defaultClientSystemSettings,
+  loadClientSystemSettings,
+} from "@/lib/system-settings";
 
 type Option = {
   id: number;
@@ -39,24 +43,6 @@ type RecordDetails = {
   created_by: number;
   files?: ExistingFile[];
 };
-
-const MAX_FILES = 5;
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-
-const ALLOWED_EXTENSIONS = [
-  "pdf",
-  "doc",
-  "docx",
-  "xls",
-  "xlsx",
-  "ppt",
-  "pptx",
-  "jpg",
-  "jpeg",
-  "png",
-  "txt",
-  "csv",
-];
 
 function createFileId(file: File) {
   const fallbackId = `${Date.now()}-${Math.random()
@@ -105,8 +91,16 @@ export default function CorrectRecordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [fileError, setFileError] = useState("");
+  const [systemSettings, setSystemSettings] = useState(
+    defaultClientSystemSettings
+  );
 
   const totalFiles = existingFiles.length + selectedFiles.length;
+  const maxFiles = systemSettings.files.max_files_per_submission;
+  const maxFileSize =
+    systemSettings.files.max_upload_size_mb * 1024 * 1024;
+  const allowedExtensions =
+    systemSettings.files.allowed_extensions;
 
   useEffect(() => {
     async function loadPage() {
@@ -116,10 +110,12 @@ export default function CorrectRecordPage() {
       setError("");
 
       try {
-        const [meData, recordData, optionsData] = await Promise.all([
+        const [meData, recordData, optionsData, loadedSettings] =
+          await Promise.all([
           apiRequest("/me"),
           apiRequest(`/records/${id}`),
           apiRequest("/options"),
+          loadClientSystemSettings(),
         ]);
 
         const loadedRecord = recordData.record;
@@ -142,6 +138,7 @@ export default function CorrectRecordPage() {
         setRecord(loadedRecord);
         setCategories(optionsData.categories || []);
         setExistingFiles(loadedRecord.files || []);
+        setSystemSettings(loadedSettings);
 
         setForm({
           record_code: loadedRecord.record_code || "",
@@ -194,9 +191,9 @@ export default function CorrectRecordPage() {
       return;
     }
 
-    if (totalFiles + files.length > MAX_FILES) {
+    if (totalFiles + files.length > maxFiles) {
       setFileError(
-        `A submission may contain a maximum of ${MAX_FILES} files.`
+        `A submission may contain a maximum of ${maxFiles} files.`
       );
       resetFileInput();
       return;
@@ -206,14 +203,16 @@ export default function CorrectRecordPage() {
       const extension =
         file.name.split(".").pop()?.toLowerCase() || "";
 
-      if (!ALLOWED_EXTENSIONS.includes(extension)) {
+      if (!allowedExtensions.includes(extension)) {
         setFileError(`${file.name} is not an allowed file type.`);
         resetFileInput();
         return;
       }
 
-      if (file.size > MAX_FILE_SIZE) {
-        setFileError(`${file.name} exceeds the 10 MB file limit.`);
+      if (file.size > maxFileSize) {
+        setFileError(
+          `${file.name} exceeds the ${systemSettings.files.max_upload_size_mb} MB file limit.`
+        );
         resetFileInput();
         return;
       }
@@ -308,6 +307,15 @@ export default function CorrectRecordPage() {
 
     if (!form.date_received) {
       throw new Error("Date submitted is required.");
+    }
+
+    if (
+      systemSettings.records.require_submission_remarks &&
+      !form.remarks.trim()
+    ) {
+      throw new Error(
+        "Submission remarks are required by the current system settings."
+      );
     }
 
     const payload = new FormData();
@@ -436,6 +444,7 @@ export default function CorrectRecordPage() {
         setSaving(false);
       }
     }
+
   }
 
   if (loading) {
@@ -601,12 +610,21 @@ export default function CorrectRecordPage() {
               </div>
 
               <div className="md:col-span-2">
-                <Field label="Submission Remarks">
+                <Field
+                  label={`Submission Remarks${
+                    systemSettings.records.require_submission_remarks
+                      ? " (required)"
+                      : ""
+                  }`}
+                >
                   <textarea
                     rows={4}
                     name="remarks"
                     value={form.remarks}
                     onChange={handleChange}
+                    required={
+                      systemSettings.records.require_submission_remarks
+                    }
                     className={inputClass}
                   />
                 </Field>
@@ -628,7 +646,7 @@ export default function CorrectRecordPage() {
               </div>
 
               <span className="w-fit shrink-0 rounded-full bg-[#FFF3D6] px-3 py-1 text-xs font-extrabold text-[#A66B00] ring-1 ring-[#EBCF8F]">
-                {totalFiles}/{MAX_FILES}
+                {totalFiles}/{maxFiles}
               </span>
             </div>
 
@@ -674,7 +692,7 @@ export default function CorrectRecordPage() {
 
             <label
               className={`mt-4 flex min-h-36 flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition sm:px-5 ${
-                totalFiles >= MAX_FILES || saving
+                totalFiles >= maxFiles || saving
                   ? "cursor-not-allowed border-[#E3DCCE] bg-[#F0ECE4] opacity-60"
                   : "cursor-pointer border-[#D7CDBB] bg-[#F8F5EE] hover:border-[#91BAA3] hover:bg-[#F0F7F3]"
               }`}
@@ -684,16 +702,19 @@ export default function CorrectRecordPage() {
               </span>
 
               <span className="mt-1 text-xs leading-5 text-[#766F63]">
-                Maximum 5 files, 10 MB each
+                Maximum {maxFiles} files,{" "}
+                {systemSettings.files.max_upload_size_mb} MB each
               </span>
 
               <input
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.txt,.csv"
+                accept={allowedExtensions
+                  .map((extension) => `.${extension}`)
+                  .join(",")}
                 onChange={handleFileChange}
-                disabled={saving || totalFiles >= MAX_FILES}
+                disabled={saving || totalFiles >= maxFiles}
                 className="sr-only"
               />
             </label>

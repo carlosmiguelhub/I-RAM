@@ -5,6 +5,10 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import { apiRequest } from "@/lib/api";
+import {
+  defaultClientSystemSettings,
+  loadClientSystemSettings,
+} from "@/lib/system-settings";
 import type { AuthUser } from "@/lib/types";
 
 const API_URL =
@@ -61,6 +65,9 @@ export default function RecordDetailsPage() {
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
 
   const [record, setRecord] = useState<RecordDetails | null>(null);
+  const [systemSettings, setSystemSettings] = useState(
+    defaultClientSystemSettings
+  );
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [silentRefreshing, setSilentRefreshing] = useState(false);
@@ -87,7 +94,15 @@ export default function RecordDetailsPage() {
   const roleName = user?.role?.name || "";
   const isStaff = roleName === "Staff";
   const canManageWorkflow =
-    roleName === "Admin" || roleName === "Records Officer";
+    roleName === "Records Officer" ||
+    (roleName === "Admin" &&
+      systemSettings.workflow.allow_admin_review);
+
+  useEffect(() => {
+    void loadClientSystemSettings()
+      .then(setSystemSettings)
+      .catch(() => undefined);
+  }, []);
 
   async function loadRecord(
     showLoading = true,
@@ -293,7 +308,10 @@ export default function RecordDetailsPage() {
   async function handleReturnForCorrection() {
     if (!record) return;
 
-    if (!correctionNotes.trim()) {
+    if (
+      systemSettings.workflow.require_correction_notes &&
+      !correctionNotes.trim()
+    ) {
       setWorkflowError(
         "Correction notes are required before returning the submission."
       );
@@ -305,7 +323,7 @@ export default function RecordDetailsPage() {
       {
         method: "POST",
         body: JSON.stringify({
-          correction_notes: correctionNotes.trim(),
+          correction_notes: correctionNotes.trim() || null,
         }),
       },
       "Record returned to Staff for correction."
@@ -322,7 +340,10 @@ export default function RecordDetailsPage() {
       return;
     }
 
-    if (!storageLocation.trim()) {
+    if (
+      systemSettings.records.require_storage_location &&
+      !storageLocation.trim()
+    ) {
       setWorkflowError(
         "A storage location is required before archiving."
       );

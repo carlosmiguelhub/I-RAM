@@ -30,8 +30,6 @@ type SettingsPayload = {
     system_name: string;
     organization_name: string;
     contact_email: string;
-    timezone: string;
-    date_format: string;
   };
   records: {
     record_code_prefix: string;
@@ -39,7 +37,6 @@ type SettingsPayload = {
     require_submission_remarks: boolean;
   };
   workflow: {
-    require_records_officer_review: boolean;
     allow_admin_review: boolean;
     require_correction_notes: boolean;
     lock_archived_records: boolean;
@@ -52,7 +49,6 @@ type SettingsPayload = {
   };
   security: {
     allow_registration: boolean;
-    default_registered_role: string;
     session_timeout_minutes: number;
     login_attempt_limit: number;
   };
@@ -89,8 +85,6 @@ const defaultSettings: SettingsPayload = {
     organization_name:
       "Record Acquisition and Archiving Management System",
     contact_email: "",
-    timezone: "Asia/Manila",
-    date_format: "M d, Y",
   },
   records: {
     record_code_prefix: "IRAM",
@@ -98,7 +92,6 @@ const defaultSettings: SettingsPayload = {
     require_submission_remarks: false,
   },
   workflow: {
-    require_records_officer_review: true,
     allow_admin_review: true,
     require_correction_notes: true,
     lock_archived_records: true,
@@ -116,11 +109,14 @@ const defaultSettings: SettingsPayload = {
       "jpg",
       "jpeg",
       "png",
+      "ppt",
+      "pptx",
+      "txt",
+      "csv",
     ],
   },
   security: {
     allow_registration: true,
-    default_registered_role: "Staff",
     session_timeout_minutes: 120,
     login_attempt_limit: 5,
   },
@@ -179,6 +175,10 @@ const availableExtensions = [
   "jpg",
   "jpeg",
   "png",
+  "ppt",
+  "pptx",
+  "txt",
+  "csv",
 ];
 
 export default function AdminSettingsPage() {
@@ -1007,10 +1007,10 @@ function GeneralSettings({
 
       <SettingsGroup
         icon={<Archive className="h-5 w-5" />}
-        title="Regional preferences"
-        description="Default contact and display conventions."
+        title="System contact"
+        description="The official address shown when users need Records Office assistance."
       >
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="max-w-xl">
           <Field label="Contact email" hint="Used for system contact details.">
             <input
               value={values.contact_email}
@@ -1021,36 +1021,6 @@ function GeneralSettings({
               placeholder="records@example.com"
               className={inputClass}
             />
-          </Field>
-
-          <Field label="Timezone">
-            <select
-              value={values.timezone}
-              onChange={(event) =>
-                onChange("timezone", event.target.value)
-              }
-              className={inputClass}
-            >
-              <option value="Asia/Manila">Asia/Manila</option>
-              <option value="UTC">UTC</option>
-              <option value="Asia/Singapore">Asia/Singapore</option>
-              <option value="Asia/Tokyo">Asia/Tokyo</option>
-            </select>
-          </Field>
-
-          <Field label="Date format">
-            <select
-              value={values.date_format}
-              onChange={(event) =>
-                onChange("date_format", event.target.value)
-              }
-              className={inputClass}
-            >
-              <option value="M d, Y">Jul 10, 2026</option>
-              <option value="F d, Y">July 10, 2026</option>
-              <option value="d/m/Y">10/07/2026</option>
-              <option value="Y-m-d">2026-07-10</option>
-            </select>
           </Field>
         </div>
       </SettingsGroup>
@@ -1151,15 +1121,6 @@ function WorkflowSettings({
     >
       <div className="space-y-3">
         <ToggleRow
-          title="Require Records Officer review"
-          description="Submitted records must be reviewed before they can proceed to archiving."
-          checked={values.require_records_officer_review}
-          onChange={(checked) =>
-            onChange("require_records_officer_review", checked)
-          }
-        />
-
-        <ToggleRow
           title="Allow Admin review"
           description="Administrators may perform record review actions in addition to Records Officers."
           checked={values.allow_admin_review}
@@ -1252,7 +1213,7 @@ function FileSettings({
             <input
               type="number"
               min={1}
-              max={50}
+              max={10}
               value={values.max_files_per_submission}
               onChange={(event) =>
                 onChange(
@@ -1339,26 +1300,11 @@ function SecuritySettings({
             }
           />
 
-          <div className="max-w-md">
-            <Field
-              label="Default registered role"
-              hint="Public registration is restricted to non-privileged Staff accounts."
-            >
-              <select
-                value={values.default_registered_role}
-                disabled={!values.allow_registration}
-                onChange={(event) =>
-                  onChange(
-                    "default_registered_role",
-                    event.target.value
-                  )
-                }
-                className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
-              >
-                <option value="Staff">Staff</option>
-              </select>
-            </Field>
-          </div>
+          <p className="text-sm leading-6 text-[#766F63]">
+            Public registration always creates a non-privileged Staff
+            account and still requires email verification and Admin
+            activation.
+          </p>
         </div>
       </SettingsGroup>
 
