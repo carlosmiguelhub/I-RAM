@@ -526,11 +526,17 @@ class DocumentRequestController extends Controller
             "Approved request for record: {$documentRequest->record->record_code}"
         );
 
+        $isPrinted = $documentRequest->preferred_format === 'printed';
+
         $this->notifications->notifyUser(
             $documentRequest->requester,
             $request->user(),
-            'Document request approved',
-            "Your request for {$documentRequest->record->record_code} was approved.",
+            $isPrinted
+                ? 'Document request approved and processing'
+                : 'Document request approved',
+            $isPrinted
+                ? "Your request for {$documentRequest->record->record_code} was approved and is being prepared for pickup."
+                : "Your request for {$documentRequest->record->record_code} was approved.",
             'document_request.approved',
             '/document-requests?status=approved',
             [

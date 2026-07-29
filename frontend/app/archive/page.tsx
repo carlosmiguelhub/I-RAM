@@ -60,6 +60,7 @@ export default function ArchiveUnfiledPage() {
     useState<RecordCard | null>(null);
   const [targetFolderId, setTargetFolderId] = useState("");
   const [moving, setMoving] = useState(false);
+  const [moveError, setMoveError] = useState("");
 
   const [viewRecord, setViewRecord] =
     useState<ArchiveRecord | null>(null);
@@ -95,6 +96,35 @@ export default function ArchiveUnfiledPage() {
       ),
     [records, selectedRecordIds]
   );
+  const selectedMoveFolder = useMemo(
+    () =>
+      folders.find(
+        (folder) => String(folder.id) === targetFolderId
+      ) || null,
+    [folders, targetFolderId]
+  );
+
+  useEffect(() => {
+    if (!moveRecordItem) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !moving) {
+        setMoveRecordItem(null);
+        setTargetFolderId("");
+        setMoveError("");
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [moveRecordItem, moving]);
 
   async function loadPage(
     searchValue = search,
@@ -318,6 +348,7 @@ export default function ArchiveUnfiledPage() {
   function openMoveModal(record: RecordCard) {
     setMoveRecordItem(record);
     setTargetFolderId("");
+    setMoveError("");
     setError("");
     setSuccess("");
   }
@@ -327,16 +358,17 @@ export default function ArchiveUnfiledPage() {
 
     setMoveRecordItem(null);
     setTargetFolderId("");
+    setMoveError("");
   }
 
   async function moveRecord() {
     if (!moveRecordItem || !targetFolderId) {
-      setError("Choose an archive folder first.");
+      setMoveError("Choose an archive folder first.");
       return;
     }
 
     setMoving(true);
-    setError("");
+    setMoveError("");
     setSuccess("");
 
     try {
@@ -357,7 +389,7 @@ export default function ArchiveUnfiledPage() {
       setTargetFolderId("");
       await loadPage(search);
     } catch (err: unknown) {
-      setError(
+      setMoveError(
         err instanceof Error
           ? err.message
           : "Failed to move the archived record."
@@ -806,86 +838,219 @@ export default function ArchiveUnfiledPage() {
 
       {moveRecordItem && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-[#6B0F2B]/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-[#132019]/75 p-3 backdrop-blur-sm sm:p-6"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               closeMoveModal();
             }
           }}
         >
-          <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-[#DED5C5] sm:p-7">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#D9961A]">
-                  Organize Record
-                </p>
-                <h2 className="mt-1 text-xl font-bold text-[#252A27]">
-                  Move to folder
-                </h2>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="organize-record-title"
+            className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_24px_80px_rgba(8,28,19,0.3)] ring-1 ring-white/20"
+          >
+            <header className="flex shrink-0 items-center justify-between gap-4 bg-gradient-to-r from-[#075A3A] to-[#04432D] px-5 py-4 text-white sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15">
+                  <FolderInput className="h-4 w-4 text-[#F4C25E]" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#F4C25E]">
+                    Archive organization
+                  </p>
+                  <h2
+                    id="organize-record-title"
+                    className="mt-0.5 truncate text-lg font-bold"
+                  >
+                    Move record to a folder
+                  </h2>
+                </div>
               </div>
 
               <button
                 type="button"
                 onClick={closeMoveModal}
                 disabled={moving}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-[#766F63] hover:bg-[#F0ECE4]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white transition hover:bg-white/20 disabled:opacity-50"
+                aria-label="Close organize record dialog"
               >
                 <X className="h-5 w-5" />
               </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto bg-[#F6F7F5] p-4 sm:p-6">
+              <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                <section className="overflow-hidden rounded-xl border border-[#E0E4E1] bg-white shadow-sm">
+                  <div className="border-b border-[#E8EAE8] px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#858C86]">
+                      Record being moved
+                    </p>
+                  </div>
+
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F8E9EE] text-[#6B0F2B]">
+                        <Archive className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="break-words text-sm font-bold leading-5 text-[#28312B]">
+                          {moveRecordItem.title}
+                        </h3>
+                        <p className="mt-1 break-all text-xs font-semibold text-[#7B827C]">
+                          {moveRecordItem.record_code}
+                        </p>
+                      </div>
+                    </div>
+
+                    <dl className="mt-4 divide-y divide-[#ECEEEC] border-y border-[#ECEEEC]">
+                      <MoveDetail
+                        label="Category"
+                        value={moveRecordItem.category?.name || "N/A"}
+                      />
+                      <MoveDetail
+                        label="Department"
+                        value={moveRecordItem.department?.name || "N/A"}
+                      />
+                      <MoveDetail
+                        label="Attachments"
+                        value={`${moveRecordItem.files?.length || 0} file${
+                          (moveRecordItem.files?.length || 0) === 1
+                            ? ""
+                            : "s"
+                        }`}
+                      />
+                      <MoveDetail
+                        label="Current location"
+                        value={
+                          moveRecordItem.archive_folder?.name ||
+                          "Unfiled records"
+                        }
+                      />
+                    </dl>
+
+                    <p className="mt-4 text-xs leading-5 text-[#737B75]">
+                      Only the folder assignment changes. The record remains
+                      archived with its files and metadata intact.
+                    </p>
+                  </div>
+                </section>
+
+                <section className="rounded-xl border border-[#D8E3DC] bg-white p-4 shadow-sm sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#E7F0EB] text-[#075A3A]">
+                      <FolderOpen className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#28312B]">
+                        Choose destination
+                      </h3>
+                      <p className="mt-0.5 text-xs leading-5 text-[#737B75]">
+                        Search all folders and nested subfolders.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 text-sm font-semibold text-[#4D5650]">
+                    <span className="sr-only">Destination folder</span>
+                    <FolderDestinationPicker
+                      folders={folders}
+                      value={targetFolderId}
+                      onChange={(value) => {
+                        setTargetFolderId(value);
+                        setMoveError("");
+                      }}
+                      disabled={moving}
+                    />
+                  </div>
+
+                  {selectedMoveFolder && (
+                    <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                        <Check className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                          Selected destination
+                        </p>
+                        <p className="mt-0.5 break-words text-sm font-bold text-emerald-900">
+                          {selectedMoveFolder.name}
+                        </p>
+                        <p className="mt-0.5 break-words text-xs leading-5 text-emerald-700">
+                          {selectedMoveFolder.path ||
+                            selectedMoveFolder.name}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {moveError && (
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                      {moveError}
+                    </div>
+                  )}
+
+                  {folders.length === 0 && (
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      No folders exist yet. Create one from Folder Management
+                      first.
+                    </div>
+                  )}
+                </section>
+              </div>
             </div>
 
-            <div className="mt-5 rounded-2xl bg-gradient-to-br from-[#F0F7F3] to-[#FFF9EA] p-4 ring-1 ring-[#D9D2C4]">
-              <p className="font-semibold text-[#2D332F]">
-                {moveRecordItem.title}
+            <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#E0E4E1] bg-white px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <p className="hidden text-xs text-[#818882] sm:block">
+                Select a destination before moving this record.
               </p>
-              <p className="mt-1 text-xs text-[#766F63]">
-                {moveRecordItem.record_code}
-              </p>
-            </div>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={closeMoveModal}
+                  disabled={moving}
+                  className="h-9 rounded-lg border border-[#D8DDD9] bg-white px-4 text-xs font-bold text-[#59615B] transition hover:bg-[#F5F7F5] disabled:opacity-50"
+                >
+                  Cancel
+                </button>
 
-            <div className="mt-5 text-sm font-semibold text-[#514D46]">
-              <p>Archive folder</p>
-              <FolderDestinationPicker
-                folders={folders}
-                value={targetFolderId}
-                onChange={setTargetFolderId}
-                disabled={moving}
-              />
-            </div>
-
-            {folders.length === 0 && (
-              <p className="mt-3 text-sm text-amber-700">
-                No folders exist yet. Create one from Folder
-                Management first.
-              </p>
-            )}
-
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={closeMoveModal}
-                disabled={moving}
-                className="rounded-xl border border-[#E3DCCE] px-5 py-3 text-sm font-semibold text-[#514D46] hover:bg-[#F8F5EE]"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={moveRecord}
-                disabled={moving || !targetFolderId}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#571023] focus:outline-none focus:ring-4 focus:ring-[#D9961A]/30 disabled:opacity-50"
-              >
-                {moving && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                )}
-                {moving ? "Moving..." : "Move Record"}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={moveRecord}
+                  disabled={moving || !targetFolderId}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[#075A3A] px-4 text-xs font-bold text-white transition hover:bg-[#06472F] focus:outline-none focus:ring-4 focus:ring-[#DCEAE2] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {moving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FolderInput className="h-4 w-4" />
+                  )}
+                  {moving ? "Moving..." : "Move Record"}
+                </button>
+              </div>
+            </footer>
           </div>
         </div>
       )}
     </AppShell>
+  );
+}
+
+function MoveDetail({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2.5 text-xs">
+      <dt className="shrink-0 font-medium text-[#858C86]">{label}</dt>
+      <dd className="min-w-0 break-words text-right font-semibold text-[#3F4841]">
+        {value}
+      </dd>
+    </div>
   );
 }
 

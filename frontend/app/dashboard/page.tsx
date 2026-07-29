@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Archive,
   ArrowRight,
-  CheckCircle2,
   Files,
   ShieldCheck,
 } from "lucide-react";
@@ -74,42 +72,13 @@ export default function DashboardPage() {
   const roleName = user?.role?.name || "";
   const isStaff = roleName === "Staff";
 
-  const canManageRecords =
-    roleName === "Admin" || roleName === "Records Officer";
-
   const recentTitle = isStaff
     ? "Recent Submissions"
     : "Recent Record Activity";
 
   const recentDescription = isStaff
-    ? "Your five most recent record submissions."
-    : "The five most recently added records in the system.";
-
-  const workflowMessage = useMemo(() => {
-    if (isStaff) {
-      if (counts.received > 0) {
-        return `${counts.received} submission${
-          counts.received === 1 ? "" : "s"
-        } waiting for Records Office review.`;
-      }
-
-      return "You have no submissions waiting for review.";
-    }
-
-    if (counts.received > 0) {
-      return `${counts.received} record${
-        counts.received === 1 ? "" : "s"
-      } waiting to begin review.`;
-    }
-
-    if (counts.underReview > 0) {
-      return `${counts.underReview} record${
-        counts.underReview === 1 ? "" : "s"
-      } currently under review.`;
-    }
-
-    return "There are no pending review actions.";
-  }, [counts.received, counts.underReview, isStaff]);
+    ? "Your ten most recent record submissions."
+    : "The ten most recently added records in the system.";
 
   async function loadDashboard(silent = false) {
     if (refreshRunningRef.current) return;
@@ -173,7 +142,7 @@ export default function DashboardPage() {
         underReviewRequestsData,
       ] = requestResults;
 
-      setRecentRecords((recentData.data || []).slice(0, 5));
+      setRecentRecords((recentData.data || []).slice(0, 10));
 
       setCounts({
         total: getPaginationTotal(recentData),
@@ -438,7 +407,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-        <section className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,0.8fr)]">
+        <section className="mt-5">
           <div className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#DED5C5]">
             <div className="flex flex-col gap-3 border-b border-[#E8E0D4] bg-[#FCFAF5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div>
@@ -542,135 +511,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <aside className="space-y-5">
-            <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#6B0F2B] to-[#4B0B1E] p-5 text-white shadow-lg shadow-[#6B0F2B]/15">
-              <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-[#D9961A]/15" />
-              <div className="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-white/5" />
-
-              <div className="relative flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#F4C25E]">
-                    Current Workflow
-                  </p>
-
-                  <h2 className="mt-2 text-xl font-extrabold">
-                    {isStaff
-                      ? "Submission Progress"
-                      : "Review Queue"}
-                  </h2>
-                </div>
-
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/10">
-                  {isStaff ? (
-                    <Archive className="h-5 w-5 text-[#F4C25E]" />
-                  ) : (
-                    <CheckCircle2 className="h-5 w-5 text-[#F4C25E]" />
-                  )}
-                </div>
-              </div>
-
-              <p className="relative mt-4 text-sm leading-6 text-[#E9D7DE]">
-                {workflowMessage}
-              </p>
-
-              <div className="relative mt-5 grid grid-cols-2 gap-3">
-                <MiniStat
-                  label={isStaff ? "Submitted" : "Received"}
-                  value={counts.received}
-                />
-
-                <MiniStat
-                  label="Under Review"
-                  value={counts.underReview}
-                />
-              </div>
-
-              <Link
-                href={
-                  counts.received > 0
-                    ? "/records?status=received"
-                    : "/records"
-                }
-                className="relative mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#D9961A] px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-[#C58616]"
-              >
-                {isStaff
-                  ? "View My Submissions"
-                  : counts.received > 0
-                    ? "Open Review Queue"
-                    : "View All Records"}
-
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </section>
-
-            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#DED5C5]">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#A09582]">
-                Shortcuts
-              </p>
-
-              <h2 className="mt-1 text-lg font-extrabold text-[#2D332F]">
-                Quick Actions
-              </h2>
-
-              <p className="mt-1 text-sm leading-6 text-[#766F63]">
-                Common tasks based on your account role.
-              </p>
-
-              <div className="mt-4 grid gap-3">
-                <QuickAction
-                  href="/records"
-                  title={
-                    isStaff
-                      ? "Track submissions"
-                      : "Browse all records"
-                  }
-                  description={
-                    isStaff
-                      ? "Review the status of records you submitted."
-                      : "Search, filter, and review archive records."
-                  }
-                />
-
-                <QuickAction
-                  href="/records/create"
-                  title={
-                    isStaff
-                      ? "Submit a record"
-                      : "Add a record"
-                  }
-                  description={
-                    isStaff
-                      ? "Send a new document to the Records Office."
-                      : "Create a new archive record."
-                  }
-                />
-
-                {canManageRecords && (
-                  <QuickAction
-                    href="/document-requests"
-                    title="Manage document requests"
-                    description="Review pending archive document requests."
-                  />
-                )}
-
-                {roleName === "Admin" && (
-                  <QuickAction
-                    href="/admin/users"
-                    title="Manage users"
-                    description="Assign roles, departments, and account access."
-                  />
-                )}
-
-                {canManageRecords && (
-                  <QuickAction
-                    href="/records?status=under_review"
-                    title="Continue reviews"
-                    description="Open records currently under evaluation."
-                  />
-                )}
-              </div>
-            </section>
-          </aside>
         </section>
       </div>
     </AppShell>
@@ -890,55 +730,6 @@ function EmptyRecentRecords({
         <ArrowRight className="h-4 w-4" />
       </Link>
     </div>
-  );
-}
-
-function MiniStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-xl bg-white/10 p-4 ring-1 ring-white/10">
-      <p className="text-xs font-medium text-[#E9D7DE]">
-        {label}
-      </p>
-
-      <p className="mt-2 text-2xl font-extrabold text-white">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function QuickAction({
-  href,
-  title,
-  description,
-}: {
-  href: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex items-center gap-3 rounded-xl border border-[#E3DCCE] px-3.5 py-3 transition hover:border-[#D7B96B] hover:bg-[#FFF9EA]"
-    >
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-[#2D332F] transition group-hover:text-[#6B0F2B]">
-          {title}
-        </p>
-
-        <p className="mt-1 text-xs leading-5 text-[#766F63]">
-          {description}
-        </p>
-      </div>
-
-      <ArrowRight className="h-4 w-4 shrink-0 text-[#A09582] transition group-hover:translate-x-0.5 group-hover:text-[#D9961A]" />
-    </Link>
   );
 }
 

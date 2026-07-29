@@ -6,11 +6,9 @@ import {
   AlertTriangle,
   Building2,
   FileText,
-  Layers3,
   Pencil,
   Plus,
   Search,
-  ShieldCheck,
   Tags,
   Trash2,
   Users,
@@ -231,56 +229,50 @@ export default function ClassificationManager({
 
   const content = isCategories
     ? {
-        eyebrow: "Records configuration",
         title: "Record Categories",
-        description:
-          "Create clear classifications that make records easier to file, find, and manage.",
-        purposeTitle: "Why categories matter",
-        purpose:
-          "Categories keep naming consistent and help staff choose the correct classification when submitting records.",
+        description: "Manage the classifications used across records.",
         empty: "No categories match your search.",
       }
     : {
-        eyebrow: "Institution structure",
         title: "Departments",
-        description:
-          "Add and maintain the offices, colleges, and units used for account assignments and record ownership.",
-        purposeTitle: "Why departments matter",
-        purpose:
-          "Departments establish record ownership and staff access. Choose whether each department can submit and own records.",
+        description: "Manage offices, colleges, and record ownership.",
         empty: "No departments match your search.",
       };
 
   return (
     <AppShell>
-      <main className="w-full pb-8">
-        <section className="relative overflow-hidden rounded-2xl bg-[#064D33] px-5 py-5 text-white shadow-lg shadow-[#075A3A]/15 sm:px-6 sm:py-6">
-          <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-[#D9961A]/20 blur-3xl" />
-          <div className="absolute -bottom-28 left-1/3 h-56 w-56 rounded-full bg-[#6B0F2B]/40 blur-3xl" />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">
-                {isCategories ? <Tags size={22} /> : <Building2 size={22} />}
-              </div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#F4C25E]">
-                {content.eyebrow}
+      <main className="mx-auto w-full max-w-5xl pb-8">
+        <div className="mb-5 flex flex-col gap-3 border-b border-[#E3E6E3] pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#E7F0EB] text-[#075A3A]">
+              {isCategories ? (
+                <Tags className="h-4 w-4" />
+              ) : (
+                <Building2 className="h-4 w-4" />
+              )}
+            </span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#8A8174]">
+                Administration
               </p>
-              <h1 className="mt-1.5 text-2xl font-black tracking-tight sm:text-3xl">
+              <h1 className="mt-0.5 text-xl font-bold text-[#252A27]">
                 {content.title}
               </h1>
-              <p className="mt-3 text-sm leading-6 text-[#E7E0D3] sm:text-base">
+              <p className="mt-1 text-sm text-[#6E756F]">
                 {content.description}
               </p>
             </div>
-            <button
-                type="button"
-                onClick={openCreate}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F4C25E] px-5 py-3 text-sm font-extrabold text-[#3F2A05] shadow-lg transition hover:-translate-y-0.5 hover:bg-[#FFD273] focus:outline-none focus:ring-4 focus:ring-white/20"
-              >
-                <Plus size={18} /> Add {isCategories ? "category" : "department"}
-              </button>
           </div>
-        </section>
+
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 self-start rounded-lg bg-[#075A3A] px-3.5 text-xs font-bold text-white transition hover:bg-[#06472F] sm:self-auto"
+          >
+            <Plus className="h-4 w-4" />
+            Add {isCategories ? "category" : "department"}
+          </button>
+        </div>
 
         {success && (
           <Notice tone="success" onDismiss={() => setSuccess("")}>
@@ -289,95 +281,69 @@ export default function ClassificationManager({
         )}
         {pageError && <Notice tone="error">{pageError}</Notice>}
 
-        <section className="mt-6 grid gap-4 sm:grid-cols-3">
-          <MetricCard
-            icon={<Layers3 size={20} />}
+        <section className="mb-4 grid grid-cols-3 divide-x divide-[#E4E7E4] rounded-xl border border-[#E0E4E1] bg-white px-2 py-3 shadow-sm">
+          <CompactMetric
             label={isCategories ? "Categories" : "Departments"}
             value={summary.total}
-            helper="Configured in the system"
           />
-          <MetricCard
-            icon={<FileText size={20} />}
-            label="Linked records"
-            value={summary.records}
-            helper="Records currently classified"
-          />
-          <MetricCard
-            icon={isCategories ? <Tags size={20} /> : <Users size={20} />}
+          <CompactMetric label="Linked records" value={summary.records} />
+          <CompactMetric
             label={isCategories ? "Documented" : "Assigned users"}
             value={
               isCategories
                 ? documentedEntries
                 : summary.assigned_users || 0
             }
-            helper={
-              isCategories
-                ? "Categories with descriptions"
-                : "Accounts linked to departments"
-            }
           />
         </section>
 
-        <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <div>
+        <section className="overflow-hidden rounded-xl border border-[#E0E4E1] bg-white shadow-sm">
+          <div className="flex flex-col gap-2 border-b border-[#E8EAE8] bg-[#FAFBFA] p-3 sm:flex-row sm:items-center sm:justify-between">
             <form
               onSubmit={handleSearch}
-              className="flex gap-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-[#DED5C5]"
+              className="flex min-w-0 flex-1 gap-2 sm:max-w-md"
             >
               <label className="relative min-w-0 flex-1">
                 <span className="sr-only">Search {mode}</span>
-                <Search
-                  size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#928875]"
-                />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A938C]" />
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder={`Search ${mode} by name or purpose...`}
-                  className="w-full rounded-xl border border-transparent bg-[#F8F5EE] py-3 pl-11 pr-4 text-sm text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC]"
+                  placeholder={`Search ${mode}...`}
+                  className="h-9 w-full rounded-lg border border-[#D8DDD9] bg-white pl-9 pr-3 text-sm text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:ring-2 focus:ring-[#DCEAE2]"
                 />
               </label>
-              <button className="rounded-xl bg-[#075A3A] px-5 text-sm font-bold text-white transition hover:bg-[#043D28]">
+              <button className="h-9 rounded-lg border border-[#D8DDD9] bg-white px-3 text-xs font-bold text-[#455049] transition hover:border-[#AAB8B0] hover:bg-[#F5F7F5]">
                 Search
               </button>
             </form>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              {loading && [0, 1, 2, 3].map((item) => <Skeleton key={item} />)}
-              {!loading && entries.length === 0 && (
-                <div className="rounded-2xl bg-white p-10 text-center text-sm text-[#766F63] shadow-sm ring-1 ring-[#DED5C5] lg:col-span-2">
-                  {content.empty}
-                </div>
-              )}
-              {!loading &&
-                entries.map((entry) => (
-                  <EntryCard
-                    key={entry.id}
-                    entry={entry}
-                    isCategories={isCategories}
-                    onEdit={() => openEdit(entry)}
-                    onDelete={() => openDelete(entry)}
-                  />
-                ))}
-            </div>
+            <p className="text-xs text-[#818882]">
+              {isCategories
+                ? "In-use categories cannot be deleted."
+                : "Assigned departments cannot be deleted."}
+            </p>
           </div>
 
-          <aside className="h-fit rounded-2xl bg-[#FFF9EC] p-5 ring-1 ring-[#E9D9AF] xl:sticky xl:top-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F4C25E]/30 text-[#7A4E00]">
-              <ShieldCheck size={21} />
-            </div>
-            <h2 className="mt-4 font-extrabold text-[#2D332F]">
-              {content.purposeTitle}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-[#6F6658]">
-              {content.purpose}
-            </p>
-            <div className="mt-5 border-t border-[#E9D9AF] pt-4 text-xs leading-5 text-[#817766]">
-              {isCategories
-                ? "A category in use cannot be deleted until its records are reassigned. This protects archive data."
-                : "Departments with linked users or records cannot be deleted until those items are reassigned."}
-            </div>
-          </aside>
+          <div className="divide-y divide-[#ECEEEC]">
+            {loading &&
+              [0, 1, 2, 3].map((item) => <Skeleton key={item} />)}
+            {!loading && entries.length === 0 && (
+              <div className="px-4 py-10 text-center text-sm text-[#7B817C]">
+                {content.empty}
+              </div>
+            )}
+            {!loading &&
+              entries.map((entry) => (
+                <EntryRow
+                  key={entry.id}
+                  entry={entry}
+                  isCategories={isCategories}
+                  onEdit={() => openEdit(entry)}
+                  onDelete={() => openDelete(entry)}
+                />
+              ))}
+          </div>
         </section>
       </main>
 
@@ -397,13 +363,13 @@ export default function ClassificationManager({
           locked={submitting}
         >
           {modalError && (
-            <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
               {modalError}
             </div>
           )}
 
           {modal === "form" && (
-            <form onSubmit={submitForm} className="space-y-5">
+            <form onSubmit={submitForm} className="space-y-4">
               <FormField
                 label={isCategories ? "Category name" : "Department"}
                 helper={
@@ -430,7 +396,7 @@ export default function ClassificationManager({
                 helper="Explain what belongs here so administrators and staff can make consistent choices."
               >
                 <textarea
-                  rows={5}
+                  rows={3}
                   maxLength={1000}
                   value={form.description}
                   onChange={(event) =>
@@ -445,7 +411,7 @@ export default function ClassificationManager({
               </FormField>
 
               {!isCategories && (
-                <label className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-[#D9E6DE] bg-[#F4F8F5] p-4">
+                <label className="flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-[#D9E6DE] bg-[#F7FAF8] p-3">
                   <span>
                     <span className="block text-sm font-bold text-[#2D332F]">
                       Accept record submissions
@@ -463,23 +429,23 @@ export default function ClassificationManager({
                         accepts_submissions: event.target.checked,
                       }))
                     }
-                    className="mt-1 h-5 w-5 accent-[#075A3A]"
+                    className="mt-0.5 h-4 w-4 accent-[#075A3A]"
                   />
                 </label>
               )}
 
-              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={submitting}
-                  className="rounded-xl border border-[#DED5C5] px-5 py-3 text-sm font-bold text-[#625E56] hover:bg-[#F8F5EE]"
+                  className="h-9 rounded-lg border border-[#D8DDD9] px-3.5 text-xs font-bold text-[#59615B] hover:bg-[#F5F7F5]"
                 >
                   Cancel
                 </button>
                 <button
                   disabled={submitting}
-                  className="rounded-xl bg-[#075A3A] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#075A3A]/15 hover:bg-[#043D28] disabled:opacity-60"
+                  className="h-9 rounded-lg bg-[#075A3A] px-3.5 text-xs font-bold text-white hover:bg-[#06472F] disabled:opacity-60"
                 >
                   {submitting ? "Saving..." : "Save changes"}
                 </button>
@@ -489,7 +455,7 @@ export default function ClassificationManager({
 
           {modal === "delete" && selected && (
             <div>
-              <div className="flex gap-3 rounded-2xl bg-red-50 p-4 text-red-800 ring-1 ring-red-100">
+              <div className="flex gap-3 rounded-lg bg-red-50 p-3 text-red-800 ring-1 ring-red-100">
                 <AlertTriangle className="mt-0.5 shrink-0" size={20} />
                 <p className="text-sm leading-6">
                   You are about to delete <strong>{selected.name}</strong>.
@@ -506,12 +472,12 @@ export default function ClassificationManager({
                     : ""}. Reassign them before deleting it.
                 </p>
               )}
-              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={submitting}
-                  className="rounded-xl border border-[#DED5C5] px-5 py-3 text-sm font-bold text-[#625E56]"
+                  className="h-9 rounded-lg border border-[#D8DDD9] px-3.5 text-xs font-bold text-[#59615B]"
                 >
                   Keep {isCategories ? "category" : "department"}
                 </button>
@@ -523,7 +489,7 @@ export default function ClassificationManager({
                     selected.records_count > 0 ||
                     (isDepartment(selected) && selected.users_count > 0)
                   }
-                  className="rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="h-9 rounded-lg bg-red-600 px-3.5 text-xs font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {submitting
                     ? "Deleting..."
@@ -542,7 +508,7 @@ function isDepartment(entry: Entry): entry is Department {
   return "users_count" in entry;
 }
 
-function EntryCard({
+function EntryRow({
   entry,
   isCategories,
   onEdit,
@@ -554,106 +520,85 @@ function EntryCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#DED5C5] transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#5F5545]/10">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#075A3A] via-[#D9961A] to-[#6B0F2B] opacity-80" />
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EDF5F1] font-black text-[#075A3A]">
-          {entry.name.trim().charAt(0).toUpperCase() || "?"}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-extrabold leading-5 text-[#2D332F]">
+    <article className="flex items-start gap-3 px-4 py-3.5 transition hover:bg-[#FAFBFA]">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EAF2ED] text-xs font-bold text-[#075A3A]">
+        {entry.name.trim().charAt(0).toUpperCase() || "?"}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+          <h2 className="truncate text-sm font-bold text-[#2D332F]">
             {entry.name}
           </h2>
           {isDepartment(entry) && (
             <span
-              className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${
+              className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-bold ${
                 entry.accepts_submissions
                   ? "bg-emerald-50 text-emerald-700"
-                  : "bg-[#F0ECE4] text-[#6F6658]"
+                  : "bg-[#F0F2F0] text-[#687069]"
               }`}
             >
               {entry.accepts_submissions
                 ? "Accepts submissions"
-                : "Account assignment only"}
+                : "Assignment only"}
+            </span>
+          )}
+        </div>
+
+        <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#777E78]">
+          {entry.description || "No description added."}
+        </p>
+
+        <div className="mt-1.5 flex flex-wrap gap-3 text-[11px] font-semibold text-[#7E867F]">
+          <span className="inline-flex items-center gap-1">
+            <FileText className="h-3 w-3" />
+            {entry.records_count} record{entry.records_count === 1 ? "" : "s"}
+          </span>
+          {isDepartment(entry) && (
+            <span className="inline-flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              {entry.users_count} user{entry.users_count === 1 ? "" : "s"}
             </span>
           )}
         </div>
       </div>
 
-      <p className="mt-4 min-h-12 text-sm leading-6 text-[#766F63]">
-        {entry.description || "No purpose description has been added yet."}
-      </p>
-
-      <div className="mt-5 flex flex-wrap gap-2 border-t border-[#EEE8DC] pt-4">
-        <DataPill icon={<FileText size={14} />}>
-          {entry.records_count} record{entry.records_count === 1 ? "" : "s"}
-        </DataPill>
-        {isDepartment(entry) && (
-          <DataPill icon={<Users size={14} />}>
-            {entry.users_count} user{entry.users_count === 1 ? "" : "s"}
-          </DataPill>
-        )}
-      </div>
-
-      <div className="mt-4 flex gap-2">
+      <div className="flex shrink-0 items-center gap-0.5">
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#F0F7F3] px-3 py-2.5 text-xs font-bold text-[#075A3A] ring-1 ring-[#CFE0D6] hover:bg-[#E2F0E9]"
+          aria-label={`Edit ${entry.name}`}
+          className="rounded-md p-1.5 text-[#687069] transition hover:bg-[#E8F0EB] hover:text-[#075A3A]"
         >
-          <Pencil size={14} /> Edit
+          <Pencil className="h-3.5 w-3.5" />
         </button>
         <button
-            type="button"
-            onClick={onDelete}
-            title={`Delete ${isCategories ? "category" : "department"}`}
-            className="inline-flex items-center justify-center rounded-lg bg-red-50 px-3.5 py-2.5 text-red-700 hover:bg-red-100"
-          >
-            <Trash2 size={15} />
-          </button>
+          type="button"
+          onClick={onDelete}
+          aria-label={`Delete ${isCategories ? "category" : "department"} ${entry.name}`}
+          className="rounded-md p-1.5 text-[#8A777D] transition hover:bg-red-50 hover:text-red-700"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
       </div>
     </article>
   );
 }
 
-function MetricCard({
-  icon,
+function CompactMetric({
   label,
   value,
-  helper,
 }: {
-  icon: React.ReactNode;
   label: string;
   value: string | number;
-  helper: string;
 }) {
   return (
-    <article className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#DED5C5]">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#928875]">
-          {label}
-        </p>
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F7F3EA] text-[#075A3A]">
-          {icon}
-        </span>
-      </div>
-      <p className="mt-3 text-2xl font-black text-[#2D332F]">{value}</p>
-      <p className="mt-1 text-xs text-[#928875]">{helper}</p>
-    </article>
-  );
-}
-
-function DataPill({
-  icon,
-  children,
-}: {
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F7F3EA] px-3 py-1.5 text-xs font-semibold text-[#6F6658]">
-      {icon} {children}
-    </span>
+    <div className="min-w-0 px-2 text-center sm:px-4 sm:text-left">
+      <p className="text-lg font-bold leading-6 text-[#2D332F]">{value}</p>
+      <p className="truncate text-[10px] font-bold uppercase tracking-wide text-[#858C86] sm:text-xs sm:normal-case sm:tracking-normal">
+        {label}
+      </p>
+    </div>
   );
 }
 
@@ -668,7 +613,7 @@ function Notice({
 }) {
   return (
     <div
-      className={`mt-5 flex items-center justify-between gap-4 rounded-xl border px-4 py-3 text-sm font-medium ${
+      className={`mb-4 flex items-center justify-between gap-4 rounded-lg border px-3 py-2 text-sm font-medium ${
         tone === "success"
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
           : "border-red-200 bg-red-50 text-red-700"
@@ -708,14 +653,14 @@ function ModalShell({
         role="dialog"
         aria-modal="true"
         aria-labelledby="classification-modal-title"
-        className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white shadow-2xl ring-1 ring-[#DED5C5]"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white shadow-2xl ring-1 ring-[#D8DDD9]"
       >
-        <header className="flex items-start justify-between border-b border-[#E8E1D5] px-6 py-5">
+        <header className="flex items-start justify-between border-b border-[#E8EAE8] px-5 py-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#D08A0D]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#8A8174]">
               {eyebrow}
             </p>
-            <h2 id="classification-modal-title" className="mt-1 text-xl font-black text-[#2D332F]">
+            <h2 id="classification-modal-title" className="mt-0.5 text-lg font-bold text-[#2D332F]">
               {title}
             </h2>
           </div>
@@ -724,12 +669,12 @@ function ModalShell({
             onClick={onClose}
             disabled={locked}
             aria-label="Close dialog"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F0ECE4] text-[#625E56] hover:bg-[#E5DED2] disabled:opacity-50"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#687069] hover:bg-[#EEF1EF] disabled:opacity-50"
           >
             <X size={18} />
           </button>
         </header>
-        <div className="p-6">{children}</div>
+        <div className="p-5">{children}</div>
       </section>
     </div>
   );
@@ -745,10 +690,10 @@ function FormField({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block text-sm font-bold text-[#514D46]">
+    <label className="block text-sm font-bold text-[#414842]">
       {label}
       {children}
-      <span className="mt-1.5 block text-xs font-normal leading-5 text-[#928875]">
+      <span className="mt-1 block text-xs font-normal leading-5 text-[#858C86]">
         {helper}
       </span>
     </label>
@@ -757,19 +702,20 @@ function FormField({
 
 function Skeleton() {
   return (
-    <div className="animate-pulse rounded-2xl bg-white p-5 ring-1 ring-[#DED5C5]">
-      <div className="flex gap-3">
-        <div className="h-11 w-11 rounded-xl bg-[#EEE8DC]" />
-        <div className="flex-1 space-y-2 pt-1">
-          <div className="h-4 w-2/3 rounded bg-[#EEE8DC]" />
-          <div className="h-3 w-1/3 rounded bg-[#F4F0E8]" />
-        </div>
+    <div className="flex animate-pulse gap-3 px-4 py-3.5">
+      <div className="h-8 w-8 rounded-lg bg-[#E9ECEA]" />
+      <div className="flex-1 space-y-2 pt-0.5">
+        <div className="h-3.5 w-1/3 rounded bg-[#E4E8E5]" />
+        <div className="h-3 w-2/3 rounded bg-[#EEF0EE]" />
+        <div className="h-3 w-1/4 rounded bg-[#EEF0EE]" />
       </div>
-      <div className="mt-5 h-14 rounded bg-[#F4F0E8]" />
-      <div className="mt-5 h-9 rounded bg-[#EEE8DC]" />
+      <div className="flex gap-1">
+        <div className="h-7 w-7 rounded bg-[#EEF0EE]" />
+        <div className="h-7 w-7 rounded bg-[#EEF0EE]" />
+      </div>
     </div>
   );
 }
 
 const inputClass =
-  "mt-2 w-full rounded-xl border border-[#DED5C5] bg-[#FCFAF5] px-4 py-3 text-sm font-normal text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:bg-white focus:ring-4 focus:ring-[#E6F2EC] disabled:cursor-not-allowed disabled:bg-[#EEEAE2] disabled:text-[#817766]";
+  "mt-1.5 w-full rounded-lg border border-[#D8DDD9] bg-white px-3 py-2 text-sm font-normal text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:ring-2 focus:ring-[#DCEAE2] disabled:cursor-not-allowed disabled:bg-[#EEF1EF] disabled:text-[#818781]";

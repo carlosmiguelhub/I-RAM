@@ -79,6 +79,12 @@ import { createPortal } from "react-dom";
     files?: RecordFile[];
   };
 
+  type ReviewPreset = {
+    id: number;
+    type: "review_remark" | "storage_location";
+    value: string;
+  };
+
   export default function RecordsPage() {
     return (
       <Suspense fallback={null}>
@@ -121,6 +127,7 @@ import { createPortal } from "react-dom";
     const [reviewRemarks, setReviewRemarks] = useState("");
     const [correctionNotes, setCorrectionNotes] = useState("");
     const [storageLocation, setStorageLocation] = useState("");
+    const [reviewPresets, setReviewPresets] = useState<ReviewPreset[]>([]);
     const [retentionType, setRetentionType] =
       useState<"permanent" | "temporary">("permanent");
     const [retentionYears, setRetentionYears] = useState("1");
@@ -242,6 +249,19 @@ import { createPortal } from "react-dom";
             "iram_user",
             JSON.stringify(meData.user)
           );
+
+          if (
+            ["Admin", "Records Officer"].includes(
+              meData.user?.role?.name || ""
+            )
+          ) {
+            try {
+              const presetData = await apiRequest("/review-presets");
+              setReviewPresets(presetData.data || []);
+            } catch {
+              setReviewPresets([]);
+            }
+          }
 
           await loadRecords("", "");
         } catch {
@@ -964,6 +984,7 @@ import { createPortal } from "react-dom";
             downloadingFileId={downloadingFileId}
             canManageWorkflow={canManageWorkflow}
             reviewRemarks={reviewRemarks}
+            reviewPresets={reviewPresets}
             correctionNotes={correctionNotes}
             storageLocation={storageLocation}
             retentionType={retentionType}
@@ -999,6 +1020,7 @@ import { createPortal } from "react-dom";
     downloadingFileId,
     canManageWorkflow,
     reviewRemarks,
+    reviewPresets,
     correctionNotes,
     storageLocation,
     retentionType,
@@ -1028,6 +1050,7 @@ import { createPortal } from "react-dom";
     downloadingFileId: number | null;
     canManageWorkflow: boolean;
     reviewRemarks: string;
+    reviewPresets: ReviewPreset[];
     correctionNotes: string;
     storageLocation: string;
     retentionType: "permanent" | "temporary";
@@ -1054,6 +1077,12 @@ import { createPortal } from "react-dom";
     onDownload: (file: RecordFile) => void;
   }) {
     const files = record?.files || [];
+    const reviewRemarkPresets = reviewPresets.filter(
+      (preset) => preset.type === "review_remark"
+    );
+    const storageLocationPresets = reviewPresets.filter(
+      (preset) => preset.type === "storage_location"
+    );
     const previewScrollRef = useRef<HTMLDivElement>(null);
     const isUnderReview = record?.status === "under_review";
     const isReceived = record?.status === "received";
@@ -1077,7 +1106,7 @@ import { createPortal } from "react-dom";
 
     return createPortal(
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-[#17231E]/75 p-0 backdrop-blur-sm sm:p-5"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-[#132019]/70 p-3 backdrop-blur-sm sm:p-6"
         onMouseDown={(event) => {
           if (
             event.target === event.currentTarget &&
@@ -1091,12 +1120,12 @@ import { createPortal } from "react-dom";
           role="dialog"
           aria-modal="true"
           aria-labelledby="record-preview-title"
-          className="flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:max-h-[94vh] sm:max-w-6xl sm:rounded-3xl"
+          className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/20 bg-white shadow-[0_24px_80px_rgba(8,28,19,0.28)] sm:max-h-[92vh] sm:max-w-[1180px]"
         >
-          <header className="bg-gradient-to-r from-[#075A3A] to-[#043D28] px-5 py-5 text-white sm:px-7">
-            <div className="flex items-start justify-between gap-4">
+          <header className="shrink-0 bg-gradient-to-r from-[#075A3A] to-[#04432D] px-5 py-4 text-white sm:px-7 sm:py-5">
+            <div className="flex items-center justify-between gap-5">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#F4C25E]">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#F4C25E]">
                   {showWorkflow
                     ? "Records Officer Review"
                     : isRecordOwner
@@ -1106,13 +1135,13 @@ import { createPortal } from "react-dom";
 
                 <h2
                   id="record-preview-title"
-                  className="mt-1 truncate text-xl font-bold sm:text-2xl"
+                  className="mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl"
                 >
                   {record?.title || "Loading record..."}
                 </h2>
 
                 {record?.record_code && (
-                  <p className="mt-1 text-sm text-[#E5DDCC]">
+                  <p className="mt-1 text-xs font-medium tracking-wide text-[#D7E4DD] sm:text-sm">
                     {record.record_code}
                   </p>
                 )}
@@ -1123,7 +1152,7 @@ import { createPortal } from "react-dom";
                 onClick={onClose}
                 disabled={workflowLoading}
                 aria-label="Close record preview"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl font-semibold text-white transition hover:bg-white/20 disabled:opacity-50"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/60 disabled:opacity-50"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1132,7 +1161,7 @@ import { createPortal } from "react-dom";
 
           <div
             ref={previewScrollRef}
-            className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6"
+            className="flex-1 overflow-y-auto bg-[#F6F7F5] px-4 py-4 sm:px-6 sm:py-6"
           >
             {loading && !record ? (
               <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl bg-[#F8F5EE] text-sm font-medium text-[#766F63]">
@@ -1140,8 +1169,8 @@ import { createPortal } from "react-dom";
                 <span className="mt-3">Loading record details...</span>
               </div>
             ) : record ? (
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-                <div className="space-y-5 lg:col-span-2">
+              <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+                <main className="min-w-0 space-y-5">
                   {error && (
                     <Alert tone="warning">
                       Some details could not be loaded: {error}
@@ -1157,7 +1186,7 @@ import { createPortal } from "react-dom";
                   )}
 
                   {showWorkflow && (
-                    <section className="rounded-2xl border border-[#CFE0D6] bg-gradient-to-br from-[#F0F7F3] to-[#FFF9EA] p-5">
+                    <section className="rounded-2xl border border-[#D9E3DD] bg-white p-5 shadow-sm sm:p-6">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <h3 className="text-lg font-bold text-[#252A27]">
@@ -1174,9 +1203,16 @@ import { createPortal } from "react-dom";
 
                       {isReceived && (
                         <div className="mt-5">
-                          <label className="text-sm font-semibold text-[#3F443F]">
-                            Initial review note
-                          </label>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <label className="text-sm font-semibold text-[#3F443F]">
+                              Initial review note
+                            </label>
+                            <PresetSelect
+                              presets={reviewRemarkPresets}
+                              disabled={workflowLoading}
+                              onSelect={onReviewRemarksChange}
+                            />
+                          </div>
                           <textarea
                             rows={3}
                             value={reviewRemarks}
@@ -1206,9 +1242,16 @@ import { createPortal } from "react-dom";
                       {isUnderReview && (
                         <div className="mt-5 space-y-4">
                           <div>
-                            <label className="text-sm font-semibold text-[#3F443F]">
-                              Review remarks
-                            </label>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <label className="text-sm font-semibold text-[#3F443F]">
+                                Review remarks
+                              </label>
+                              <PresetSelect
+                                presets={reviewRemarkPresets}
+                                disabled={workflowLoading}
+                                onSelect={onReviewRemarksChange}
+                              />
+                            </div>
                             <textarea
                               rows={5}
                               value={reviewRemarks}
@@ -1224,9 +1267,16 @@ import { createPortal } from "react-dom";
                           </div>
 
                           <div>
-                            <label className="text-sm font-semibold text-[#3F443F]">
-                              Storage location
-                            </label>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <label className="text-sm font-semibold text-[#3F443F]">
+                                Storage location
+                              </label>
+                              <PresetSelect
+                                presets={storageLocationPresets}
+                                disabled={workflowLoading}
+                                onSelect={onStorageLocationChange}
+                              />
+                            </div>
                             <input
                               value={storageLocation}
                               onChange={(event) =>
@@ -1386,7 +1436,7 @@ import { createPortal } from "react-dom";
 
                       {canCorrect && (
                         <Link
-href={`/records/${record.id}/edit`}
+                          href={`/records/${record.id}/edit`}
                           className="mt-4 inline-flex rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700"
                         >
                           Edit & Resubmit
@@ -1395,7 +1445,7 @@ href={`/records/${record.id}/edit`}
                     </section>
                   )}
 
-                  <section className="rounded-2xl border border-[#E3DCCE] p-5">
+                  <section className="rounded-2xl border border-[#E1E5E2] bg-white p-5 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <h3 className="text-lg font-bold text-[#2D332F]">
@@ -1478,10 +1528,10 @@ href={`/records/${record.id}/edit`}
                       emptyText="No review remarks recorded."
                     />
                   )}
-                </div>
+                </main>
 
-                <aside className="space-y-5">
-                  <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#6B0F2B] to-[#4B0B1E] p-5 text-white shadow-lg shadow-[#6B0F2B]/15">
+                <aside className="min-w-0 space-y-5 lg:sticky lg:top-0">
+                  <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#6B0F2B] to-[#4B0B1E] p-5 text-white shadow-md shadow-[#6B0F2B]/10">
                     <h3 className="text-lg font-bold">
                       {isRecordOwner
                         ? "Submission Status"
@@ -1505,7 +1555,7 @@ href={`/records/${record.id}/edit`}
                     </div>
                   </section>
 
-                  <section className="rounded-2xl border border-[#E3DCCE] p-5">
+                  <section className="rounded-2xl border border-[#E1E5E2] bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="text-lg font-bold text-[#2D332F]">
@@ -1538,7 +1588,7 @@ href={`/records/${record.id}/edit`}
                           return (
                             <div
                               key={file.id}
-                              className="rounded-xl border border-[#E3DCCE] bg-[#F8F5EE] p-3"
+                              className="rounded-xl border border-[#E4E6E3] bg-[#FAFAF8] p-3 transition hover:border-[#CAD8D0] hover:bg-white"
                             >
                               <div className="flex items-start gap-3">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FFF3D6] text-xs font-extrabold text-[#A66B00] ring-1 ring-[#EBCF8F]">
@@ -1572,7 +1622,7 @@ href={`/records/${record.id}/edit`}
                                 disabled={
                                   downloadingFileId !== null
                                 }
-                                className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[#6B0F2B] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-60"
+                                className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#E1C7CF] bg-white px-3 py-2 text-xs font-bold text-[#6B0F2B] transition hover:border-[#6B0F2B] hover:bg-[#FFF8FA] disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 {isDownloading ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1599,36 +1649,62 @@ href={`/records/${record.id}/edit`}
           </div>
 
           {record && (
-            <footer className="flex flex-col-reverse gap-3 border-t border-[#E3DCCE] bg-[#F8F5EE] px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+            <footer className="flex shrink-0 flex-col-reverse gap-3 border-t border-[#E1E5E2] bg-white px-5 py-3.5 sm:flex-row sm:justify-end sm:px-7">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={workflowLoading}
-                className="flex items-center justify-center rounded-xl border border-[#E3DCCE] bg-white px-5 py-3 text-sm font-semibold text-[#514D46] transition hover:bg-[#F0ECE4] disabled:opacity-60"
+                className="flex items-center justify-center rounded-xl border border-[#D8DDD9] bg-white px-5 py-2.5 text-sm font-semibold text-[#3F4943] transition hover:border-[#BFC8C2] hover:bg-[#F6F7F5] focus:outline-none focus:ring-4 focus:ring-[#DDE9E2] disabled:opacity-60"
               >
                 Close
               </button>
 
               {canCorrect && (
-                  <Link
-href={`/records/${record.id}/edit`}
-                    className="flex items-center justify-center rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-700"
-                  >
-                    Edit & Resubmit
-                  </Link>
-                )}
-
-              <Link
-                href={`/records/${record.id}`}
-                className="flex items-center justify-center rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#571023]"
-              >
-                Open Full Details
-              </Link>
+                <Link
+                  href={`/records/${record.id}/edit`}
+                  className="flex items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700"
+                >
+                  Edit & Resubmit
+                </Link>
+              )}
             </footer>
           )}
         </div>
       </div>,
       document.body
+    );
+  }
+
+  function PresetSelect({
+    presets,
+    disabled,
+    onSelect,
+  }: {
+    presets: ReviewPreset[];
+    disabled: boolean;
+    onSelect: (value: string) => void;
+  }) {
+    if (presets.length === 0) return null;
+
+    return (
+      <select
+        value=""
+        disabled={disabled}
+        aria-label="Use a saved preset"
+        onChange={(event) => {
+          if (event.target.value) {
+            onSelect(event.target.value);
+          }
+        }}
+        className="h-8 max-w-48 rounded-lg border border-[#D8DDD9] bg-white px-2.5 text-xs font-semibold text-[#526057] outline-none transition hover:border-[#9DB4A6] focus:border-[#075A3A] focus:ring-2 focus:ring-[#DCEAE2] disabled:opacity-60"
+      >
+        <option value="">Use preset...</option>
+        {presets.map((preset) => (
+          <option key={preset.id} value={preset.value}>
+            {preset.value}
+          </option>
+        ))}
+      </select>
     );
   }
 
@@ -1666,7 +1742,7 @@ href={`/records/${record.id}/edit`}
     emptyText: string;
   }) {
     return (
-      <section className="rounded-2xl border border-[#E3DCCE] p-5">
+      <section className="rounded-2xl border border-[#E1E5E2] bg-white p-5 shadow-sm">
         <h3 className="font-bold text-[#2D332F]">{title}</h3>
         <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#625E56]">
           {value || emptyText}
@@ -1683,8 +1759,8 @@ href={`/records/${record.id}/edit`}
     value: string;
   }) {
     return (
-      <div className="rounded-xl bg-[#F8F5EE] p-4 ring-1 ring-[#DED5C5]">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#A09582]">
+      <div className="rounded-xl border border-[#E4E7E4] bg-[#F8F9F7] p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-[#7E887F]">
           {label}
         </p>
         <p className="mt-1 break-words text-sm font-semibold text-[#2D332F]">

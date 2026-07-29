@@ -627,7 +627,9 @@ export default function DocumentRequestsPage() {
                 <option value="under_review">
                   Under Review
                 </option>
-                <option value="approved">Approved</option>
+                <option value="approved">
+                  {canManage ? "Approved" : "Approved / Processing"}
+                </option>
                 <option value="ready_for_pickup">
                   Ready for Pickup
                 </option>
@@ -847,7 +849,11 @@ function RequestListEntry({
       <span className="truncate text-[#514D46]">{canManage ? request.requester?.name || "Unknown" : request.assignee?.name || "Not assigned"}</span>
       <span className="text-[#514D46]">{formatLabel(request.preferred_format)}</span>
       <span className="text-[#514D46]">{formatDateTime(request.created_at)}</span>
-      <StatusBadge status={request.status} />
+      <StatusBadge
+        status={request.status}
+        canManage={canManage}
+        preferredFormat={request.preferred_format}
+      />
       <div className="flex flex-wrap justify-end gap-1.5">
         <button type="button" onClick={onView} className={`${actionClass} border-[#E3DCCE] bg-white text-[#514D46] hover:bg-[#F8F5EE]`}><Eye className="h-3.5 w-3.5" />Details</button>
         {canReview && <button type="button" onClick={onReview} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}>Review</button>}
@@ -921,7 +927,11 @@ function RequestCard({
           <Archive className="h-4 w-4" />
         </div>
 
-        <StatusBadge status={request.status} />
+        <StatusBadge
+          status={request.status}
+          canManage={canManage}
+          preferredFormat={request.preferred_format}
+        />
       </div>
 
       <div className="min-w-0 flex-1">
@@ -1212,9 +1222,28 @@ function RequestModal({
               </p>
             </div>
 
-            <StatusBadge status={request.status} />
+            <StatusBadge
+              status={request.status}
+              canManage={canManage}
+              preferredFormat={request.preferred_format}
+            />
           </div>
         </div>
+
+        {!canManage &&
+          request.preferred_format === "printed" &&
+          request.status === "approved" && (
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              <FileClock className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-bold">Approved and processing</p>
+                <p className="mt-0.5 leading-5">
+                  The Records Office is preparing your printed copy. You will
+                  be notified when it is ready for pickup.
+                </p>
+              </div>
+            </div>
+          )}
 
         {error && (
           <div className="mt-4">
@@ -1469,9 +1498,17 @@ function RequestModal({
 
 function StatusBadge({
   status,
+  canManage,
+  preferredFormat,
 }: {
   status: DocumentRequest["status"];
+  canManage: boolean;
+  preferredFormat: DocumentRequest["preferred_format"];
 }) {
+  const isStaffProcessing =
+    !canManage &&
+    preferredFormat === "printed" &&
+    status === "approved";
   const styles: Record<DocumentRequest["status"], string> = {
     pending: "bg-[#FFF3D6] text-[#A66B00] ring-1 ring-[#EBCF8F]",
     under_review: "bg-[#FFF3D6] text-[#A66B00] ring-1 ring-[#EBCF8F]",
@@ -1482,11 +1519,28 @@ function StatusBadge({
     cancelled: "bg-[#F0ECE4] text-[#625E56]",
   };
 
+  if (isStaffProcessing) {
+    return (
+      <span
+        aria-label="Approved and processing"
+        className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-lg bg-blue-50 px-2 py-1.5 text-blue-700 ring-1 ring-blue-200"
+      >
+        <Clock3 className="h-3.5 w-3.5 shrink-0" />
+        <span className="flex flex-col leading-none">
+          <span className="text-[10px] font-bold">Approved</span>
+          <span className="mt-1 text-[9px] font-semibold">Processing</span>
+        </span>
+      </span>
+    );
+  }
+
   return (
     <span
-      className={`inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${styles[status]}`}
+      className={`inline-flex w-fit shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${styles[status]}`}
     >
-      {status === "approved" || status === "ready_for_pickup" || status === "released" ? (
+      {status === "approved" ||
+        status === "ready_for_pickup" ||
+        status === "released" ? (
         <CheckCircle2 className="h-3.5 w-3.5" />
       ) : status === "rejected" ||
         status === "cancelled" ? (

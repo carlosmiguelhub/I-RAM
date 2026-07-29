@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OptionController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RecordController;
+use App\Http\Controllers\Api\ReviewPresetController;
 use App\Http\Controllers\Api\SystemSettingController;
 use App\Http\Controllers\Api\UserManagementController;
 use Illuminate\Support\Facades\Route;
@@ -38,6 +39,7 @@ Route::middleware(['auth:sanctum', 'account.access'])->group(function () {
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
 
     Route::get('/audit-trail', [AuditTrailController::class, 'index']);
+    Route::get('/review-presets', [ReviewPresetController::class, 'index']);
 
     Route::get('/staff/archive-catalog', [DocumentRequestController::class, 'catalog']);
     Route::get('/document-requests', [DocumentRequestController::class, 'index']);
@@ -104,6 +106,11 @@ Route::middleware(['auth:sanctum', 'account.access'])->group(function () {
 
         Route::get('/settings', [SystemSettingController::class, 'index']);
         Route::put('/settings', [SystemSettingController::class, 'update']);
+
+        Route::get('/review-presets', [ReviewPresetController::class, 'adminIndex']);
+        Route::post('/review-presets', [ReviewPresetController::class, 'store']);
+        Route::patch('/review-presets/{reviewPreset}', [ReviewPresetController::class, 'update']);
+        Route::delete('/review-presets/{reviewPreset}', [ReviewPresetController::class, 'destroy']);
 
         // TEMPORARY DEVELOPMENT TOOLS — remove before production.
         Route::get('/practice-data', [SystemSettingController::class, 'practiceDataSummary']);

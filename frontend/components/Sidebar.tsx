@@ -140,6 +140,12 @@ const administrationItems: SidebarItem[] = [
     roles: ["Admin"],
   },
   {
+    name: "Review Presets",
+    href: "/admin/review-presets",
+    icon: ClipboardCheck,
+    roles: ["Admin"],
+  },
+  {
     name: "System Settings",
     href: "/admin/settings",
     icon: Settings,

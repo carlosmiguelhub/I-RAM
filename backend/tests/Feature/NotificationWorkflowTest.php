@@ -271,6 +271,24 @@ class NotificationWorkflowTest extends TestCase
             "/api/document-requests/{$documentRequestId}/approve"
         )->assertOk()->assertJsonPath('request.status', 'approved');
 
+        $approvalNotification = $staff->notifications()
+            ->get()
+            ->first(
+                fn ($notification) =>
+                    $notification->data['type'] ===
+                    'document_request.approved'
+            );
+
+        $this->assertNotNull($approvalNotification);
+        $this->assertSame(
+            'Document request approved and processing',
+            $approvalNotification->data['title']
+        );
+        $this->assertStringContainsString(
+            'being prepared for pickup',
+            $approvalNotification->data['message']
+        );
+
         $this->postJson(
             "/api/document-requests/{$documentRequestId}/release"
         )->assertUnprocessable();

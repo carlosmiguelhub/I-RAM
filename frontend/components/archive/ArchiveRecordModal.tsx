@@ -637,7 +637,7 @@ export default function ArchiveRecordModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="archive-record-modal-title"
-        className="flex h-full w-full flex-col overflow-hidden bg-[#FCFCFB] shadow-2xl sm:max-h-[92vh] sm:max-w-5xl sm:rounded-2xl"
+        className="flex h-full w-full flex-col overflow-hidden bg-white shadow-[0_24px_80px_rgba(8,28,19,0.3)] sm:max-h-[94vh] sm:max-w-[1360px] sm:rounded-2xl"
       >
         <header className="border-b border-white/10 bg-gradient-to-r from-[#063D2A] via-[#075A3A] to-[#043D28] px-5 py-4 text-white sm:px-6">
           <div className="flex items-center justify-between gap-4">
@@ -685,7 +685,7 @@ export default function ArchiveRecordModal({
 
         <div
           ref={modalScrollRef}
-          className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
+          className="flex-1 overflow-y-auto bg-[#F6F7F5] px-4 py-4 sm:px-6 sm:py-5"
         >
           {(error || actionError) && (
             <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
@@ -709,248 +709,224 @@ export default function ArchiveRecordModal({
               </p>
             </div>
           ) : record ? (
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
-              <div className="space-y-4 lg:col-span-3">
-                <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                  <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h3 className="text-sm font-extrabold text-slate-900">
-                        Record profile
-                      </h3>
-
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        Classification, custody, and provenance
-                      </p>
-                    </div>
-
-                    <span className="w-fit rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">
-                      Active archive
-                    </span>
-                  </div>
-
-                  <dl className="grid grid-cols-1 sm:grid-cols-2">
-                    <InfoBox
-                      label="Category"
-                      value={record.category?.name || "N/A"}
-                    />
-
-                    <InfoBox
-                      label="Department"
-                      value={record.department?.name || "N/A"}
-                    />
-
-                    <InfoBox
-                      label="Date Received"
-                      value={formatDate(record.date_received)}
-                    />
-
-                    <InfoBox
-                      label="Archived Date"
-                      value={formatDate(record.archived_at)}
-                    />
-
-                    <InfoBox
-                      label="Storage Location"
-                      value={record.storage_location || "N/A"}
-                    />
-
-                    <InfoBox
-                      label="Archive Folder"
-                      value={
-                        record.archive_folder?.name || "Unfiled"
-                      }
-                    />
-
-                    <InfoBox
-                      label="Source / Sender"
-                      value={record.source || "N/A"}
-                    />
-
-                    <InfoBox
-                      label="Created By"
-                      value={record.creator?.name || "N/A"}
-                    />
-
-                    <InfoBox
-                      label="Reviewed By"
-                      value={record.reviewer?.name || "N/A"}
-                    />
-
-                    <InfoBox
-                      label="Archived By"
-                      value={record.archiver?.name || "N/A"}
-                    />
-                  </dl>
-                </section>
-
-                <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                  <TextSection
-                    title="Description"
-                    value={record.description}
-                    emptyText="No description provided."
-                  />
-
-                  <TextSection
-                    title="Submission Remarks"
-                    value={record.remarks}
-                    emptyText="No submission remarks provided."
-                  />
-
-                  <TextSection
-                    title="Review Remarks"
-                    value={record.review_remarks}
-                    emptyText="No review remarks recorded."
-                  />
-                </section>
-              </div>
-
-              <aside className="space-y-4 lg:col-span-2">
-                <RetentionPanel
-                  type={retentionType}
-                  years={retentionYears}
-                  unit={retentionUnit}
-                  expiresAt={record.retention_expires_at}
-                  saving={savingRetention}
-                  onTypeChange={(value) => {
-                    setRetentionType(value);
-                    setAccessSuccess("");
-                    setActionError("");
-                  }}
-                  onYearsChange={setRetentionYears}
-                  onUnitChange={setRetentionUnit}
-                  onSave={saveRetentionSettings}
-                />
-
-                <StaffAccessPanel
-                  value={accessMode}
-                  saving={savingAccess}
-                  onChange={(value) => {
-                    setAccessMode(value);
-                    setAccessSuccess("");
-                    setActionError("");
-                  }}
-                  onSave={saveAccessSettings}
-                />
-
-                <section className="flex items-start gap-3 rounded-xl bg-slate-900 p-4 text-white shadow-sm">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                    <FolderOpen className="h-4 w-4 text-[#F4C25E]" />
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-xs font-extrabold uppercase tracking-wide text-slate-300">
-                      Archive location
+            <div className="mx-auto w-full max-w-[1280px] space-y-5">
+              <section className="overflow-hidden rounded-xl border border-[#E0E4E1] bg-white shadow-sm">
+                <div className="flex flex-col gap-2 border-b border-[#E8EAE8] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#28312B]">
+                      Record overview
                     </h3>
-                    <p className="mt-1 truncate text-sm font-bold">
-                      {record.archive_folder?.name || "Unfiled"}
-                    </p>
-                    <p className="mt-0.5 break-words text-xs leading-5 text-slate-400">
-                      {record.storage_location || "Storage not specified"}
+                    <p className="mt-0.5 text-xs text-[#737B75]">
+                      Classification, custody, and provenance
                     </p>
                   </div>
-                </section>
+                  <span className="w-fit rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">
+                    Active archive
+                  </span>
+                </div>
 
-                <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-extrabold text-slate-900">
-                        Attachments
+                <dl className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
+                  <InfoBox
+                    label="Category"
+                    value={record.category?.name || "N/A"}
+                  />
+                  <InfoBox
+                    label="Department"
+                    value={record.department?.name || "N/A"}
+                  />
+                  <InfoBox
+                    label="Date Received"
+                    value={formatDate(record.date_received)}
+                  />
+                  <InfoBox
+                    label="Archived Date"
+                    value={formatDate(record.archived_at)}
+                  />
+                  <InfoBox
+                    label="Source / Sender"
+                    value={record.source || "N/A"}
+                  />
+                  <InfoBox
+                    label="Created By"
+                    value={record.creator?.name || "N/A"}
+                  />
+                  <InfoBox
+                    label="Reviewed By"
+                    value={record.reviewer?.name || "N/A"}
+                  />
+                  <InfoBox
+                    label="Archived By"
+                    value={record.archiver?.name || "N/A"}
+                  />
+                  <InfoBox
+                    label="Archive Folder"
+                    value={record.archive_folder?.name || "Unfiled"}
+                  />
+                  <InfoBox
+                    label="Storage Location"
+                    value={record.storage_location || "N/A"}
+                  />
+                </dl>
+              </section>
+
+              <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(390px,0.75fr)]">
+                <main className="min-w-0 space-y-5">
+                  <section className="overflow-hidden rounded-xl border border-[#E0E4E1] bg-white shadow-sm">
+                    <TextSection
+                      title="Description"
+                      value={record.description}
+                      emptyText="No description provided."
+                    />
+                    <TextSection
+                      title="Submission Remarks"
+                      value={record.remarks}
+                      emptyText="No submission remarks provided."
+                    />
+                    <TextSection
+                      title="Review Remarks"
+                      value={record.review_remarks}
+                      emptyText="No review remarks recorded."
+                    />
+                  </section>
+
+                  <section className="rounded-xl border border-[#E0E4E1] bg-white shadow-sm">
+                    <div className="flex items-center justify-between gap-3 border-b border-[#E8EAE8] px-4 py-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-[#28312B]">
+                          Attachments
+                        </h3>
+                        <p className="mt-0.5 text-xs text-[#737B75]">
+                          Download or print archived files.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-[#E9F0EC] px-2.5 py-1 text-xs font-bold text-[#075A3A]">
+                        {files.length}
+                      </span>
+                    </div>
+
+                    {files.length === 0 ? (
+                      <p className="px-4 py-6 text-sm text-[#737B75]">
+                        No files are attached to this record.
+                      </p>
+                    ) : (
+                      <div className="divide-y divide-[#ECEEEC]">
+                        {files.map((file) => {
+                          const downloading =
+                            downloadingFileId === file.id;
+                          const printing =
+                            printingFileId === file.id;
+                          const printable =
+                            isBrowserPrintable(file);
+
+                          return (
+                            <div
+                              key={file.id}
+                              className="flex flex-col gap-3 px-4 py-3 transition hover:bg-[#FAFBFA] sm:flex-row sm:items-center"
+                            >
+                              <div className="flex min-w-0 flex-1 items-center gap-3">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#E8F0EB] text-[10px] font-bold text-[#075A3A]">
+                                  {getFileExtension(file.file_name)}
+                                </div>
+                                <div className="min-w-0">
+                                  <p
+                                    title={file.file_name}
+                                    className="truncate text-sm font-semibold text-[#303832]"
+                                  >
+                                    {file.file_name}
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-[#7B827C]">
+                                    {formatFileSize(file.file_size)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex shrink-0 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => downloadFile(file)}
+                                  disabled={busy}
+                                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-[#075A3A] px-3 text-xs font-bold text-white hover:bg-[#06472F] disabled:opacity-50"
+                                >
+                                  {downloading ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Download className="h-3.5 w-3.5" />
+                                  )}
+                                  {downloading ? "Downloading" : "Download"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => printFile(file)}
+                                  disabled={busy || !printable}
+                                  title={
+                                    printable
+                                      ? "Print this file"
+                                      : "Download this file and print it using its application"
+                                  }
+                                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#D8DDD9] bg-white px-3 text-xs font-bold text-[#59615B] hover:bg-[#F5F7F5] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {printing ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Printer className="h-3.5 w-3.5" />
+                                  )}
+                                  {printing ? "Opening" : "Print"}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                </main>
+
+                <aside className="min-w-0 space-y-4 xl:sticky xl:top-0">
+                  <section className="flex items-start gap-3 rounded-xl bg-[#17231E] p-4 text-white shadow-sm">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                      <FolderOpen className="h-4 w-4 text-[#F4C25E]" />
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#B9C9C0]">
+                        Archive location
                       </h3>
-
-                      <p className="mt-1 text-sm text-slate-500">
-                        Download or print attached files.
+                      <p className="mt-1 truncate text-sm font-bold">
+                        {record.archive_folder?.name || "Unfiled"}
+                      </p>
+                      <p className="mt-0.5 break-words text-xs leading-5 text-[#B8C3BD]">
+                        {record.storage_location || "Storage not specified"}
                       </p>
                     </div>
+                  </section>
 
-                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-                      {files.length}
-                    </span>
-                  </div>
+                  <RetentionPanel
+                    type={retentionType}
+                    years={retentionYears}
+                    unit={retentionUnit}
+                    expiresAt={record.retention_expires_at}
+                    saving={savingRetention}
+                    onTypeChange={(value) => {
+                      setRetentionType(value);
+                      setAccessSuccess("");
+                      setActionError("");
+                    }}
+                    onYearsChange={setRetentionYears}
+                    onUnitChange={setRetentionUnit}
+                    onSave={saveRetentionSettings}
+                  />
 
-                  {files.length === 0 ? (
-                    <p className="mt-4 text-sm text-slate-500">
-                      No files are attached to this record.
-                    </p>
-                  ) : (
-                    <div className="mt-4 space-y-3">
-                      {files.map((file) => {
-                        const downloading =
-                          downloadingFileId === file.id;
-
-                        const printing =
-                          printingFileId === file.id;
-
-                        const printable =
-                          isBrowserPrintable(file);
-
-                        return (
-                          <div
-                            key={file.id}
-                            className="rounded-lg border border-slate-200 bg-slate-50/70 p-2.5"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-xs font-bold text-blue-700">
-                                {getFileExtension(file.file_name)}
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <p
-                                  title={file.file_name}
-                                  className="truncate text-sm font-semibold text-slate-900"
-                                >
-                                  {file.file_name}
-                                </p>
-
-                                <p className="mt-1 text-xs text-slate-500">
-                                  {formatFileSize(file.file_size)}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="mt-3 grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => downloadFile(file)}
-                                disabled={busy}
-                                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-                              >
-                                {downloading ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Download className="h-3.5 w-3.5" />
-                                )}
-
-                                {downloading
-                                  ? "Downloading"
-                                  : "Download"}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => printFile(file)}
-                                disabled={busy || !printable}
-                                title={
-                                  printable
-                                    ? "Print this file"
-                                    : "Download this file and print it using its application"
-                                }
-                                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {printing ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Printer className="h-3.5 w-3.5" />
-                                )}
-
-                                {printing ? "Opening" : "Print"}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              </aside>
+                  <StaffAccessPanel
+                    value={accessMode}
+                    saving={savingAccess}
+                    onChange={(value) => {
+                      setAccessMode(value);
+                      setAccessSuccess("");
+                      setActionError("");
+                    }}
+                    onSave={saveAccessSettings}
+                  />
+                </aside>
+              </div>
             </div>
           ) : (
             <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
@@ -1008,22 +984,22 @@ function RetentionPanel({
   onSave: () => void;
 }) {
   return (
-    <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm">
+    <section className="rounded-xl border border-[#E0E4E1] bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-          <CalendarClock className="h-5 w-5" />
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+          <CalendarClock className="h-4 w-4" />
         </span>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700">
             Retention Schedule
           </p>
-          <h3 className="mt-0.5 text-sm font-extrabold text-slate-900">
+          <h3 className="mt-0.5 text-sm font-bold text-[#28312B]">
             Document retention
           </h3>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-3 gap-2">
         {(
           [
             {
@@ -1054,10 +1030,10 @@ function RetentionPanel({
                 onYearsChange("1");
               }
             }}
-            className={`rounded-lg border px-2 py-2 text-[11px] font-bold ${
+            className={`rounded-lg border px-2 py-2 text-[11px] font-bold transition ${
               type === option.type && unit === option.unit
                 ? "border-amber-500 bg-white text-amber-800 ring-2 ring-amber-100"
-                : "border-slate-200 bg-white/70 text-slate-600"
+                : "border-[#DCE1DD] bg-[#FAFBFA] text-[#626B64] hover:bg-white"
             }`}
           >
             {option.label}
@@ -1066,7 +1042,7 @@ function RetentionPanel({
       </div>
 
       {type === "temporary" && unit === "years" && (
-        <label className="mt-4 block text-sm font-semibold text-slate-700">
+        <label className="mt-3 block text-xs font-bold text-[#59615B]">
           Retention years
           <input
             type="number"
@@ -1076,12 +1052,12 @@ function RetentionPanel({
             value={years}
             disabled={saving}
             onChange={(event) => onYearsChange(event.target.value)}
-            className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+            className="mt-1.5 h-9 w-full rounded-lg border border-[#D8DDD9] bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
           />
         </label>
       )}
 
-      <p className="mt-3 text-xs leading-5 text-slate-500">
+      <p className="mt-3 text-xs leading-5 text-[#737B75]">
         {type === "permanent"
           ? "This record will remain in the archive indefinitely."
           : unit === "minutes"
@@ -1095,7 +1071,7 @@ function RetentionPanel({
         type="button"
         onClick={onSave}
         disabled={saving}
-        className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+        className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
       >
         {saving ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1142,33 +1118,33 @@ function StaffAccessPanel({
   ];
 
   return (
-    <section className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 shadow-sm">
+    <section className="rounded-xl border border-[#E0E4E1] bg-white p-4 shadow-sm">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#075A3A]">
           Staff Catalog Access
         </p>
 
-        <h3 className="mt-0.5 text-sm font-extrabold text-slate-900">
+        <h3 className="mt-0.5 text-sm font-bold text-[#28312B]">
           Visibility and Access
         </h3>
 
-        <p className="mt-1 text-sm leading-5 text-slate-500">
+        <p className="mt-1 text-xs leading-5 text-[#737B75]">
           Control whether Staff can discover and request this
           archived record.
         </p>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         {options.map((option) => {
           const selected = value === option.value;
 
           return (
             <label
               key={option.value}
-              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
+              className={`flex cursor-pointer items-start gap-2 rounded-lg border p-2.5 transition ${
                 selected
-                  ? "border-blue-400 bg-white ring-2 ring-blue-100"
-                  : "border-slate-200 bg-white/70 hover:border-blue-200"
+                  ? "border-[#71A087] bg-[#F4F8F5] ring-2 ring-[#DCEAE2]"
+                  : "border-[#DCE1DD] bg-[#FAFBFA] hover:bg-white"
               }`}
             >
               <input
@@ -1178,25 +1154,25 @@ function StaffAccessPanel({
                 checked={selected}
                 disabled={saving}
                 onChange={() => onChange(option.value)}
-                className="mt-1 h-4 w-4 accent-blue-600"
+                className="mt-0.5 h-4 w-4 accent-[#075A3A]"
               />
 
               <span
-                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                className={`hidden h-7 w-7 shrink-0 items-center justify-center rounded-md sm:flex ${
                   selected
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-slate-100 text-slate-500"
+                    ? "bg-[#DCEAE2] text-[#075A3A]"
+                    : "bg-[#ECEFEC] text-[#69716B]"
                 }`}
               >
                 {option.icon}
               </span>
 
               <span className="min-w-0">
-                <span className="block text-sm font-bold text-slate-800">
+                <span className="block text-xs font-bold text-[#303832]">
                   {option.title}
                 </span>
 
-                <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+                <span className="mt-0.5 block text-[10px] leading-4 text-[#737B75]">
                   {option.description}
                 </span>
               </span>
@@ -1209,7 +1185,7 @@ function StaffAccessPanel({
         type="button"
         onClick={onSave}
         disabled={saving}
-        className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#075A3A] px-4 text-xs font-bold text-white transition hover:bg-[#06472F] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {saving ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1261,12 +1237,12 @@ function InfoBox({
   value: string;
 }) {
   return (
-    <div className="border-b border-slate-100 px-4 py-3 odd:sm:border-r">
-      <dt className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-400">
+    <div className="min-w-0 rounded-lg border border-[#E5E8E5] bg-[#FAFBFA] px-3 py-2.5">
+      <dt className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#858C86]">
         {label}
       </dt>
 
-      <dd className="mt-1 break-words text-xs font-bold leading-5 text-slate-800">
+      <dd className="mt-1 break-words text-xs font-semibold leading-5 text-[#303832]">
         {value}
       </dd>
     </div>
@@ -1283,12 +1259,12 @@ function TextSection({
   emptyText: string;
 }) {
   return (
-    <div className="border-b border-slate-100 px-4 py-3 last:border-b-0">
-      <h3 className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-500">
+    <div className="border-b border-[#ECEEEC] px-4 py-3.5 last:border-b-0">
+      <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#737B75]">
         {title}
       </h3>
 
-      <p className="mt-1.5 whitespace-pre-wrap break-words text-xs leading-5 text-slate-600">
+      <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-6 text-[#535C55]">
         {value || emptyText}
       </p>
     </div>
