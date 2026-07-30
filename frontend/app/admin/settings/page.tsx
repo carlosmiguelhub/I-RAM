@@ -804,7 +804,9 @@ function DevelopmentTools({
               Reset practice workspace
             </h3>
             <p className="mt-1 text-sm leading-5 text-red-700">
-              Deletes all practice records, disposal cases, certificates, retained file metadata, requests, folders, notifications, and audit logs.
+              Deletes all practice records, disposal cases, certificates,
+              retained file metadata, requests, folders, notifications, and
+              audit logs.
             </p>
           </div>
         </header>
@@ -825,6 +827,7 @@ function DevelopmentTools({
           </button>
         </div>
       </section>
+
     </div>
   );
 }
@@ -871,15 +874,30 @@ function ClearPracticeDataModal({
     !clearing;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reset-workspace-title"
+    >
+      <div
+        className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white shadow-2xl"
+        aria-busy={clearing}
+      >
         <header className="flex items-start justify-between gap-4 border-b border-red-100 bg-red-50 px-5 py-5 sm:px-6">
           <div>
-            <h2 className="text-xl font-bold text-red-900">
-              Reset practice workspace?
+            <h2
+              id="reset-workspace-title"
+              className="text-xl font-bold text-red-900"
+            >
+              {clearing
+                ? "Resetting practice workspace"
+                : "Reset practice workspace?"}
             </h2>
             <p className="mt-1 text-sm text-red-700">
-              This action cannot be undone.
+              {clearing
+                ? "Secure cleanup is now in progress."
+                : "This action cannot be undone."}
             </p>
           </div>
           <button
@@ -892,7 +910,34 @@ function ClearPracticeDataModal({
           </button>
         </header>
 
-        <div className="space-y-5 p-5 sm:p-6">
+        {clearing ? (
+          <div className="p-6 sm:p-8">
+            <div className="flex flex-col items-center text-center">
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-50/60">
+                <Loader2 className="h-10 w-10 animate-spin text-red-700" />
+              </div>
+
+              <h3 className="mt-6 text-lg font-bold text-[#252A27]">
+                Please keep this window open
+              </h3>
+              <p className="mt-2 max-w-md text-sm leading-6 text-[#766F63]">
+                IRAM is deleting practice records, stored files, requests,
+                folders, notifications, and audit entries. Larger workspaces
+                may take a moment.
+              </p>
+            </div>
+
+            <div className="mt-7 overflow-hidden rounded-full bg-red-100">
+              <div className="h-2 w-2/3 animate-pulse rounded-full bg-red-700" />
+            </div>
+
+            <div className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+              Do not refresh, close, or navigate away.
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-5 p-5 sm:p-6">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <PracticeCount label="Records" value={summary?.counts.records ?? 0} />
             <PracticeCount label="Files" value={summary?.counts.record_files ?? 0} />
@@ -930,29 +975,35 @@ function ClearPracticeDataModal({
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
             All records—including For Disposal and Disposed Records—uploaded files, retained file metadata, disposal cases, certificates, document requests, folders, notifications, and audit logs will be permanently removed. Accounts and master lists are preserved.
           </div>
-        </div>
+          </div>
+        )}
 
         <footer className="flex flex-col-reverse gap-3 border-t border-[#E3DCCE] bg-[#F8F5EE] px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+          {!clearing && (
           <button
             type="button"
             onClick={onClose}
-            disabled={clearing}
             className="rounded-xl border border-[#D8CDBB] bg-white px-5 py-3 text-sm font-semibold text-[#514D46]"
           >
             Cancel
           </button>
+          )}
           <button
             type="button"
             onClick={onConfirm}
             disabled={!ready}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-700 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className={`inline-flex min-w-52 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white ${
+              clearing
+                ? "cursor-wait bg-red-800"
+                : "bg-red-700 transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+            }`}
           >
             {clearing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
-            {clearing ? "Resetting..." : "Permanently reset workspace"}
+            {clearing ? "Reset in progress..." : "Permanently reset workspace"}
           </button>
         </footer>
       </div>

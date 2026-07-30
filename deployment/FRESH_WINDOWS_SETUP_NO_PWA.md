@@ -123,9 +123,16 @@ GRANT ALL PRIVILEGES ON iram_system.*
 FLUSH PRIVILEGES;
 ```
 
-Do not import the old database and do not copy the old
-`backend/storage/app/private/records` directory. This is a fresh
-installation.
+You now have two valid ways to initialize this database:
+
+- **Import the clean database from the old device.** This preserves its
+  current users, settings, categories, departments, and other reference
+  data.
+- **Run Laravel migrations and seeders.** This recreates the standard
+  project defaults and the initial Admin account.
+
+Choose only one method in Step 6. Do not import a dump and then run
+`migrate --seed`.
 
 ## 4. Configure Laravel
 
@@ -282,7 +289,60 @@ backend/storage/logs/laravel.log
 Do not continue to user-registration testing until SMTP works or the
 `log` mailer is intentionally selected.
 
-## 6. Create the fresh schema and Admin account
+## 6. Initialize the database
+
+Choose **A or B**, not both.
+
+### Option A: import the clean database (recommended for this move)
+
+Because the current database has already been reset and contains no
+documents, it can be transferred directly. A database import includes
+everything still present in that database, including users, settings, audit
+entries, and reference data. Check the current system once more before
+exporting it.
+
+On the old device, export it with phpMyAdmin's **Export > Quick > SQL**
+feature, or use:
+
+```powershell
+New-Item -ItemType Directory -Force C:\IRAM-transfer | Out-Null
+mysqldump -u root -p --single-transaction --routines --triggers `
+  --result-file=C:\IRAM-transfer\iram_clean.sql iram_system
+```
+
+Copy `iram_clean.sql` to the new device. Import it through phpMyAdmin's
+**Import** feature after selecting the empty `iram_system` database, or use
+the MySQL console:
+
+```powershell
+mysql -u iram_user -p iram_system
+```
+
+At the MySQL prompt:
+
+```sql
+SOURCE C:/IRAM-transfer/iram_clean.sql;
+EXIT;
+```
+
+Then let Laravel apply only any newer migrations that were added after the
+dump was made:
+
+```powershell
+cd C:\projects\iram-system\backend
+php artisan migrate
+php artisan migrate:status
+```
+
+Do not run `php artisan migrate:fresh` or `php artisan db:seed` after this
+import. Existing login passwords remain the same. The `IRAM_ADMIN_EMAIL`
+and `IRAM_ADMIN_PASSWORD` variables are not used to replace an imported
+Admin.
+
+Since the database contains no document records, do not copy
+`backend/storage/app/private/records` from the old device.
+
+### Option B: create the schema using Laravel
 
 Run:
 
@@ -542,8 +602,5 @@ backend/storage/logs/laravel.log
 For this installation:
 
 - Do not install Caddy.
-- Do not use `deployment/Caddyfile.local`.
 - Do not install a local certificate authority.
-- Do not follow `deployment/LOCAL_PWA_SETUP.md`.
 - Use IRAM as a normal browser application at `http://...:3000`.
-
