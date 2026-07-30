@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { ClipboardCheck } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import ReviewPresetPicker from "@/components/ReviewPresetPicker";
 import { apiRequest } from "@/lib/api";
 import {
   defaultClientSystemSettings,
@@ -32,6 +34,12 @@ type AuditLog = {
 
 type UserSummary = {
   name?: string | null;
+};
+
+type ReviewPreset = {
+  id: number;
+  type: "review_remark" | "storage_location";
+  value: string;
 };
 
 type RecordDetails = {
@@ -82,6 +90,7 @@ export default function RecordDetailsPage() {
   const [reviewRemarks, setReviewRemarks] = useState("");
   const [correctionNotes, setCorrectionNotes] = useState("");
   const [storageLocation, setStorageLocation] = useState("");
+  const [reviewPresets, setReviewPresets] = useState<ReviewPreset[]>([]);
   const [workflowLoading, setWorkflowLoading] = useState(false);
   const [workflowError, setWorkflowError] = useState("");
   const [workflowSuccess, setWorkflowSuccess] = useState("");
@@ -153,6 +162,19 @@ export default function RecordDetailsPage() {
       setLastUpdatedAt(new Date());
 
       if (!silent) {
+        if (
+          ["Admin", "Records Officer"].includes(
+            meData.user?.role?.name || ""
+          )
+        ) {
+          try {
+            const presetData = await apiRequest("/review-presets");
+            setReviewPresets(presetData.data || []);
+          } catch {
+            setReviewPresets([]);
+          }
+        }
+
         setReviewRemarks(loadedRecord?.review_remarks || "");
         setCorrectionNotes(loadedRecord?.correction_notes || "");
         setStorageLocation(
@@ -281,9 +303,6 @@ export default function RecordDetailsPage() {
       `/records/${record.id}/start-review`,
       {
         method: "POST",
-        body: JSON.stringify({
-          review_remarks: reviewRemarks.trim() || null,
-        }),
       },
       "Review started."
     );
@@ -463,6 +482,12 @@ export default function RecordDetailsPage() {
 
   const files = record.files || [];
   const auditLogs = record.audit_logs || [];
+  const reviewRemarkPresets = reviewPresets.filter(
+    (preset) => preset.type === "review_remark"
+  );
+  const storageLocationPresets = reviewPresets.filter(
+    (preset) => preset.type === "storage_location"
+  );
   const showWorkflow =
     canManageWorkflow &&
     ["received", "under_review"].includes(record.status);
@@ -563,25 +588,27 @@ export default function RecordDetailsPage() {
             )}
 
             {record.status === "received" && (
-              <div className="mt-5">
-                <label className="text-sm font-semibold text-slate-800">
-                  Initial review note
-                </label>
-                <textarea
-                  rows={4}
-                  value={reviewRemarks}
-                  onChange={(event) =>
-                    setReviewRemarks(event.target.value)
-                  }
-                  disabled={workflowLoading}
-                  placeholder="Optional note before starting review..."
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
-                />
+              <div className="mt-5 flex flex-col gap-4 rounded-xl border border-blue-200 bg-white/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                    <ClipboardCheck className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">
+                      Begin the formal review
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      This assigns you as reviewer and moves the record to
+                      Under Review. Remarks and storage details are added in
+                      the next step.
+                    </p>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={handleStartReview}
                   disabled={workflowLoading}
-                  className="mt-4 flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+                  className="flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
                 >
                   {workflowLoading
                     ? "Starting Review..."
@@ -606,6 +633,13 @@ export default function RecordDetailsPage() {
                     placeholder="Describe the checks performed and review result..."
                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
                   />
+                  <ReviewPresetPicker
+                    type="review_remark"
+                    presets={reviewRemarkPresets}
+                    value={reviewRemarks}
+                    disabled={workflowLoading}
+                    onSelect={setReviewRemarks}
+                  />
                 </div>
 
                 <div>
@@ -620,6 +654,13 @@ export default function RecordDetailsPage() {
                     disabled={workflowLoading}
                     placeholder="Archive Room A / Shelf 2 / Box 14"
                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+                  />
+                  <ReviewPresetPicker
+                    type="storage_location"
+                    presets={storageLocationPresets}
+                    value={storageLocation}
+                    disabled={workflowLoading}
+                    onSelect={setStorageLocation}
                   />
 
                   <div className="mt-4">

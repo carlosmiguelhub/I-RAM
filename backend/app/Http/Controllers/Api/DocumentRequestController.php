@@ -712,6 +712,9 @@ class DocumentRequestController extends Controller
         }
 
         $validated = $request->validate([
+            'preparation_confirmed' => [
+                'accepted',
+            ],
             'review_notes' => [
                 'nullable',
                 'string',

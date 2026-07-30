@@ -195,6 +195,46 @@ class CriticalWorkflowTest extends TestCase
         )->assertForbidden();
     }
 
+    public function test_starting_review_changes_status_without_accepting_initial_remarks(): void
+    {
+        [$staff, $department, $category] = $this->staffContext();
+        $officerRole = Role::firstOrCreate([
+            'name' => 'Records Officer',
+        ]);
+        $officer = User::factory()->create([
+            'role_id' => $officerRole->id,
+            'department_id' => $department->id,
+            'status' => 'active',
+        ]);
+        $record = Record::create([
+            'record_code' => 'REVIEW-START-001',
+            'title' => 'Start review without remarks',
+            'category_id' => $category->id,
+            'department_id' => $department->id,
+            'created_by' => $staff->id,
+            'date_received' => now()->toDateString(),
+            'status' => 'received',
+        ]);
+
+        Sanctum::actingAs($officer);
+
+        $this->postJson(
+            "/api/records/{$record->id}/start-review",
+            ['review_remarks' => 'Legacy initial note']
+        )
+            ->assertOk()
+            ->assertJsonPath('record.status', 'under_review')
+            ->assertJsonPath('record.review_remarks', null)
+            ->assertJsonPath('record.reviewer.id', $officer->id);
+
+        $this->assertDatabaseHas('records', [
+            'id' => $record->id,
+            'status' => 'under_review',
+            'review_remarks' => null,
+            'reviewed_by' => $officer->id,
+        ]);
+    }
+
     public function test_archived_file_download_requires_active_approved_access(): void
     {
         Storage::fake('local');

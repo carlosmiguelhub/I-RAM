@@ -295,7 +295,17 @@ class NotificationWorkflowTest extends TestCase
 
         $this->postJson(
             "/api/document-requests/{$documentRequestId}/ready-for-pickup",
-            ['review_notes' => 'Claim at the Records Office.']
+            ['review_notes' => 'Not yet confirmed.']
+        )
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('preparation_confirmed');
+
+        $this->postJson(
+            "/api/document-requests/{$documentRequestId}/ready-for-pickup",
+            [
+                'review_notes' => 'Claim at the Records Office.',
+                'preparation_confirmed' => true,
+            ]
         )
             ->assertOk()
             ->assertJsonPath('request.status', 'ready_for_pickup')

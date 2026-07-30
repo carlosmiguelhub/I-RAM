@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { ViewTransition } from "react";
 import PwaRegistration from "@/components/PwaRegistration";
 import "./globals.css";
 
@@ -55,10 +56,11 @@ export default function RootLayout({
     <html
       lang="en"
       className="h-full antialiased"
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        {children}
+        <ViewTransition default="iram-route">{children}</ViewTransition>
         <PwaRegistration />
         <Script id="iram-theme" strategy="beforeInteractive">
           {`try{const saved=localStorage.getItem("iram_theme");const theme=saved==="light"||saved==="dark"?saved:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=theme}catch{document.documentElement.dataset.theme="light"}`}

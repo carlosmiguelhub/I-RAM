@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
   import Link from "next/link";
   import { useRouter, useSearchParams } from "next/navigation";
   import {
+    ClipboardCheck,
     Download,
     Eye,
     Files,
@@ -14,6 +15,7 @@ import { createPortal } from "react-dom";
     X,
   } from "lucide-react";
   import AppShell from "@/components/AppShell";
+  import ReviewPresetPicker from "@/components/ReviewPresetPicker";
   import { apiRequest } from "@/lib/api";
   import {
     defaultClientSystemSettings,
@@ -478,9 +480,6 @@ import { createPortal } from "react-dom";
         `/records/${selectedRecord.id}/start-review`,
         {
           method: "POST",
-          body: JSON.stringify({
-            review_remarks: reviewRemarks.trim() || null,
-          }),
         },
         "Record review started."
       );
@@ -1202,35 +1201,27 @@ import { createPortal } from "react-dom";
                       </div>
 
                       {isReceived && (
-                        <div className="mt-5">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <label className="text-sm font-semibold text-[#3F443F]">
-                              Initial review note
-                            </label>
-                            <PresetSelect
-                              presets={reviewRemarkPresets}
-                              disabled={workflowLoading}
-                              onSelect={onReviewRemarksChange}
-                            />
+                        <div className="mt-5 flex flex-col gap-4 rounded-xl border border-[#D9E3DD] bg-[#F7FAF8] p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-start gap-3">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E4F0E9] text-[#075A3A]">
+                              <ClipboardCheck className="h-5 w-5" />
+                            </span>
+                            <div>
+                              <p className="text-sm font-bold text-[#2D332F]">
+                                Begin the formal review
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-[#68736B]">
+                                This assigns you as reviewer and moves the
+                                record to Under Review. Remarks and storage
+                                details are added in the next step.
+                              </p>
+                            </div>
                           </div>
-                          <textarea
-                            rows={3}
-                            value={reviewRemarks}
-                            onChange={(event) =>
-                              onReviewRemarksChange(
-                                event.target.value
-                              )
-                            }
-                            disabled={workflowLoading}
-                            placeholder="Optional note before starting review..."
-                            className="mt-2 w-full rounded-xl border border-[#E3DCCE] bg-white px-4 py-3 text-sm text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:ring-4 focus:ring-[#CFE0D6] disabled:opacity-60"
-                          />
-
                           <button
                             type="button"
                             onClick={onStartReview}
                             disabled={workflowLoading}
-                            className="mt-4 flex w-full items-center justify-center rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                            className="flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-[#6B0F2B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#571023] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                           >
                             {workflowLoading
                               ? "Starting Review..."
@@ -1242,16 +1233,9 @@ import { createPortal } from "react-dom";
                       {isUnderReview && (
                         <div className="mt-5 space-y-4">
                           <div>
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <label className="text-sm font-semibold text-[#3F443F]">
-                                Review remarks
-                              </label>
-                              <PresetSelect
-                                presets={reviewRemarkPresets}
-                                disabled={workflowLoading}
-                                onSelect={onReviewRemarksChange}
-                              />
-                            </div>
+                            <label className="text-sm font-semibold text-[#3F443F]">
+                              Review remarks
+                            </label>
                             <textarea
                               rows={5}
                               value={reviewRemarks}
@@ -1264,19 +1248,19 @@ import { createPortal } from "react-dom";
                               placeholder="Describe the verification performed and the review result..."
                               className="mt-2 w-full rounded-xl border border-[#E3DCCE] bg-white px-4 py-3 text-sm text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:ring-4 focus:ring-[#CFE0D6] disabled:opacity-60"
                             />
+                            <ReviewPresetPicker
+                              type="review_remark"
+                              presets={reviewRemarkPresets}
+                              value={reviewRemarks}
+                              disabled={workflowLoading}
+                              onSelect={onReviewRemarksChange}
+                            />
                           </div>
 
                           <div>
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <label className="text-sm font-semibold text-[#3F443F]">
-                                Storage location
-                              </label>
-                              <PresetSelect
-                                presets={storageLocationPresets}
-                                disabled={workflowLoading}
-                                onSelect={onStorageLocationChange}
-                              />
-                            </div>
+                            <label className="text-sm font-semibold text-[#3F443F]">
+                              Storage location
+                            </label>
                             <input
                               value={storageLocation}
                               onChange={(event) =>
@@ -1287,6 +1271,13 @@ import { createPortal } from "react-dom";
                               disabled={workflowLoading}
                               placeholder="Example: Archive Room A / Shelf 2 / Box 14"
                               className="mt-2 w-full rounded-xl border border-[#E3DCCE] bg-white px-4 py-3 text-sm text-[#2D332F] outline-none transition focus:border-[#075A3A] focus:ring-4 focus:ring-[#CFE0D6] disabled:opacity-60"
+                            />
+                            <ReviewPresetPicker
+                              type="storage_location"
+                              presets={storageLocationPresets}
+                              value={storageLocation}
+                              disabled={workflowLoading}
+                              onSelect={onStorageLocationChange}
                             />
                           </div>
 
@@ -1672,39 +1663,6 @@ import { createPortal } from "react-dom";
         </div>
       </div>,
       document.body
-    );
-  }
-
-  function PresetSelect({
-    presets,
-    disabled,
-    onSelect,
-  }: {
-    presets: ReviewPreset[];
-    disabled: boolean;
-    onSelect: (value: string) => void;
-  }) {
-    if (presets.length === 0) return null;
-
-    return (
-      <select
-        value=""
-        disabled={disabled}
-        aria-label="Use a saved preset"
-        onChange={(event) => {
-          if (event.target.value) {
-            onSelect(event.target.value);
-          }
-        }}
-        className="h-8 max-w-48 rounded-lg border border-[#D8DDD9] bg-white px-2.5 text-xs font-semibold text-[#526057] outline-none transition hover:border-[#9DB4A6] focus:border-[#075A3A] focus:ring-2 focus:ring-[#DCEAE2] disabled:opacity-60"
-      >
-        <option value="">Use preset...</option>
-        {presets.map((preset) => (
-          <option key={preset.id} value={preset.value}>
-            {preset.value}
-          </option>
-        ))}
-      </select>
     );
   }
 

@@ -9,10 +9,12 @@ use App\Models\DocumentRequest;
 use App\Models\DisposalCase;
 use App\Models\Record;
 use App\Models\RecordCategory;
+use App\Models\RecordFile;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -22,6 +24,8 @@ class PracticeDataCleanupTest extends TestCase
 
     public function test_admin_can_reset_practice_workspace_while_preserving_master_data(): void
     {
+        Storage::fake('local');
+
         $role = Role::firstOrCreate(['name' => 'Admin']);
         $department = Department::create([
             'name' => 'Practice Department',
@@ -56,6 +60,19 @@ class PracticeDataCleanupTest extends TestCase
             'status' => 'archived',
             'archive_folder_id' => $folder->id,
             'archived_at' => now(),
+        ]);
+        $trackedPath = "records/{$record->id}/tracked-document.pdf";
+        $orphanedPath = 'records/orphaned/old-practice-file.pdf';
+        Storage::disk('local')->put($trackedPath, 'tracked practice file');
+        Storage::disk('local')->put($orphanedPath, 'orphaned practice file');
+        RecordFile::create([
+            'record_id' => $record->id,
+            'uploaded_by' => $admin->id,
+            'original_name' => 'tracked-document.pdf',
+            'stored_name' => 'tracked-document.pdf',
+            'file_path' => $trackedPath,
+            'mime_type' => 'application/pdf',
+            'file_size' => 21,
         ]);
         DocumentRequest::create([
             'record_id' => $record->id,
@@ -95,7 +112,10 @@ class PracticeDataCleanupTest extends TestCase
             ->assertJsonPath('deleted.records', 1)
             ->assertJsonPath('deleted.document_requests', 1)
             ->assertJsonPath('deleted.disposal_cases', 1)
-            ->assertJsonPath('deleted.archive_folders', 2);
+            ->assertJsonPath('deleted.archive_folders', 2)
+            ->assertJsonPath('deleted.physical_files', 2)
+            ->assertJsonPath('deleted.orphaned_physical_files', 1)
+            ->assertJsonPath('deleted.physical_file_failures', 0);
 
         $this->assertDatabaseCount('records', 0);
         $this->assertDatabaseCount('document_requests', 0);
@@ -107,5 +127,7 @@ class PracticeDataCleanupTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $admin->id]);
         $this->assertDatabaseHas('departments', ['id' => $department->id]);
         $this->assertDatabaseHas('record_categories', ['id' => $category->id]);
+        Storage::disk('local')->assertMissing($trackedPath);
+        Storage::disk('local')->assertMissing($orphanedPath);
     }
 }

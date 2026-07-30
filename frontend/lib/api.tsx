@@ -160,3 +160,58 @@ export async function downloadApiFile(
   anchor.remove();
   URL.revokeObjectURL(objectUrl);
 }
+
+export async function previewApiFile(endpoint: string): Promise<void> {
+  if (!API_URL) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is missing. Check frontend/.env.local and restart Next.js."
+    );
+  }
+
+  const previewWindow = window.open("", "_blank");
+
+  if (!previewWindow) {
+    throw new Error(
+      "The preview window was blocked. Allow pop-ups for IRAM and try again."
+    );
+  }
+
+  previewWindow.opener = null;
+  previewWindow.document.title = "Preparing secure preview...";
+  previewWindow.document.body.innerHTML =
+    '<p style="font:14px system-ui;padding:24px;color:#354139">Preparing secure preview...</p>';
+
+  try {
+    const token = localStorage.getItem("iram_token");
+    const normalizedEndpoint = endpoint.startsWith("/")
+      ? endpoint
+      : `/${endpoint}`;
+    const response = await fetch(`${API_URL}${normalizedEndpoint}`, {
+      headers: {
+        Accept: "application/pdf,image/*,application/octet-stream",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+
+      if (response.status === 401 && token) {
+        clearStoredAuth();
+      }
+
+      throw new Error(
+        data?.message || `Preview failed with status ${response.status}.`
+      );
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    previewWindow.location.replace(objectUrl);
+
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 300_000);
+  } catch (error) {
+    previewWindow.close();
+    throw error;
+  }
+}

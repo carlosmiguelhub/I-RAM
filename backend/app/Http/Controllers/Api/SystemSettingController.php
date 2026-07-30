@@ -364,6 +364,7 @@ class SystemSettingController extends Controller
             'notifications' => 0,
             'audit_logs' => 0,
             'physical_files' => 0,
+            'orphaned_physical_files' => 0,
             'physical_file_failures' => 0,
         ];
 
@@ -421,6 +422,32 @@ class SystemSettingController extends Controller
             } catch (Throwable) {
                 $deleted['physical_file_failures']++;
             }
+        }
+
+        /*
+         * A practice reset owns the complete private records directory.
+         * Sweep it after deleting database-tracked paths so files left by
+         * interrupted uploads or older cleanup runs cannot become orphans.
+         */
+        try {
+            $orphanedFiles = Storage::disk('local')
+                ->allFiles('records');
+            $orphanedCount = count($orphanedFiles);
+
+            if ($orphanedCount > 0) {
+                if (Storage::disk('local')->deleteDirectory('records')) {
+                    $deleted['physical_files'] += $orphanedCount;
+                    $deleted['orphaned_physical_files'] = $orphanedCount;
+                } else {
+                    $deleted['physical_file_failures'] += $orphanedCount;
+                }
+            } else {
+                Storage::disk('local')->deleteDirectory('records');
+            }
+
+            Storage::disk('local')->makeDirectory('records');
+        } catch (Throwable) {
+            $deleted['physical_file_failures']++;
         }
 
         return response()->json([

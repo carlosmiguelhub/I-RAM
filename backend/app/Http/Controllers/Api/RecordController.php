@@ -671,18 +671,13 @@ class RecordController extends Controller
             ], 422);
         }
 
-        $validated = $request->validate([
-            'review_remarks' => ['nullable', 'string', 'max:5000'],
-        ]);
-
         DB::transaction(function () use (
             $request,
-            $record,
-            $validated
+            $record
         ) {
             $record->update([
                 'status' => 'under_review',
-                'review_remarks' => $validated['review_remarks'] ?? null,
+                'review_remarks' => null,
                 'reviewed_by' => $request->user()->id,
                 'reviewed_at' => now(),
             ]);
@@ -706,7 +701,6 @@ class RecordController extends Controller
                 'record_id' => $record->id,
                 'record_code' => $record->record_code,
                 'record_title' => $record->title,
-                'review_remarks' => $validated['review_remarks'] ?? null,
             ]
         );
 

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 import {
   Archive,
   ArrowRight,
   Check,
   CheckCircle2,
+  Clock3,
   ClipboardCheck,
   FileCheck2,
   FileLock2,
@@ -14,8 +16,10 @@ import {
   History,
   Layers3,
   LockKeyhole,
+  RefreshCcw,
+  Send,
   ShieldCheck,
-  Users,
+  Trash2,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -45,34 +49,50 @@ const capabilities = [
   },
 ];
 
-const workflow = [
+const recordWorkflow = [
   {
     number: "01",
-    title: "Acquire",
-    description: "Capture records, metadata, and supporting files.",
+    icon: Send,
+    actor: "Staff",
+    title: "Submit",
+    description:
+      "Add record details and supporting files. IRAM assigns a record code and places the submission in Received.",
+    status: "Received",
   },
   {
     number: "02",
+    icon: ClipboardCheck,
+    actor: "Records Officer",
     title: "Review",
-    description: "Verify submissions and resolve corrections.",
+    description:
+      "Claim the submission, verify its metadata and files, and record formal review findings.",
+    status: "Under review",
   },
   {
     number: "03",
-    title: "Archive",
-    description: "Apply storage and retention controls.",
+    icon: Archive,
+    actor: "Records Officer",
+    title: "Approve & archive",
+    description:
+      "Set the storage location, archive folder, access level, and permanent or temporary retention schedule.",
+    status: "Archived",
   },
   {
     number: "04",
-    title: "Access",
-    description: "Process accountable document requests.",
+    icon: Clock3,
+    actor: "System + Managers",
+    title: "Retain or dispose",
+    description:
+      "Keep permanent records, or route expired temporary records through legal hold and controlled disposal checks.",
+    status: "Governed",
   },
 ];
 
 export default function Home() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#F7F8F6] text-[#17231E] dark:bg-[#07101F] dark:text-[#EDF2F8]">
+    <main className="iram-landing min-h-screen overflow-hidden bg-[#F7F8F6] text-[#17231E] dark:bg-[#07101F] dark:text-[#EDF2F8]">
       <header className="relative z-40 border-b border-[#E1E6E2] bg-white/95 backdrop-blur-xl dark:border-[#26354A] dark:bg-[#0A1425]/95">
-        <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6 lg:px-8">
           <Link
             href="/"
             aria-label="IRAM home"
@@ -103,13 +123,16 @@ export default function Home() {
             </a>
           </nav>
 
-          <Link
-            href="/login"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#075A3A] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#06472F] focus:outline-none focus:ring-4 focus:ring-[#CFE0D6]"
-          >
-            Sign in
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle compact />
+            <Link
+              href="/login"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#075A3A] px-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#06472F] focus:outline-none focus:ring-4 focus:ring-[#CFE0D6] sm:px-4"
+            >
+              Sign in
+              <ArrowRight className="hidden h-4 w-4 sm:block" />
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -229,33 +252,105 @@ export default function Home() {
 
       <section
         id="workflow"
-        className="scroll-mt-20 bg-[#EEF3EF] px-4 py-20 dark:bg-[#0A1425] sm:px-6 lg:px-8 lg:py-24"
+        className="scroll-mt-20 overflow-hidden bg-[#EEF3EF] px-4 py-20 dark:bg-[#0A1425] sm:px-6 lg:px-8 lg:py-24"
       >
         <div className="mx-auto max-w-7xl">
-          <SectionHeading
-            eyebrow="Clear by default"
-            title="A record lifecycle everyone can understand."
-            description="Each stage has a clear purpose, owner, and next action—giving staff visibility without sacrificing control."
-          />
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
+            <SectionHeading
+              eyebrow="The workflow inside IRAM"
+              title="One record. Clear ownership at every stage."
+              description="The lifecycle below mirrors the system itself—from a Staff submission and Records Officer review to controlled access, retention, and final disposition."
+            />
+            <div className="rounded-2xl border border-[#D8E2DB] bg-white/80 p-4 dark:border-[#2B3A51] dark:bg-[#111D2F]/80">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#8A938C] dark:text-[#93A2B5]">
+                Responsibility follows the record
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <WorkflowRole tone="gold">Staff submits</WorkflowRole>
+                <WorkflowRole tone="green">Officer reviews</WorkflowRole>
+                <WorkflowRole tone="maroon">System governs</WorkflowRole>
+              </div>
+            </div>
+          </div>
 
-          <div className="relative mt-12 grid gap-4 lg:grid-cols-4">
-            <div className="absolute left-[12.5%] right-[12.5%] top-8 hidden h-px bg-[#C5D2CA] lg:block dark:bg-[#33445E]" />
-            {workflow.map((step) => (
-              <article
-                key={step.number}
-                className="relative rounded-2xl border border-[#DCE4DE] bg-white p-5 shadow-sm dark:border-[#2B3A51] dark:bg-[#111D2F]"
-              >
-                <span className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[#075A3A] text-xs font-bold text-white ring-8 ring-white dark:ring-[#111D2F]">
-                  {step.number}
+          <div className="mt-12 overflow-hidden rounded-3xl border border-[#D9E2DC] bg-white shadow-xl shadow-[#173D2C]/[0.05] dark:border-[#2B3A51] dark:bg-[#111D2F]">
+            <div className="grid lg:grid-cols-4">
+              {recordWorkflow.map((step, index) => {
+                const Icon = step.icon;
+
+                return (
+                  <article
+                    key={step.number}
+                    className="group relative border-b border-[#E5EAE6] p-6 last:border-b-0 dark:border-[#2B3A51] sm:p-7 lg:border-b-0 lg:border-r lg:last:border-r-0"
+                  >
+                    {index < recordWorkflow.length - 1 && (
+                      <span className="absolute -right-4 top-8 z-10 hidden h-8 w-8 items-center justify-center rounded-full border border-[#D8E2DB] bg-white text-[#075A3A] shadow-sm dark:border-[#33445E] dark:bg-[#172337] dark:text-[#78D6A7] lg:flex">
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
+                    )}
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E7F0EB] text-[#075A3A] transition group-hover:bg-[#075A3A] group-hover:text-white dark:bg-[#1C3B31] dark:text-[#78D6A7]">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span className="text-xs font-bold tracking-[0.14em] text-[#B8C0BA] dark:text-[#66758A]">
+                        {step.number}
+                      </span>
+                    </div>
+                    <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#B87510] dark:text-[#F1C768]">
+                      {step.actor}
+                    </p>
+                    <h3 className="mt-2 text-lg font-bold text-[#253029] dark:text-white">
+                      {step.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-6 text-[#6B756E] dark:text-[#AAB8C9]">
+                      {step.description}
+                    </p>
+                    <span className="mt-5 inline-flex rounded-full bg-[#F0F5F1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#526159] dark:bg-[#1C2A40] dark:text-[#B9C5D5]">
+                      {step.status}
+                    </span>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="border-t border-[#E5EAE6] bg-[#FFF9EA] px-5 py-4 dark:border-[#2B3A51] dark:bg-[#1C2A40] sm:px-7">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#9A6507] shadow-sm dark:bg-[#26354A] dark:text-[#F1C768]">
+                  <RefreshCcw className="h-4 w-4" />
                 </span>
-                <h3 className="mt-5 text-base font-bold text-[#253029] dark:text-white">
-                  {step.title}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-[#6B756E] dark:text-[#AAB8C9]">
-                  {step.description}
-                </p>
-              </article>
-            ))}
+                <div>
+                  <p className="text-xs font-bold text-[#624710] dark:text-[#F1C768]">
+                    Correction loop during review
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-[#7D6A42] dark:text-[#B9C5D5]">
+                    If changes are needed, the Records Officer returns the
+                    submission with notes. Staff updates the record and files,
+                    then resubmits it to Received for another review.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            <WorkflowBranch
+              icon={FileSearch}
+              eyebrow="Controlled access after archiving"
+              title="Archived does not mean openly available."
+              description="Staff request an eligible archived record for a stated purpose. A Records Officer reviews the request before anything is released."
+              steps={["Request", "Review", "Approve", "Release"]}
+              note="Printed copies add a Ready for pickup stage and a unique claim code; digital and view-only requests move from approval to release."
+              tone="green"
+            />
+            <WorkflowBranch
+              icon={Trash2}
+              eyebrow="Retention and disposition"
+              title="Disposal is a process, never a delete button."
+              description="Permanent records remain in the archive. Expired temporary records move to For Disposal for an independent authorization."
+              steps={["Retention expiry", "For disposal", "Approval", "Disposed"]}
+              note="A legal hold stops disposal. Approved cases also observe the configured cancellation period before files are purged and a certificate is retained."
+              tone="maroon"
+            />
           </div>
         </div>
       </section>
@@ -264,43 +359,62 @@ export default function Home() {
         id="governance"
         className="scroll-mt-20 px-4 py-20 sm:px-6 lg:px-8 lg:py-24"
       >
-        <div className="mx-auto grid max-w-7xl overflow-hidden rounded-3xl bg-[#11251C] text-white shadow-2xl shadow-[#11251C]/15 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="mx-auto grid max-w-7xl overflow-hidden rounded-3xl bg-[#11251C] text-white shadow-2xl shadow-[#11251C]/15 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="relative overflow-hidden p-7 sm:p-10 lg:p-12">
             <div className="pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full bg-[#D9961A]/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-32 -right-20 h-72 w-72 rounded-full bg-[#0A997E]/10 blur-3xl" />
             <div className="relative">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#F4C25E]">
-                Governance and protection
+                Governance built into every state
               </p>
               <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-                Control without creating friction.
+                Trust is enforced, not assumed.
               </h2>
               <p className="mt-5 max-w-xl text-sm leading-7 text-[#C5D2CA] sm:text-base">
-                Keep sensitive records appropriately protected while giving
-                authorized teams a practical way to complete their work.
+                IRAM controls who enters, who decides, what can be accessed,
+                and how a record can leave the archive.
               </p>
+
+              <div className="mt-8 space-y-3">
+                <GovernanceProof
+                  number="01"
+                  title="Identity before access"
+                  description="Email verification and Administrator activation are required before a new Staff account can enter the workspace."
+                />
+                <GovernanceProof
+                  number="02"
+                  title="Authority follows the role"
+                  description="Staff submit and request; Records Officers review and manage; Administrators govern accounts and policy."
+                />
+                <GovernanceProof
+                  number="03"
+                  title="Evidence follows the action"
+                  description="Actors, timestamps, remarks, status changes, and related records remain available in the audit trail."
+                />
+              </div>
             </div>
           </div>
 
           <div className="grid gap-px bg-white/10 sm:grid-cols-2">
             <GovernanceItem
-              icon={Users}
-              title="Role-aware workspaces"
-              description="Focused experiences for Staff, Records Officers, and Administrators."
+              icon={FileLock2}
+              title="Classified archive access"
+              description="Internal records may enter the Staff catalog; confidential records remain hidden. Access still requires an approved request."
             />
             <GovernanceItem
               icon={ClipboardCheck}
-              title="Review accountability"
-              description="Named reviewers, timestamps, remarks, and traceable decisions."
+              title="Accountable review"
+              description="Reviews capture the assigned officer, findings, correction notes, decision, and exact time of action."
             />
             <GovernanceItem
-              icon={Archive}
-              title="Retention governance"
-              description="Permanent and temporary schedules with controlled disposal."
+              icon={LockKeyhole}
+              title="Protected retention"
+              description="Archived records carry permanent or temporary schedules; legal holds prevent eligible records from advancing to disposal."
             />
             <GovernanceItem
-              icon={FileSearch}
-              title="Auditable access"
-              description="Document requests move through review, approval, pickup, and release."
+              icon={Trash2}
+              title="Separated disposal duties"
+              description="A disposal requester cannot approve the same case. Approval starts a cancellation window before controlled file purging."
             />
           </div>
         </div>
@@ -518,6 +632,108 @@ function TrustPoint({
   );
 }
 
+function WorkflowRole({
+  children,
+  tone,
+}: {
+  children: React.ReactNode;
+  tone: "green" | "gold" | "maroon";
+}) {
+  const colors = {
+    green:
+      "border-[#CFE0D6] bg-[#E7F0EB] text-[#075A3A] dark:border-[#315441] dark:bg-[#1C3B31] dark:text-[#78D6A7]",
+    gold:
+      "border-[#EAD7A5] bg-[#FFF3D6] text-[#946100] dark:border-[#5A4926] dark:bg-[#3D321D] dark:text-[#F1C768]",
+    maroon:
+      "border-[#E7C7D1] bg-[#F8E9EE] text-[#6B0F2B] dark:border-[#653448] dark:bg-[#432233] dark:text-[#E9AFC0]",
+  };
+
+  return (
+    <span
+      className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${colors[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function WorkflowBranch({
+  icon: Icon,
+  eyebrow,
+  title,
+  description,
+  steps,
+  note,
+  tone,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  eyebrow: string;
+  title: string;
+  description: string;
+  steps: string[];
+  note: string;
+  tone: "green" | "maroon";
+}) {
+  const colors = {
+    green: {
+      icon: "bg-[#E7F0EB] text-[#075A3A] dark:bg-[#1C3B31] dark:text-[#78D6A7]",
+      eyebrow: "text-[#075A3A] dark:text-[#78D6A7]",
+      step: "border-[#CFE0D6] bg-[#F0F7F3] text-[#075A3A] dark:border-[#315441] dark:bg-[#1C3B31] dark:text-[#78D6A7]",
+      arrow: "text-[#8DB4A0] dark:text-[#5E8D73]",
+    },
+    maroon: {
+      icon: "bg-[#F8E9EE] text-[#6B0F2B] dark:bg-[#432233] dark:text-[#E9AFC0]",
+      eyebrow: "text-[#8A2644] dark:text-[#E9AFC0]",
+      step: "border-[#E7C7D1] bg-[#FCF3F6] text-[#6B0F2B] dark:border-[#653448] dark:bg-[#432233] dark:text-[#E9AFC0]",
+      arrow: "text-[#C99AA9] dark:text-[#956174]",
+    },
+  };
+  const palette = colors[tone];
+
+  return (
+    <article className="rounded-2xl border border-[#D9E2DC] bg-white p-6 shadow-sm dark:border-[#2B3A51] dark:bg-[#111D2F] sm:p-7">
+      <div className="flex items-start gap-4">
+        <span
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}
+        >
+          <Icon className="h-5 w-5" />
+        </span>
+        <div>
+          <p
+            className={`text-[10px] font-bold uppercase tracking-[0.14em] ${palette.eyebrow}`}
+          >
+            {eyebrow}
+          </p>
+          <h3 className="mt-2 text-lg font-bold text-[#253029] dark:text-white">
+            {title}
+          </h3>
+        </div>
+      </div>
+      <p className="mt-4 text-sm leading-6 text-[#6B756E] dark:text-[#AAB8C9]">
+        {description}
+      </p>
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        {steps.map((step, index) => (
+          <div key={step} className="flex items-center gap-2">
+            <span
+              className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-bold ${palette.step}`}
+            >
+              {step}
+            </span>
+            {index < steps.length - 1 && (
+              <ArrowRight className={`h-3.5 w-3.5 ${palette.arrow}`} />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 flex items-start gap-2 border-t border-[#E7EBE8] pt-4 text-xs leading-5 text-[#717B74] dark:border-[#2B3A51] dark:text-[#93A2B5]">
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#B87510] dark:text-[#F1C768]" />
+        <p>{note}</p>
+      </div>
+    </article>
+  );
+}
+
 function SectionHeading({
   eyebrow,
   title,
@@ -542,6 +758,30 @@ function SectionHeading({
   );
 }
 
+function GovernanceProof({
+  number,
+  title,
+  description,
+}: {
+  number: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.045] p-3.5">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F4C25E] text-[10px] font-black text-[#11251C]">
+        {number}
+      </span>
+      <div>
+        <p className="text-xs font-bold text-white">{title}</p>
+        <p className="mt-1 text-[11px] leading-5 text-[#B8C7BF]">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function GovernanceItem({
   icon: Icon,
   title,
@@ -552,8 +792,10 @@ function GovernanceItem({
   description: string;
 }) {
   return (
-    <article className="bg-white/[0.04] p-6 sm:p-7">
-      <Icon className="h-5 w-5 text-[#F4C25E]" />
+    <article className="group bg-white/[0.04] p-6 transition-colors hover:bg-white/[0.07] sm:p-7 lg:p-8">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.07] text-[#F4C25E] transition-colors group-hover:bg-[#F4C25E] group-hover:text-[#11251C]">
+        <Icon className="h-5 w-5" />
+      </span>
       <h3 className="mt-4 text-sm font-bold text-white">{title}</h3>
       <p className="mt-2 text-xs leading-6 text-[#B8C7BF]">{description}</p>
     </article>

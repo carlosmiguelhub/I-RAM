@@ -11,9 +11,12 @@ import {
   Eye,
   FileCheck2,
   FileClock,
+  FileText,
   FileX2,
+  FolderOpen,
   Loader2,
   LockKeyhole,
+  Printer,
   RefreshCcw,
   Search,
   Send,
@@ -26,7 +29,11 @@ import AppShell from "@/components/AppShell";
 import ViewModeToggle, {
   usePersistentViewMode,
 } from "@/components/archive/ViewModeToggle";
-import { apiRequest, downloadApiFile } from "@/lib/api";
+import {
+  apiRequest,
+  downloadApiFile,
+  previewApiFile,
+} from "@/lib/api";
 
 type Role = {
   id: number;
@@ -46,6 +53,13 @@ type User = {
   department?: Department | null;
 };
 
+type RequestFile = {
+  id: number;
+  file_name: string;
+  file_type?: string | null;
+  file_size?: number | null;
+};
+
 type RequestRecord = {
   id: number;
   record_code: string;
@@ -60,12 +74,7 @@ type RequestRecord = {
     id: number;
     name: string;
   } | null;
-  files?: Array<{
-    id: number;
-    file_name: string;
-    file_type?: string | null;
-    file_size?: number | null;
-  }>;
+  files?: RequestFile[];
 };
 
 type DocumentRequest = {
@@ -510,6 +519,7 @@ export default function DocumentRequestsPage() {
     if (actionMode === "ready") {
       await runAction("ready-for-pickup", {
         review_notes: reviewNotes.trim() || null,
+        preparation_confirmed: true,
       });
       return;
     }
@@ -859,7 +869,7 @@ function RequestListEntry({
         {canReview && <button type="button" onClick={onReview} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}>Review</button>}
         {canDecide && <button type="button" onClick={onApprove} className={`${actionClass} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}>Approve</button>}
         {canDecide && <button type="button" onClick={onReject} className={`${actionClass} border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}>Reject</button>}
-        {canMarkReady && <button type="button" onClick={onReady} className={`${actionClass} border-[#CFE0D6] bg-[#E6F2EC] text-[#075A3A] hover:bg-[#D7EBE0]`}>Ready for Pickup</button>}
+        {canMarkReady && <button type="button" onClick={onReady} className={`${actionClass} border-[#CFE0D6] bg-[#E6F2EC] text-[#075A3A] hover:bg-[#D7EBE0]`}><Printer className="h-3.5 w-3.5" />Prepare Copy</button>}
         {canRelease && <button type="button" onClick={onRelease} className={`${actionClass} border-[#E4CBD4] bg-[#F8E9EE] text-[#6B0F2B] hover:bg-[#F1DDE4]`}>Confirm Release</button>}
         {hasClaimTicket && <Link href={`/document-requests/${request.id}/claim-ticket`} className={`${actionClass} border-[#D7B96B] bg-[#FFF9EA] text-[#8B5A00] hover:bg-[#FFF3D6]`}><TicketCheck className="h-3.5 w-3.5" />Claim Ticket</Link>}
         {canCancel && <button type="button" onClick={onCancel} className={`${actionClass} border-red-200 bg-white text-red-700 hover:bg-red-50`}>Cancel</button>}
@@ -1040,8 +1050,8 @@ function RequestCard({
               onClick={onReady}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#075A3A] px-3 py-2.5 text-sm font-bold text-white transition hover:bg-[#043D28] min-[420px]:col-span-2"
             >
-              <FileCheck2 className="h-4 w-4" />
-              Mark Ready for Pickup
+              <Printer className="h-4 w-4" />
+              Prepare Copy
             </button>
           )}
 
@@ -1125,15 +1135,21 @@ function RequestModal({
   const [downloadingFileId, setDownloadingFileId] = useState<
     number | null
   >(null);
+  const [previewingFileId, setPreviewingFileId] = useState<
+    number | null
+  >(null);
   const [downloadError, setDownloadError] = useState("");
+  const [preparedConfirmed, setPreparedConfirmed] = useState(false);
   const accessIsActive =
     (["approved", "ready_for_pickup", "released"] as DocumentRequest["status"][]).includes(request.status) &&
     (!request.expires_at || new Date(request.expires_at) > new Date());
+  const printFulfillmentVisible =
+    canManage &&
+    request.preferred_format === "printed" &&
+    ["approved", "ready_for_pickup", "released"].includes(request.status);
+  const requestFiles = request.record?.files || [];
 
-  async function downloadFile(file: {
-    id: number;
-    file_name: string;
-  }) {
+  async function downloadFile(file: RequestFile) {
     setDownloadingFileId(file.id);
     setDownloadError("");
 
@@ -1150,6 +1166,23 @@ function RequestModal({
       );
     } finally {
       setDownloadingFileId(null);
+    }
+  }
+
+  async function previewFile(file: RequestFile) {
+    setPreviewingFileId(file.id);
+    setDownloadError("");
+
+    try {
+      await previewApiFile(`/record-files/${file.id}/download`);
+    } catch (error: unknown) {
+      setDownloadError(
+        error instanceof Error
+          ? error.message
+          : "The secure preview could not be opened."
+      );
+    } finally {
+      setPreviewingFileId(null);
     }
   }
 
@@ -1293,6 +1326,161 @@ function RequestModal({
             />
           )}
         </div>
+
+        {printFulfillmentVisible && (
+          <section className="mt-5 overflow-hidden rounded-2xl border border-[#CFE0D6] bg-[#F7FAF8] shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-[#DCE6DF] bg-[#EAF3ED] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#075A3A] text-white shadow-sm">
+                  <Printer className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-[#253029]">
+                    Print fulfillment
+                  </p>
+                  <p className="mt-0.5 text-xs leading-5 text-[#667169]">
+                    Prepare the requested copy directly from its archived
+                    source files.
+                  </p>
+                </div>
+              </div>
+
+              {request.record?.archive_folder?.id ? (
+                <Link
+                  href={`/archive/folders/${request.record.archive_folder.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#BFD1C5] bg-white px-3 text-xs font-bold text-[#075A3A] transition hover:bg-[#F0F7F3]"
+                >
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  {request.record.archive_folder.name}
+                </Link>
+              ) : (
+                <span className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-xs font-semibold text-[#778079] ring-1 ring-[#D8E2DB]">
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  Unfiled
+                </span>
+              )}
+            </div>
+
+            <div className="p-4">
+              {requestFiles.length === 0 ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  <p className="font-bold">No printable source files found</p>
+                  <p className="mt-1 text-xs leading-5">
+                    Attach or restore the record file before marking this
+                    request ready for pickup.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {requestFiles.map((file) => {
+                    const previewable = isPreviewableFile(file);
+                    const fileBusy =
+                      downloadingFileId === file.id ||
+                      previewingFileId === file.id;
+
+                    return (
+                      <div
+                        key={file.id}
+                        className="flex flex-col gap-3 rounded-xl border border-[#DCE4DF] bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F0F3F1] text-[#075A3A]">
+                            <FileText className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <p
+                              className="truncate text-sm font-bold text-[#354139]"
+                              title={file.file_name}
+                            >
+                              {file.file_name}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-[#8A938C]">
+                              {fileTypeLabel(file)}
+                              {file.file_size
+                                ? ` · ${formatFileSize(file.file_size)}`
+                                : ""}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          {previewable && (
+                            <button
+                              type="button"
+                              disabled={
+                                downloadingFileId !== null ||
+                                previewingFileId !== null
+                              }
+                              onClick={() => void previewFile(file)}
+                              className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#075A3A] px-3 text-xs font-bold text-white transition hover:bg-[#06472F] disabled:opacity-50 sm:flex-none"
+                            >
+                              {previewingFileId === file.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Printer className="h-3.5 w-3.5" />
+                              )}
+                              Preview & Print
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={
+                              fileBusy ||
+                              downloadingFileId !== null ||
+                              previewingFileId !== null
+                            }
+                            onClick={() => void downloadFile(file)}
+                            className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#CFE0D6] bg-white px-3 text-xs font-bold text-[#075A3A] transition hover:bg-[#F0F7F3] disabled:opacity-50 sm:flex-none"
+                          >
+                            {downloadingFileId === file.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                            {previewable
+                              ? "Download Original"
+                              : "Download to Print"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {downloadError && (
+                <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                  {downloadError}
+                </p>
+              )}
+
+              {mode === "ready" && requestFiles.length > 0 && (
+                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[#D7B96B] bg-[#FFF9EA] p-3.5">
+                  <input
+                    type="checkbox"
+                    checked={preparedConfirmed}
+                    disabled={loading}
+                    onChange={(event) =>
+                      setPreparedConfirmed(event.target.checked)
+                    }
+                    className="mt-0.5 h-4 w-4 rounded border-[#C49B3D] text-[#075A3A] focus:ring-[#D9961A]"
+                  />
+                  <span>
+                    <span className="block text-sm font-bold text-[#624710]">
+                      Printed copy prepared and checked
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-5 text-[#7D6A42]">
+                      I confirm the required source file was printed and the
+                      copy is ready for release to the requester.
+                    </span>
+                  </span>
+                </label>
+              )}
+            </div>
+          </section>
+        )}
 
         {accessIsActive &&
           request.preferred_format === "digital" &&
@@ -1473,7 +1661,9 @@ function RequestModal({
               type="submit"
               disabled={
                 loading ||
-                (mode === "reject" && !reviewNotes.trim())
+                (mode === "reject" && !reviewNotes.trim()) ||
+                (mode === "ready" &&
+                  (!preparedConfirmed || requestFiles.length === 0))
               }
               className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
                 mode === "reject"
@@ -1590,6 +1780,37 @@ function DetailBox({
       </p>
     </div>
   );
+}
+
+function fileExtension(fileName: string): string {
+  return fileName.split(".").pop()?.toLowerCase() || "";
+}
+
+function isPreviewableFile(file: RequestFile): boolean {
+  const mime = file.file_type?.toLowerCase() || "";
+  const extension = fileExtension(file.file_name);
+
+  return (
+    mime === "application/pdf" ||
+    mime.startsWith("image/") ||
+    ["pdf", "jpg", "jpeg", "png", "gif", "webp"].includes(extension)
+  );
+}
+
+function fileTypeLabel(file: RequestFile): string {
+  const extension = fileExtension(file.file_name);
+
+  if (extension) return extension.toUpperCase();
+  if (file.file_type) return file.file_type;
+
+  return "File";
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function LoadingState() {
